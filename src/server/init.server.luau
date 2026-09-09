@@ -290,7 +290,18 @@ local function showEveryoneTheirClock()
 			-- PRESSURE rather than the seconds, so the dial can move without the
 			-- client knowing it exists -- `Silence.pressure` was written for
 			-- exactly this and had no reader until now.
-			silenceRemote:FireClient(player, band, Silence.pressure(quiet), Silence.note(band))
+			-- Band, how full the bar is, the words, and HOW LONG IS LEFT. The
+			-- last one is what lets the client fill the bar between pushes
+			-- without knowing `SpeakEvery` -- pressure and seconds-left
+			-- together give the rate. Without it the bar showed three
+			-- positions in a countdown and stood still for 29.5s of 45.
+			silenceRemote:FireClient(
+				player,
+				band,
+				Silence.pressure(quiet),
+				Silence.note(band),
+				Silence.secondsLeft(quiet)
+			)
 		end
 	end
 end

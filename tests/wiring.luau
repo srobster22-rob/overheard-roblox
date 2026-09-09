@@ -852,6 +852,21 @@ check(
 check("the client is sent the words from Shared.Silence", string.find(serverCode, "Silence.note(", 1, true) ~= nil)
 check("...and the fill from Shared.Silence", string.find(serverCode, "Silence.pressure(", 1, true) ~= nil)
 
+-- R58. The server speaks only on a band change, so a client that draws only what
+-- it was told shows three bar positions in a whole countdown. The fill between
+-- pushes must come from `Shared.Silence`, not from arithmetic restated here --
+-- R20's defect, and the thing this client's own comment already claimed.
+check("the client fills the bar from Shared.Silence", string.find(clientCode, "Silence.fill(", 1, true) ~= nil)
+check("...every frame, not only on a push", string.find(clientCode, "RunService.RenderStepped", 1, true) ~= nil)
+check("the server sends how long is left", string.find(serverCode, "Silence.secondsLeft(", 1, true) ~= nil)
+-- The client must not work the deadline out for itself: that is the dial the
+-- push exists to keep out of this file.
+check("the client never reads the speaking deadline", string.find(clientCode, "Config.SpeakEvery", 1, true) == nil)
+check(
+	"(control) ...and it does read other Config dials, so that is not vacuous",
+	string.find(clientCode, "Config.", 1, true) ~= nil
+)
+
 -- R57, and this is the CLASS. `Hud.EXCLUSIVE` is a list of promises about what
 -- the CLIENT will do, held in a shared module the client does not have to obey.
 -- R56 added `{ "Round over", "Supervisor" }` and used it to justify placing the

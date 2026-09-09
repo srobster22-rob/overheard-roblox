@@ -10,6 +10,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Heat = require(ReplicatedStorage.Shared.Heat)
@@ -17,6 +18,7 @@ local Hud = require(ReplicatedStorage.Shared.Hud)
 local Readout = require(ReplicatedStorage.Shared.Readout)
 local Keypad = require(ReplicatedStorage.Shared.Keypad)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Silence = require(ReplicatedStorage.Shared.Silence)
 
 -- Named up front rather than fetched inline, so both sides read the same way
 -- and `tests/wiring.luau` can tell which handler belongs to which remote.
@@ -215,12 +217,35 @@ local BAND_COLOUR: { [string]: Color3 } = {
 	overdue = Color3.fromRGB(220, 90, 90),
 }
 
-silenceRemote.OnClientEvent:Connect(function(band: string, pressure: number, note: string)
+-- What the last push said, and when it arrived. The bar is filled in between
+-- pushes from these three numbers.
+--
+-- The server speaks only when the BAND changes -- 4 times in 600 ticks -- so
+-- drawing only what it says gave three bar positions in a whole countdown, still
+-- for 29.5 of the 45 seconds. The arithmetic lives in `Shared.Silence` so this
+-- file still decides nothing: it holds what it was told and the clock.
+local lastPressure = 0
+local lastSecondsLeft = 0
+local lastPushAt = os.clock()
+
+silenceRemote.OnClientEvent:Connect(function(band: string, pressure: number, note: string, secondsLeft: number)
 	silencePanel.Visible = true
 	silenceNote.Text = note
+	lastPressure = pressure
+	lastSecondsLeft = secondsLeft or 0
+	lastPushAt = os.clock()
 	silenceBar.Size = UDim2.fromScale(math.clamp(pressure, 0, 1), 1)
 	silenceBar.BackgroundColor3 = BAND_COLOUR[band] or BAND_COLOUR.clear
 	silenceNote.TextColor3 = BAND_COLOUR[band] or silenceNote.TextColor3
+end)
+
+-- The COLOUR is not touched here: it belongs to the band, and the band only
+-- changes when the server says so. Only the fill moves between pushes.
+RunService.RenderStepped:Connect(function()
+	if not silencePanel.Visible then
+		return
+	end
+	silenceBar.Size = UDim2.fromScale(Silence.fill(lastPressure, lastSecondsLeft, os.clock() - lastPushAt), 1)
 end)
 
 -- YOUR LINE ----------------------------------------------------------------
@@ -386,7 +411,7 @@ local function onPhase(state: { playing: boolean, outcome: string?, number: numb
 
 	-- The Supervisor's clock stops with the round, so its panel goes with it.
 	--
-	-- `Hud.EXCLUSIVE` says these two are never on screen together, and R56 used
+	-- `Hud.exclusions()` says these two are never on screen together, and R56 used
 	-- that claim to justify where the clock sits: at MinWidth `Round over` spans
 	-- x 160..480 and the clock spans x 16..166, and they share the bottom of the
 	-- window. The claim was true of the SERVER (the Supervisor only runs while

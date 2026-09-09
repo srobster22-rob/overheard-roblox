@@ -75,6 +75,37 @@ function Silence.note(band: Band): string
 	return NOTES[band]
 end
 
+-- How full the bar is NOW, given what the last push said and how long ago it
+-- arrived.
+--
+-- R56 pushed the clock on band change rather than per tick -- 4 replications in
+-- 600 ticks instead of 1,200, which is the right call. But the bar was drawn
+-- from the pressure sent at that instant, so it showed three positions in a
+-- whole countdown and sat perfectly still for 29.5 of the 45 seconds. A bar that
+-- does not move for two-thirds of the wait says nothing about time passing, and
+-- the first thing it says is that you are already out of time.
+--
+-- The client can fill in the gap itself without knowing a single dial: the push
+-- carries how full the bar is and how many seconds are left, and those two give
+-- the rate. That keeps the thresholds here, beside the numbers they come from,
+-- which is what the client's own comment already claimed.
+--
+-- `secondsLeft <= 0` holds at full rather than dividing by it: the deadline has
+-- passed, and there is no "more than overdue".
+function Silence.fill(pressureAtPush: number, secondsLeft: number, elapsed: number): number
+	local from = math.clamp(pressureAtPush, 0, 1)
+	if secondsLeft <= 0 or from >= 1 then
+		return 1
+	end
+	local rate = (1 - from) / secondsLeft
+	return math.clamp(from + rate * math.max(0, elapsed), 0, 1)
+end
+
+-- How long this player has before the call goes through.
+function Silence.secondsLeft(quietFor: number): number
+	return math.max(0, Config.SpeakEvery - quietFor)
+end
+
 -- The warning has to arrive with time left to do something about it, or it is
 -- not a warning. Read by tests against the real dials rather than trusted.
 function Silence.warningLeadSeconds(): number

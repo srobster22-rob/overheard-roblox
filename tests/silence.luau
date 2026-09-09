@@ -271,6 +271,123 @@ for step = 0, 200 do
 end
 check(`the bar is full exactly when the rule fires ({mismatches} disagreements)`, mismatches == 0)
 
+print("")
+print("the bar keeps moving between pushes")
+
+-- R58. R56 pushed the clock on band change -- 4 replications in 600 ticks
+-- instead of 1,200, which is the right call -- and drew the bar from the
+-- pressure sent at that instant. Measured for one silent player: the bar showed
+-- three positions in the whole countdown (0.01 at t=0.2s, 0.67 at t=30s, 1.00 at
+-- t=45s) and stood PERFECTLY STILL for 29.5 of the 45 seconds.
+--
+-- R56's stated purpose was that the rule be "legible before it fires rather than
+-- after". A bar that does not move for two-thirds of the wait says nothing about
+-- time passing, and the first thing it says is that you are already out of time.
+--
+-- The gap is filled from what the push carried -- how full, and how long left --
+-- which gives the rate without the client knowing a single dial.
+
+check("(guard) a fresh clock has the whole deadline left", Silence.secondsLeft(0) == Config.SpeakEvery)
+check("...and none of it once the deadline passes", Silence.secondsLeft(Config.SpeakEvery + 5) == 0)
+check("...never negative", Silence.secondsLeft(Config.SpeakEvery * 10) == 0)
+
+-- Nothing has elapsed: the bar is exactly where the push put it.
+check("at the moment of the push the bar is what was sent", Silence.fill(0.25, 30, 0) == 0.25)
+
+-- And it arrives at full exactly when the deadline does, not before or after.
+check("it reaches full exactly at the deadline", Silence.fill(0, Config.SpeakEvery, Config.SpeakEvery) == 1)
+check("...not before", Silence.fill(0, Config.SpeakEvery, Config.SpeakEvery - 1) < 1)
+check("...and never past it", Silence.fill(0, Config.SpeakEvery, Config.SpeakEvery * 3) == 1)
+
+-- An overdue push holds at full rather than dividing by a zero deadline.
+check("an overdue clock holds at full", Silence.fill(1, 0, 10) == 1)
+check("...however long it is left there", Silence.fill(1, 0, 10000) == 1)
+
+-- THE PROPERTY, and the defect stated as a measurement: replay the real push
+-- schedule for a silent player and ask how long the bar ever stands still.
+local pushes: { { p: number, left: number, at: number } } = {}
+do
+	local shown: string? = nil
+	local now = 0
+	for _ = 1, 4 * 60 do
+		now += Config.TickSeconds
+		local band = Silence.band(now)
+		if shown ~= band then
+			shown = band
+			table.insert(pushes, { p = Silence.pressure(now), left = Silence.secondsLeft(now), at = now })
+		end
+	end
+end
+check(`(guard) the real schedule is sparse ({#pushes} pushes in 60s)`, #pushes <= 4)
+
+local function barAt(t: number): number
+	local latest = pushes[1]
+	for _, push in pushes do
+		if push.at <= t then
+			latest = push
+		end
+	end
+	return Silence.fill(latest.p, latest.left, t - latest.at)
+end
+
+local worstStill, still, previous = 0, 0, -1
+local samples = 0
+for step = 1, 60 * 10 do
+	local t = step / 10
+	if t > Config.SpeakEvery then
+		break
+	end
+	samples += 1
+	local now = barAt(t)
+	if math.abs(now - previous) < 0.0001 then
+		still += 0.1
+		worstStill = math.max(worstStill, still)
+	else
+		still = 0
+	end
+	previous = now
+end
+check(`(guard) the countdown was sampled ({samples} points)`, samples > 100)
+check(`the bar is never still for long ({string.format("%.1f", worstStill)}s)`, worstStill < 1)
+-- (control) drawing ONLY what the push carried -- R56's behaviour -- must fail
+-- that same measurement, or it is not measuring anything.
+local stillR56, wasR56 = 0, -1
+local worstR56 = 0
+for step = 1, 60 * 10 do
+	local t = step / 10
+	if t > Config.SpeakEvery then
+		break
+	end
+	local latest = pushes[1]
+	for _, push in pushes do
+		if push.at <= t then
+			latest = push
+		end
+	end
+	if math.abs(latest.p - wasR56) < 0.0001 then
+		stillR56 += 0.1
+		worstR56 = math.max(worstR56, stillR56)
+	else
+		stillR56 = 0
+	end
+	wasR56 = latest.p
+end
+check(`(control) drawing only the push stands still for {string.format("%.1f", worstR56)}s`, worstR56 > 10)
+
+-- It only ever goes up while a player stays quiet. A bar that dips would read as
+-- the player having gained time they did not.
+local dips = 0
+local last = -1
+for step = 0, 400 do
+	local t = Config.SpeakEvery * (step / 400)
+	local now = barAt(t)
+	if now < last - 0.0001 then
+		dips += 1
+	end
+	last = now
+end
+check(`the bar never goes backwards while you stay quiet ({dips} dips)`, dips == 0)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

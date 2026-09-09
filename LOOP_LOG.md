@@ -6003,3 +6003,114 @@ This round checked the exclusion list because that is where R56 put a promise;
 should draw, and only this one list is swept for being honoured.
 
 **Commit** `58127cb`
+
+
+## R58 — the clock you can see does not move
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — pulling R57's thread.** R57 ended by naming what it had not checked:
+`Hud`, `Readout`, `Keypad`, `Heat` and `Silence` all describe what a client
+should draw, and only the exclusion list was swept for being honoured. So this
+round read each of them against the client.
+
+Two of the three suspicions were wrong, and saying so is the point of checking:
+
+- `Readout.PRIVATE_NOTE` and `NOTHING_HELD` looked like dead exports — no reader
+  anywhere in `src/` outside their own file. **Not dead:** `lineRows` uses both,
+  which is the right place for them. No defect.
+- The client mentions `Hud.EXCLUSIVE`, which is a private local. **It is in a
+  comment** I wrote in R57, not in code. Cosmetic; the comment now says
+  `Hud.exclusions()`.
+
+The third was real, and it is R56's own feature failing its own purpose. R56
+pushes the clock **on band change** rather than per tick — 4 pushes in 600 ticks
+instead of 1,200, which was the right call for replication. But the bar is drawn
+from the pressure sent *at that moment*, so for one silent player:
+
+| | |
+|---|---|
+| t = 0.2s | band `clear`, bar jumps to **0.01** |
+| t = 30.0s | band `warned`, bar jumps to **0.67** |
+| t = 45.0s | band `overdue`, bar jumps to **1.00** |
+
+Three positions in the whole countdown. **The bar sat perfectly still for 29.5
+seconds at a stretch — 66% of the 45-second deadline.** R56's stated purpose was
+that "the rule is legible before it fires rather than after"; a bar that does
+not move for two-thirds of the wait says nothing about time passing, and the
+first thing it does say is that you are already out of time.
+
+1. *(picked)* **Make the bar move without making the server talk more.**
+2. The client's `BAND_COLOUR` restates `clear`/`warned`/`overdue` as string
+   literals while the file's own comment says it "decides nothing" — a rename in
+   `Silence` would silently draw an overdue player green. **Latent, not live**
+   (the three names agree today), so it is recorded here rather than fixed as if
+   it were biting.
+3. R21's corner fairness, R36's patience, the `%` in a server prompt,
+   geometry-blind movement, no player light, the stemming pair, R46's learning
+   gap, `anyFinishable`'s margin, and R54's three — **all still filed.**
+
+**Stage 2 — the fix.** The push carries a second number: **how many seconds are
+left**. Pressure and seconds-left together give the rate, so the client fills the
+bar between pushes without knowing `SpeakEvery` — the dial stays where R56 put
+it, which is what the client's own comment already claimed.
+
+`Silence.fill(pressureAtPush, secondsLeft, elapsed)` and `Silence.secondsLeft`
+hold the arithmetic, so the client still decides nothing: it holds what it was
+told and reads the clock. The colour is untouched between pushes — that belongs
+to the band, and the band only changes when the server says so.
+
+`secondsLeft <= 0` holds at full rather than dividing by it. There is no "more
+than overdue".
+
+**Stage 3 — proof.** 14 new checks in `tests/silence.luau`, 5 in
+`tests/wiring.luau`. The bar arrives at full **exactly** at the deadline, not
+before and never past it; an overdue push holds; and it never goes backwards
+while a player stays quiet, because a dipping bar would read as time gained.
+
+The measurement is the test. The real push schedule is replayed and the bar
+sampled ten times a second across the countdown:
+
+| | longest the bar stands still |
+|---|---|
+| drawing only what the push carried (**R56**) | **29.8s** |
+| filling between pushes (**now**) | **0.1s** — the sampling resolution |
+
+The first of those is a `(control)`: if R56's behaviour did not fail the same
+measurement, the measurement would not be measuring anything.
+
+Two plants, each failed by name:
+
+| plant | what failed |
+|---|---|
+| `fill` returns the pushed value — R56's behaviour exactly | `the bar is never still for long (29.8s)`, and it no longer reaches full at the deadline |
+| the client works the deadline out from `Config.SpeakEvery` itself | `the client fills the bar from Shared.Silence` and `the client never reads the speaking deadline` |
+
+The second plant matters as much as the first: a client that computes the
+countdown locally would LOOK right and be R20's defect — a panel restating a
+threshold the server owns.
+
+Restored from byte-copy backups; sha256 `aee9e2a9…da58ea72` and
+`8f96c6b9…801b4ff3`.
+
+**Verified in the product, not the source.** One 45-second countdown, the
+server's push logic and the client's draw logic, four render frames a tick:
+
+| | |
+|---|---|
+| server pushes | **3** |
+| client frames drawn | 720 |
+| distinct bar widths | **717** (R56 drew **3**) |
+
+The replication cost is unchanged — still three pushes — and the bar now moves
+on essentially every frame.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon 22, heuristic 40, operator ok, objectives 122,
+pursuit 103, round 57, config 63, wiring **304**, connected 32, ordering 4,
+heat 20, layout 91, lifecycle 75, hud 22, readout 29, soak 19, hum 21, log 18,
+silence **62**.
+
+*Not claimed:* whether a bar creeping for 45 seconds is tense or merely
+annoying, and whether `RenderStepped` is the right beat for it rather than a
+slower one. Both need Studio. The arithmetic is proved; the feel is not.
