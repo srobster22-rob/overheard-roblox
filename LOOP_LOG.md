@@ -7473,3 +7473,5 @@ log 18, silence 62, lexiconsave **28**.
 are now exhaustively covered — only that the specific boundary each mutation
 found is pinned. A boundary nobody thought to nudge is still unmeasured, the
 same honest limit R64 and R69 both named.
+
+**Commit** `c954494`
