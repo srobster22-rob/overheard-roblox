@@ -135,15 +135,13 @@ anything else.
 - Wiring: `onUnderstood` now calls `pursuit:sendTo(payload)`. Understanding is
   what MOVES it, which closes the loop from speech -> comprehension -> threat.
 
-**Two real bugs caught by writing the tests, not by running the game.**
-1. Most secret payloads named rooms World never built (`basement`, `lobby`,
-   `hunt`). Pursuit refuses unknown payloads, so those understandings would have
-   silently done nothing — no error anywhere. Payloads realigned to the rooms
-   that exist, and `tests/round.luau` now asserts every payload resolves against
-   `Config.Rooms`. That guard is the durable fix; the realignment alone was not.
-2. `Pursuit` originally recomputed state before moving, so it could report
-   "arrived" a frame early. Now it moves first and derives state from where it
-   actually is.
+**One real bug, caught by writing the tests rather than by running the game.**
+Most secret payloads named rooms World never built (`basement`, `lobby`,
+`hunt`). Pursuit refuses unknown payloads, so those understandings would have
+silently done nothing — no error anywhere, no crash, just a monster that
+ignores two thirds of what it understands. Payloads realigned to the rooms that
+exist, and `tests/round.luau` now asserts every payload resolves against
+`Config.Rooms`. The guard is the durable fix; the realignment alone was not.
 
 **Proven.** Full suite via `test.cmd`: lexicon 14/14, objectives 15/15, pursuit
 21/21, round 14/14, operator all assertions. `selene` 0/0. `rojo build` OK.
