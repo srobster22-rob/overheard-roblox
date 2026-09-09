@@ -221,6 +221,14 @@ function Objectives.submit(
 	return { ok = true, solved = true }
 end
 
+-- NOT CLEANED ON PlayerRemoving, ON PURPOSE. R10 filed `misses`/`jammedUntil`
+-- as a leak against CLAUDE.md's per-player cleanup rule, and R12 started to fix
+-- it before noticing that the "fix" hands a guesser a way out: UserId is stable
+-- across a rejoin and this board lives for the life of the SERVER, so clearing
+-- these on departure means anyone jammed can reconnect and come back clean,
+-- which is R9's entire round undone by a tidiness change. The leak is two
+-- integers per departed player per line. `tests/objectives.luau` asserts the
+-- survival, so this is a guarded decision rather than an oversight.
 function Objectives.allSolved(self: Board): boolean
 	for _, o in self.list do
 		if not o.solved then

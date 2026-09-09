@@ -15,6 +15,7 @@ local Operator = require(script.systems.Operator)
 local Presence = require(script.systems.Presence)
 local Pursuit = require(script.systems.Pursuit)
 local Round = require(script.systems.Round)
+local Station = require(script.systems.Station)
 local World = require(script.systems.World)
 
 local heardRemote = Remotes.get("Heard")
@@ -34,6 +35,10 @@ local rejectedRemote = Remotes.get("Rejected")
 local secrets = Round.dealSecrets(3)
 local operator = Operator.new(secrets)
 local board = Objectives.new()
+-- Which keypad each player has actually walked up to. This used to be a local
+-- in the CLIENT and the server took its word for the station id on every
+-- submit. See systems/Station.
+local desk = Station.new()
 
 for _, station in Round.STATIONS do
 	board:add(station.id, station.concept, station.prompt)
@@ -94,7 +99,10 @@ board.onSolved = function(objective, _actor: number)
 	pushObjectives(nil)
 	broadcastLexicon()
 	if board:allSolved() then
-		heardRemote:FireAllClients(Round.LINES.taken, "", 1)
+		-- `completed`, not `taken`. `taken` is what it says when the MONSTER
+		-- arrives; firing the same string for winning made the two opposite
+		-- events render as one sentence on the client.
+		heardRemote:FireAllClients(Round.LINES.completed, "", 1)
 	end
 end
 
@@ -131,6 +139,10 @@ for _, station in Round.STATIONS do
 		error(`World built no prompt for station '{station.id}'`)
 	end
 	prompt.Triggered:Connect(function(player: Player)
+		-- Record it FIRST. This is the server's own copy of which station this
+		-- player reached, and `submit` is gated on it -- the client's
+		-- `openStation` is now a view, not the authority.
+		desk:open(player.UserId, station.id)
 		-- The client needs to know WHICH keypad it opened, or it submits every
 		-- answer against the switchboard.
 		openBoardRemote:FireClient(player, station.id, station.actionText)
@@ -151,6 +163,17 @@ submitRemote.OnServerEvent:Connect(function(player: Player, id: unknown, value: 
 		return
 	end
 	lastSubmit[player.UserId] = now
+
+	-- You must have reached that station. Checked here rather than inside
+	-- `submit` because it is about the player's body, not about the line: a
+	-- station id the client made up now fails on the same private channel as a
+	-- wrong code, and never touches `misses`, so a probe cannot cost the honest
+	-- actor a jam.
+	if not desk:accepts(player.UserId, id :: string) then
+		heardRemote:FireClient(player, Round.LINES.busy, "", 0)
+		rejectedRemote:FireClient(player, id :: string, "you are not at that station")
+		return
+	end
 
 	-- The same `now` the cooldown used. The cooldown only paces attempts; the
 	-- jam inside `submit` is what makes guessing the answer not worth doing.
@@ -180,7 +203,11 @@ Players.PlayerAdded:Connect(function(player: Player)
 end)
 
 Players.PlayerRemoving:Connect(function(player: Player)
+	-- Per-player slots. `lastSubmit` and the desk are session state and go;
+	-- `misses`/`jammedUntil` deliberately DO NOT (see Objectives), because a jam
+	-- a player can shed by reconnecting is not a jam.
 	lastSubmit[player.UserId] = nil
+	desk:forget(player.UserId)
 	-- The leaver may have been holding a line. Nobody else was ever shown that
 	-- answer, so without this the objective is unsolvable and the round can
 	-- never end for the players still here. Only orphaned lines move.

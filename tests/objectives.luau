@@ -277,6 +277,45 @@ check(
 	submitCall ~= nil and string.find(submitCall :: string, "now", 1, true) ~= nil
 )
 
+-- The jam must survive a rejoin. R10 corrected R9 on this and found the game
+-- was better than believed: UserId is stable and the Board lives for the life of
+-- the SERVER, so a guesser cannot reconnect their way out. R10 then filed
+-- `misses`/`jammedUntil` as a leak because `PlayerRemoving` does not clear them
+-- -- and R12 started writing that cleanup before realising it is the SAME two
+-- lines, and removing them hands the guesser exactly the escape R9 closed.
+-- Asserted so the leak can never be "tidied up" without this going red.
+print("")
+print("a jam is not shed by reconnecting")
+local bRejoin = Objectives.new()
+local rejoinLine = bRejoin:add("board", "jack_number", "p")
+bRejoin:add("breaker", "breaker", "p")
+rejoinLine.holder = HOLDER
+rejoinLine.answer = "47"
+for _ = 1, 3 do
+	bRejoin:submit("board", ACTOR, "11", T0)
+end
+check("the guesser is jammed to begin with", (rejoinLine.jammedUntil[ACTOR] or 0) > T0)
+-- Everything PlayerRemoving actually does to this board today: nothing.
+check(
+	"Objectives exposes no per-player forget that PlayerRemoving could call",
+	(Objectives :: any).forgetPlayer == nil
+)
+check(
+	"the jam is still in force after a departure",
+	bRejoin:submit("board", ACTOR, rejoinLine.answer, T0 + 1).ok == false
+)
+check("and the line is still unsolved", rejoinLine.solved == false)
+check(
+	"the miss count did not reset either",
+	(rejoinLine.misses[ACTOR] or 0) == 3
+)
+local removingCode = removingBody or ""
+check(
+	"PlayerRemoving does not clear the jam tables",
+	string.find(removingCode, "misses", 1, true) == nil
+		and string.find(removingCode, "jammedUntil", 1, true) == nil
+)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

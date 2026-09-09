@@ -32,7 +32,11 @@ for _, name in Config.Rooms do
 end
 
 print("payloads resolve")
-local all = Round.pickSecrets(99)
+-- Enumerated through `dealSecrets`, which is what the game runs. It was
+-- `pickSecrets(99)` until R12 deleted that function: it shuffled 3 of 5 secrets
+-- with no regard for the stations, so it was the R5 defect sitting exported.
+-- A count past the pool size returns the whole pool either way.
+local all = Round.dealSecrets(99)
 check("the pool is not empty", #all > 0)
 for _, secret in all do
 	check(`'{secret.concept}' -> '{secret.payload}' is a real room`, known[secret.payload] == true)
@@ -44,11 +48,29 @@ for _, secret in all do
 end
 
 print("selection")
-check("picking fewer than the pool returns that many", #Round.pickSecrets(2) == 2)
-check("picking more than the pool is clamped", #Round.pickSecrets(99) == #all)
+check("dealing more than the pool is clamped", #Round.dealSecrets(99) == #all)
+check("the retired shuffler is gone", (Round :: any).pickSecrets == nil)
 
 print("lines")
 check("the Operator has a greeting", #Round.LINES.greeting > 0)
+-- `taken` (the monster arrived) and `completed` (the round was won) are opposite
+-- events. They were the SAME string until R12, and since R10 dropped `detail`
+-- from the client's `onHeard` there was nothing left on screen to tell them
+-- apart. Asserted distinct here because the failure is silent: both still
+-- render, they just both say the wrong thing half the time.
+check("the round-won line exists", #Round.LINES.completed > 0)
+check("arriving and winning are not the same sentence", Round.LINES.completed ~= Round.LINES.taken)
+for name, line in Round.LINES do
+	check(`line '{name}' is unique among the Operator's lines`, (function()
+		local seen = 0
+		for _, other in Round.LINES do
+			if other == line then
+				seen += 1
+			end
+		end
+		return seen == 1
+	end)())
+end
 
 -- Stations. The board and the deal used to be two independent lists: the
 -- server hardcoded one objective while pickSecrets shuffled 3 of 5 secrets, so

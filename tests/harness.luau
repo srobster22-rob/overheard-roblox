@@ -66,7 +66,7 @@ function Harness.build()
 	for _, name in { "Lexicon", "Types", "Config", "Remotes", "Keypad" } do
 		adopt(shared, handle(name, `src/shared/{name}.luau`))
 	end
-	for _, name in { "Heuristic", "Operator", "Round", "Objectives", "Pursuit", "TestOperator" } do
+	for _, name in { "Heuristic", "Operator", "Round", "Objectives", "Pursuit", "Station", "TestOperator" } do
 		adopt(systems, handle(name, `src/server/systems/{name}.luau`))
 	end
 

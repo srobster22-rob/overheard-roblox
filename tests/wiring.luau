@@ -230,6 +230,112 @@ for _, entry in fs.readDir("src/shared") do
 end
 check("shared modules were found on disk (guard)", onDisk >= 5)
 
+-- THE STATION A PLAYER IS AT ------------------------------------------------
+-- Second instance of this file's class, and the one that was on the wrong
+-- MACHINE rather than the wrong channel: `openStation` was a local in the
+-- client, and the server accepted whatever station id came back on `Submit`.
+
+print("")
+print("Station: the server's own copy of where you are")
+local sLoaded, Station = pcall(function()
+	return rt.require(rt.systems.Station)
+end)
+check("Server.systems.Station loads (the harness adopts it)", sLoaded == true)
+if not sLoaded then
+	print(`  (require said: {Station})`)
+	print(`\n{checks - failures}/{checks} passed`)
+	process.exit(1)
+end
+
+local A, B = 100, 200
+local desk = Station.new()
+check("a player who has reached nothing is at nothing", desk:openedBy(A) == nil)
+check("and is accepted at no station", desk:accepts(A, "board") == false)
+desk:open(A, "board")
+check("reaching a station records it", desk:openedBy(A) == "board")
+check("and that station is accepted", desk:accepts(A, "board") == true)
+check("but the other one is not", desk:accepts(A, "breaker") == false)
+-- The whole point: one player walking up to a keypad must not seat ANOTHER
+-- player at it. This is the shape the round is about.
+check("it does not seat a different player", desk:accepts(B, "board") == false)
+desk:open(B, "breaker")
+check("two players hold two different stations", desk:openedBy(A) == "board" and desk:openedBy(B) == "breaker")
+check("and neither can act at the other's", desk:accepts(A, "breaker") == false and desk:accepts(B, "board") == false)
+-- One slot per player: walking to the breaker gives up the switchboard, so the
+-- corridor still costs something. Without this a player could touch both prompts
+-- once and then clear the whole board from one room.
+desk:open(A, "breaker")
+check("reaching a second station gives up the first", desk:accepts(A, "board") == false)
+check("and seats them at the new one", desk:accepts(A, "breaker") == true)
+desk:forget(A)
+check("forgetting a player clears their station", desk:openedBy(A) == nil)
+check("and leaves everyone else seated", desk:openedBy(B) == "breaker")
+
+-- Exhaustive, with a count guard: `accepts` rewritten to return false always
+-- would pass every per-cell check above and only this would catch it.
+local sweepDesk = Station.new()
+local stationNames = { "board", "breaker", "vault" }
+local players = { 1, 2, 3 }
+for i, uid in players do
+	sweepDesk:open(uid, stationNames[i])
+end
+local seated = 0
+for i, uid in players do
+	for j, name in stationNames do
+		check(`accepts(player {i}, '{name}') is exactly (i == j)`, sweepDesk:accepts(uid, name) == (i == j))
+		if sweepDesk:accepts(uid, name) then
+			seated += 1
+		end
+	end
+end
+check(`the sweep accepted exactly one station per player (guard, {seated})`, seated == #players)
+
+print("")
+print("Station is wired, and Submit is gated on it")
+local triggeredBody = string.match(serverCode, "prompt%.Triggered:Connect%(function.-\n\tend%)")
+check("init.server has a station prompt handler", triggeredBody ~= nil)
+check(
+	"reaching a station records it server-side",
+	triggeredBody ~= nil and string.find(triggeredBody :: string, "desk:open", 1, true) ~= nil
+)
+local submitBody = string.match(serverCode, "submitRemote%.OnServerEvent:Connect%(function.-\nend%)")
+check("init.server has a Submit handler", submitBody ~= nil)
+check(
+	"the Submit handler checks the player is at that station",
+	submitBody ~= nil and string.find(submitBody :: string, "desk:accepts", 1, true) ~= nil
+)
+-- Order matters. If the station gate ran AFTER board:submit the answer would
+-- already have been compared and a miss already counted, so a made-up station id
+-- could burn the honest actor's jam allowance from across the map.
+local gateAt = submitBody and string.find(submitBody :: string, "desk:accepts", 1, true)
+local submitAt = submitBody and string.find(submitBody :: string, "board:submit", 1, true)
+check("the station gate exists before board:submit is reached", gateAt ~= nil and submitAt ~= nil and gateAt < submitAt)
+check(
+	"a refused station replies on the private keypad channel, not the broadcast",
+	submitBody ~= nil and string.find(submitBody :: string, "rejectedRemote:FireClient", 1, true) ~= nil
+)
+-- The leaver's seat is given up; the jam tables deliberately are not (see
+-- tests/objectives.luau).
+local removing = string.match(serverCode, "Players%.PlayerRemoving:Connect%(function.-\nend%)")
+check("init.server has a PlayerRemoving handler", removing ~= nil)
+check(
+	"a departing player gives up their station",
+	removing ~= nil and string.find(removing :: string, "desk:forget", 1, true) ~= nil
+)
+
+-- The two opposite Operator lines. `taken` is the monster arriving; the round
+-- being won must not fire the same string.
+print("")
+print("winning and being found are different lines")
+check("the server announces arrival with LINES.taken", string.find(serverCode, "LINES.taken", 1, true) ~= nil)
+check("and a won round with LINES.completed", string.find(serverCode, "LINES.completed", 1, true) ~= nil)
+local solvedBody = string.match(serverCode, "board%.onSolved = function.-\nend")
+check("the onSolved handler was found (guard)", solvedBody ~= nil)
+check(
+	"the won-round announcement is not LINES.taken",
+	solvedBody ~= nil and string.find(solvedBody :: string, "LINES.taken", 1, true) == nil
+)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

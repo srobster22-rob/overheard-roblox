@@ -1408,3 +1408,58 @@ the change and no longer carries the defect.
   mid-round re-deal on JOIN; the solo-player-cannot-finish question; and R9's
   loud-vs-quiet wrong-code question. **No new owner question this round** — a
   monster that hums while standing on top of you has one correct answer.
+
+---
+
+## R12 — the server never knew which keypad you were standing at
+
+**Stage 1 — shortlist.** R11 named the third shape of the multiplayer seam:
+per-player server state written from a shared path. Swept every such slot in
+the server: `lastSubmit`, `misses`/`jammedUntil`, and the one the client owns
+outright, `openStation`.
+
+1. *(picked)* **`openStation` is per-player state that lives ONLY on the client,
+   and the server takes the client's word for it.** The world has one
+   ProximityPrompt per station — a shared path — and `prompt.Triggered` fires
+   `OpenBoard` at one player and then the server FORGETS. Nothing server-side
+   records which station that player walked up to. `submitRemote.OnServerEvent`
+   type-checks `id` and length-checks `value` and then hands `id` straight to
+   `board:submit`. So the station a player is acting at is decided entirely by
+   the client, against CLAUDE.md's hard rule ("the server owns all state that
+   matters... assume every RemoteEvent argument is hostile"). Concretely: the
+   two stations are 120 studs apart in different rooms, and `Round.luau`'s own
+   header says the design rule is "ONE player can see the answer, ANOTHER must
+   act on it, and they are never in the same room. That is what makes players
+   audible." Nothing enforces the last clause. A player who never leaves the
+   switchboard can clear the breaker, so the corridor, the second room and the
+   whole spatial cost of the round are free. This is the third shape exactly:
+   the per-player slot exists, it is written from a shared handler, and it was
+   put on the wrong machine.
+2. **`misses`/`jammedUntil` are never cleared on `PlayerRemoving`** while
+   `lastSubmit` is — R10 filed it as "bytes". It is the same family (per-player
+   slots with no single lifecycle owner) and it is two lines. **Folded into 1**
+   rather than run as its own round: the fix for 1 adds a third per-player slot,
+   and adding one more table with no cleanup while a cleanup bug is already
+   filed would be committing the defect in the round that names it.
+3. **`Round.LINES.taken` fires for two opposite events** — the monster arriving
+   in your room, and the round being WON — and since R10 dropped `detail` from
+   `onHeard` both render as the identical sentence. R11 filed it as a WRITING
+   task, correctly. **Taken**, as a written line, not a code decision: the
+   Operator's register is real switchboard phrasing ("Number, please.", "I have
+   that party for you.", "That line is busy.", "Go ahead, caller."), and
+   "Your call has been completed." is a genuine operator line from that same
+   vocabulary, so it is a lookup rather than an invention.
+4. **`Round.pickSecrets` dead and loaded, fifth round on the list.** The
+   instruction is take it or retire it. **Retired by DELETION.** It is not
+   inert: it is the pre-R5 selection that shuffles 3 of 5 secrets with no regard
+   for the stations, i.e. the exact 39.6%-of-servers defect R5 closed, sitting
+   exported and one call away. Its three tests move onto `dealSecrets`, which is
+   what the game actually runs, so the pool is still enumerated.
+5. **A solved station's ProximityPrompt stays enabled**, carried since R8.
+   **Retired without building it, with a reason rather than a fifth deferral:**
+   the claim lives entirely in `prompt.Enabled`, a Roblox runtime property, and
+   Studio is device-blocked on this machine, so the only evidence any round
+   here could produce is that the source says so. It is not a defect this loop
+   can honestly verify; it belongs to the first round that has a playtest.
+
+**Pick: 1, with 2 and 3 folded in, 4 and 5 retired.**

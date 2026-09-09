@@ -127,20 +127,13 @@ function Round.dealSecrets(count: number): { Secret }
 	return out
 end
 
-function Round.pickSecrets(count: number): { Secret }
-	local pool = table.clone(SECRET_POOL)
-	-- Fisher-Yates, so the same three concepts do not come up every round.
-	for i = #pool, 2, -1 do
-		local j = math.random(i)
-		pool[i], pool[j] = pool[j], pool[i]
-	end
-
-	local out: { Secret } = {}
-	for i = 1, math.min(count, #pool) do
-		table.insert(out, pool[i])
-	end
-	return out
-end
+-- `Round.pickSecrets` was DELETED in R12 after five rounds on the carried list.
+-- It shuffled 3 of 5 secrets with no regard for the stations, which is the exact
+-- selection that ran an objective the Operator was not listening for on 39.6% of
+-- servers (R5). `dealSecrets` replaced it; nothing in `src/` had called it since,
+-- but it stayed exported, so it was one call away from re-creating that defect.
+-- Dead AND loaded. If a shuffled selection is ever wanted again, it must still
+-- seat every station's concept first.
 
 -- The Operator's whole vocabulary of spoken lines. It is never threatening.
 -- Politeness is the instrument.
@@ -149,7 +142,16 @@ Round.LINES = {
 	understood = "I have that party for you.",
 	connecting = "I'm connecting you now.",
 	busy = "That line is busy.",
+	-- It reached the room it understood. Said to everyone, because everyone
+	-- needs to know it is here.
 	taken = "Go ahead, caller.",
+	-- The round is WON. This used to be `taken` as well: the monster arriving in
+	-- your room and the group finishing the board fired the same string, and once
+	-- R10 dropped `detail` from the client's `onHeard` there was nothing left to
+	-- tell them apart. Two opposite events, one sentence. Kept in register --
+	-- every line here is real switchboard phrasing, and the operator's sign-off
+	-- for a call that went through is exactly this.
+	completed = "Your call has been completed.",
 }
 
 return Round
