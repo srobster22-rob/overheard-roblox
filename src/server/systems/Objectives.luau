@@ -112,6 +112,32 @@ function Objectives.deal(self: Board, userIds: { number })
 	for _, o in self.list do
 		if not o.solved then
 			local to = userIds[((i - 1) % #userIds) + 1]
+
+			-- PREFER SOMEBODY WHO HAS ALREADY SEEN IT. Showing a line again to a
+			-- player who has already read it costs nothing, and it stops the seen
+			-- set growing every time somebody joins.
+			--
+			-- Without this the round deadlocks. `PlayerAdded` re-deals the whole
+			-- board, so a player rejoining marks one more reader per line; after
+			-- five deals over four players every line had been seen by everybody,
+			-- nobody could patch anything, `allSolved` could never become true --
+			-- and since only a finished round calls `reset`, `seenBy` was never
+			-- cleared. Four players sat in a server that could not be finished.
+			--
+			-- This does not touch whether a join SHOULD re-deal at all, which is
+			-- the owner's filed question: the board still reshuffles exactly as
+			-- before, it just stops burning a fresh reader each time.
+			local repeatReader: number? = nil
+			for _, candidate in userIds do
+				if o.seenBy[candidate] then
+					repeatReader = candidate
+					break
+				end
+			end
+			if repeatReader ~= nil then
+				to = repeatReader
+			end
+
 			o.holder = to
 			-- Being dealt a line is what puts its answer on your screen.
 			o.seenBy[to] = true

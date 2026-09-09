@@ -14,6 +14,7 @@ local stripNonCode = require("./luaucode").stripNonCode
 
 local rt = Harness.build()
 local Objectives = rt.require(rt.systems.Objectives)
+local Round = rt.require(rt.systems.Round)
 -- The jam sweep steps the miss counter to the lockout boundary; reading the
 -- dial rather than hardcoding 3 keeps it honest if the tuning changes.
 local Config = rt.require(rt.shared.Config)
@@ -515,6 +516,117 @@ many:reset()
 many:deal({ 4 })
 check("(guard) a new round dealt it to somebody", manyLine.holder == 4)
 check("last round's reader is no longer disqualified", many:submit("board", 1, manyLine.answer, 5).ok == true)
+
+print("")
+print("no number of re-deals can make a line unpatchable")
+
+-- R47, and this is R38's own defect. That round made having SEEN an answer
+-- disqualify you, which closed a real hole: a join used to move the line off the
+-- reader and let them type in the number they had just read out.
+--
+-- But `PlayerAdded` re-deals the whole board, so every join burned one more
+-- reader per line. Simulated over four players with one of them rejoining:
+--
+--   deal 1  seenBy board=1 breaker=1   0 stuck
+--   deal 4  seenBy board=3 breaker=3   0 stuck
+--   deal 5  seenBy board=4 breaker=4   2 STUCK
+--
+-- At that point four players are in the server and nobody can patch anything.
+-- `allSolved` can never become true, so the round never ends, so `reset` never
+-- runs, so `seenBy` is never cleared. Permanent.
+--
+-- Five joins in a round is ordinary: one player with a bad connection does it.
+
+local function freshBoard()
+	local board = Objectives.new()
+	for _, station in Round.STATIONS do
+		board:add(station.id, station.concept, station.prompt)
+	end
+	return board
+end
+
+local function unpatchable(board, present: { number }): number
+	local count = 0
+	for _, objective in board.list do
+		if objective.solved then
+			continue
+		end
+		local ableSomebody = false
+		for _, userId in present do
+			if not objective.seenBy[userId] then
+				ableSomebody = true
+				break
+			end
+		end
+		if not ableSomebody then
+			count += 1
+		end
+	end
+	return count
+end
+
+local roster = { 1, 2, 3, 4 }
+local churned = freshBoard()
+check(`(guard) the board has lines to deal ({#churned.list})`, #churned.list >= 2)
+
+for _ = 1, 30 do
+	churned:deal(roster)
+end
+check(
+	`thirty re-deals leave every line patchable ({unpatchable(churned, roster)} stuck)`,
+	unpatchable(churned, roster) == 0
+)
+
+-- The mechanism: the seen set stops growing once somebody has read the line,
+-- because a re-deal prefers a reader who has already seen it.
+for _, objective in churned.list do
+	local seen = 0
+	for _ in objective.seenBy do
+		seen += 1
+	end
+	check(`'{objective.id}' burned exactly one reader, not one per deal ({seen})`, seen == 1)
+end
+
+-- And R38's rule still holds: whoever HAS seen it still cannot patch it.
+local guarded = freshBoard()
+guarded:deal(roster)
+for _, objective in guarded.list do
+	local reader = objective.holder :: number
+	check(`(guard) '{objective.id}' has a reader`, reader ~= nil)
+	check(
+		`the reader of '{objective.id}' still cannot patch it`,
+		guarded:submit(objective.id, reader, objective.answer, 1).ok == false
+	)
+
+	local other: number? = nil
+	for _, userId in roster do
+		if userId ~= reader then
+			other = userId
+			break
+		end
+	end
+	check(`(guard) somebody else is present for '{objective.id}'`, other ~= nil)
+	if other then
+		check(
+			`somebody who never saw '{objective.id}' still can`,
+			guarded:submit(objective.id, other, objective.answer, 2).ok == true
+		)
+	end
+end
+
+-- A growing server must not reintroduce it either: joins add unseen players,
+-- and the preference must not start handing lines to them instead.
+local growing = freshBoard()
+local present = { 1, 2 }
+for join = 3, 10 do
+	growing:deal(present)
+	table.insert(present, join)
+end
+growing:deal(present)
+check(
+	`a server that grew to {#present} still has every line patchable ({unpatchable(growing, present)} stuck)`,
+	unpatchable(growing, present) == 0
+)
 
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
