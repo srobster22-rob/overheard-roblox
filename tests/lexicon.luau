@@ -3,6 +3,11 @@
 -- These need no Roblox runtime, which is exactly why the text layer was kept
 -- free of Roblox APIs.
 
+-- Lune does not expose `process` as a global; without this require the
+-- FAILURE path of this file crashes instead of reporting, which hides the
+-- real assertion behind "attempt to index nil with .exit".
+local process = require("@lune/process")
+
 local Lexicon = require("../src/shared/Lexicon")
 
 local failures = 0

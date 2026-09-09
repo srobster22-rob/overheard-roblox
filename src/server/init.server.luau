@@ -157,7 +157,21 @@ Players.PlayerRemoving:Connect(function(player: Player)
 	lastSubmit[player.UserId] = nil
 end)
 
+-- The Operator forgets, in real time. Ticked here rather than inside Operator
+-- so the module stays pure and headlessly testable. Rebroadcast only when heat
+-- actually moved, or this replicates the whole lexicon once a second forever.
+local running = true
+task.spawn(function()
+	while running do
+		task.wait(1)
+		if running and operator:decay(os.clock()) then
+			broadcastLexicon()
+		end
+	end
+end)
+
 game:BindToClose(function()
+	running = false
 	body.stop()
 end)
 

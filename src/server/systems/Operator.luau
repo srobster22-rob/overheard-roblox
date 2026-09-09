@@ -32,6 +32,7 @@ export type Operator = typeof(setmetatable(
 		secrets: { Secret },
 		lexicon: { Coinage },
 		observations: { Observation },
+		lastDecayAt: number?,
 		backend: Types.ComprehensionBackend,
 		onUnderstood: (concept: string, payload: string, confidence: number) -> ()?,
 		onBurned: (coinage: Coinage) -> ()?,
@@ -44,6 +45,7 @@ function Operator.new(secrets: { Secret }): Operator
 		secrets = secrets,
 		lexicon = {},
 		observations = {},
+		lastDecayAt = nil,
 		backend = Heuristic :: any,
 		onUnderstood = nil,
 		onBurned = nil,
@@ -136,12 +138,39 @@ function Operator.credit(self: Operator, concept: string, now: number)
 	self.observations = kept
 end
 
--- Terms cool off between rounds. It forgets, a little, which is what keeps a
--- long-running group from being permanently mute.
-function Operator.cool(self: Operator, amount: number)
-	for _, c in self.lexicon do
-		c.heat = math.max(0, c.heat - amount)
+-- Terms cool off. It forgets, a little, which is what keeps a long-running
+-- group from being permanently mute. Returns whether anything actually moved,
+-- so callers can avoid replicating an unchanged lexicon.
+function Operator.cool(self: Operator, amount: number): boolean
+	if amount <= 0 then
+		return false
 	end
+	local changed = false
+	for _, c in self.lexicon do
+		local cooled = math.max(0, c.heat - amount)
+		if cooled ~= c.heat then
+			c.heat = cooled
+			changed = true
+		end
+	end
+	return changed
+end
+
+-- Real-time forgetting, ticked by the server. This is the half of the
+-- acquisition loop that makes coining worth doing twice: heat you stop feeding
+-- bleeds away, so a phrase the group retires becomes safe again. Without it
+-- heat is monotonic and every coinage the group ever lands on is burned for the
+-- lifetime of the server.
+--
+-- The first call only takes a timestamp; there is no elapsed time to charge for
+-- yet, and charging from zero would wipe the lexicon on the first tick.
+function Operator.decay(self: Operator, now: number): boolean
+	local last = self.lastDecayAt
+	self.lastDecayAt = now
+	if last == nil or now <= last then
+		return false
+	end
+	return self:cool((now - last) * Config.CoolPerSecond)
 end
 
 -- What the client needs to render the Lexicon panel.

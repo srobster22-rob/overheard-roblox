@@ -68,7 +68,36 @@ return function()
 	say("everyone to jakes spot")
 	assert(#understood == 0, "a fully cooled coinage must be forgotten again")
 
-	-- 6. Stale evidence must not be credited, or unrelated chatter would burn.
+	-- 6. Real-time decay gives it back too, without waiting for a round to end.
+	-- Re-burn the phrase, then let clock time pass with no further credit.
+	for _ = 1, uses do
+		say("head for jakes spot")
+		op:credit("exit", t + 0.5)
+	end
+	understood = {}
+	say("everyone to jakes spot")
+	assert(#understood > 0, "setup: the phrase must be burned again before decay")
+
+	local clock = 1000
+	assert(op:decay(clock) == false, "the first decay tick only takes a timestamp")
+
+	-- Not yet enough elapsed time to drop under the act threshold.
+	local partial = (1 - Config.ActThreshold) / Config.CoolPerSecond
+	assert(op:decay(clock + partial * 0.5) == true, "decay must report that heat moved")
+	understood = {}
+	say("everyone to jakes spot")
+	assert(#understood > 0, "a partly cooled coinage is still understood")
+
+	-- Past the threshold, the phrase is safe to say again.
+	op:decay(clock + partial + 10)
+	understood = {}
+	say("everyone to jakes spot")
+	assert(#understood == 0, "a coinage left alone long enough must be forgotten")
+
+	-- Time going backwards (or standing still) must never ADD heat.
+	assert(op:decay(clock) == false, "decay must not credit heat for negative elapsed time")
+
+	-- 7. Stale evidence must not be credited, or unrelated chatter would burn.
 	local fresh = Operator.new(secrets)
 	fresh:hear({ speaker = fakeSpeaker, text = "purple lantern", at = 0 })
 	fresh:credit("exit", Config.CreditWindow + 10)

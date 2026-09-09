@@ -3,6 +3,11 @@
 -- into "monster makes noise the whole time", which would be a different and
 -- much worse game.
 
+-- Lune does not expose `process` as a global; without this require the
+-- FAILURE path of this file crashes instead of reporting, which hides the
+-- real assertion behind "attempt to index nil with .exit".
+local process = require("@lune/process")
+
 local Harness = require("./harness")
 
 local rt = Harness.build()

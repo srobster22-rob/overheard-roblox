@@ -2,6 +2,11 @@
 -- The invariant tests. If any of these regress, the game is broken even if it
 -- still runs: players would stop needing to talk to each other.
 
+-- Lune does not expose `process` as a global; without this require the
+-- FAILURE path of this file crashes instead of reporting, which hides the
+-- real assertion behind "attempt to index nil with .exit".
+local process = require("@lune/process")
+
 local Harness = require("./harness")
 
 local rt = Harness.build()
