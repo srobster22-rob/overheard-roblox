@@ -7313,3 +7313,5 @@ hum 29, log 18, silence 62.
 *Not claimed:* that `DESIGN.md`'s persistence answer means R6 (the Lexicon
 DataStore work) is close to done — it is not, and the entry says so, pointing
 at the EXPANSION AXIS backlog rather than implying otherwise.
+
+**Commit** `b5364a1`
