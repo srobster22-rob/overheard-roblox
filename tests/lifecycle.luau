@@ -223,6 +223,82 @@ finished:restart()
 feedOver(`patch the {giveaway}`, 200)
 check("the next round is listened to again", chaseOver.targetName == "board")
 
+print("")
+print("a reset is COMPLETE, not merely called")
+
+-- R37, and this is the limitation of R31's guard. That one derives the
+-- per-round holders from the server source and requires `beginRound` to reset
+-- each of them. `board:reset()` WAS called, so it passed — while `reset` itself
+-- left the jam ledger behind, and a player who jammed a line in one round was
+-- refused the CORRECT answer in the next. A guard that checks a reset HAPPENS
+-- says nothing about whether it is COMPLETE.
+--
+-- So the field list is derived from the `Objective` type in the source, and
+-- every per-round field must be named inside `reset`.
+
+local fs = require("@lune/fs")
+local LuauCode = require("./luaucode")
+
+local NEWLINE = string.char(10)
+local objectivesSource = fs.readFile("src/server/systems/Objectives.luau")
+-- Fields are read from STRIPPED code. The first version read the raw type block
+-- and picked up `purpose` -- from the words "on purpose:" in a comment inside
+-- it. A comment that can invent a required field is the same class of defect
+-- this project keeps meeting from the other direction, where a comment
+-- satisfies a check.
+local objectivesCode = LuauCode.stripNonCode(objectivesSource)
+-- `stripNonCode` also removes braces (it treats them as interpolation spans),
+-- so the block cannot be anchored on `{`...`}`. Slice from this type to the
+-- next one instead, and read fields as tab-indented `name:` at line starts --
+-- which also skips the `[number]:` inside a map type.
+local typeStart = string.find(objectivesCode, "export type Objective =", 1, true)
+local typeBlock = ""
+if typeStart then
+	local after = string.find(objectivesCode, "export type", typeStart + 20, true)
+	typeBlock = string.sub(objectivesCode, typeStart, if after then after - 1 else #objectivesCode)
+end
+local fields: { string } = {}
+for field in string.gmatch(typeBlock, NEWLINE .. "	([%a][%w_]*):") do
+	table.insert(fields, field)
+end
+check(`(guard) read the Objective fields from source ({table.concat(fields, ", ")})`, #fields >= 6)
+
+-- Fields that describe the objective ITSELF rather than a round's progress.
+-- Each is named with its reason; the sweep requires everything else.
+local STATIC: { [string]: string } = {
+	id = "the station's name, fixed for the life of the board",
+	concept = "what the Operator listens for, fixed with the station",
+	prompt = "the sentence shown to the holder, fixed with the station",
+}
+
+local resetBody = string.match(objectivesCode, "function Objectives.reset%(.-" .. NEWLINE .. "end") or ""
+check("(guard) found the reset body in live code", #resetBody > 0)
+
+for _, field in fields do
+	if STATIC[field] then
+		continue
+	end
+	check(`reset clears '{field}'`, string.find(resetBody, field, 1, true) ~= nil)
+end
+
+-- And the behaviour, because a mention is not a clearing.
+local jammed = Objectives.new()
+local jammedLine = jammed:add("board", "jack_number", "jack %s")
+jammedLine.holder = 1
+local at = 0
+for _ = 1, Config.GuessesBeforeLockout do
+	at += 1
+	jammed:submit("board", 2, "00", at)
+end
+check("(guard) the line really is jammed", (jammedLine.jammedUntil[2] or 0) > at)
+check("(guard) and the misses were counted", (jammedLine.misses[2] or 0) > 0)
+
+jammed:reset()
+jammedLine.holder = 1
+check("a new round forgets the jam", (jammedLine.jammedUntil[2] or 0) == 0)
+check("...and the miss count", (jammedLine.misses[2] or 0) == 0)
+check("...so the right answer is accepted again", jammed:submit("board", 2, jammedLine.answer, at + 1).ok == true)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

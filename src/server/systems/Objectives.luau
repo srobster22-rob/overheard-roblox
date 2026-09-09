@@ -242,6 +242,12 @@ function Objectives.reset(self: Board)
 		objective.solved = false
 		objective.holder = nil
 		objective.answer = randomJack()
+		-- The jam ledger is per-ROUND. Leaving it meant a player who jammed a
+		-- line in one round was refused the CORRECT answer in the next -- and
+		-- since the answers are re-rolled here, the jam punished them for
+		-- guesses at a number that no longer exists.
+		objective.misses = {}
+		objective.jammedUntil = {}
 	end
 end
 
