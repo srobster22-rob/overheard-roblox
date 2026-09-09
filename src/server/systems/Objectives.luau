@@ -8,6 +8,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Config = require(ReplicatedStorage.Shared.Config)
 local Types = require(ReplicatedStorage.Shared.Types)
 
 type ConceptId = Types.ConceptId
@@ -22,6 +23,12 @@ export type Objective = {
 	solved: boolean,
 	-- Human-readable, shown to the holder only.
 	prompt: string,
+	-- Wrong answers this line has taken, per actor, and the time until which
+	-- that actor's attempts on it are jammed. Per (line, actor) on purpose: one
+	-- player guessing must not lock a line for the player who was actually told
+	-- the number, and must not lock them out of the OTHER line either.
+	misses: { [number]: number },
+	jammedUntil: { [number]: number },
 }
 
 export type SubmitResult = {
@@ -63,6 +70,8 @@ function Objectives.add(self: Board, id: string, concept: ConceptId, prompt: str
 		holder = nil,
 		solved = false,
 		prompt = prompt,
+		misses = {},
+		jammedUntil = {},
 	}
 	table.insert(self.list, objective)
 	return objective
@@ -143,7 +152,25 @@ function Objectives.viewFor(self: Board, userId: number): { any }
 end
 
 -- The actor submits a value. This is the only place an objective can be solved.
-function Objectives.submit(self: Board, id: string, actorUserId: number, value: string): SubmitResult
+--
+-- `now` is passed in rather than read from the clock, so the jam is testable
+-- headlessly and the module stays pure (same reason `Operator.hear` takes `at`).
+--
+-- GUESSING IS THE HOLE THIS CLOSES. The invariant at the top of this file said
+-- a single player can never solve a line alone, and the only thing enforcing it
+-- was `holder ~= actor`. But the answer is two digits: 90 values, median 45
+-- guesses, one attempt every 0.75s at the remote's rate limit -- about 34
+-- seconds of holding Enter to clear a line without anybody speaking, which is
+-- the entire game. A wrong answer now jams that line for the player who gave
+-- it, and the jams escalate, so the cost of guessing grows quadratically while
+-- the cost of a typo does not.
+function Objectives.submit(
+	self: Board,
+	id: string,
+	actorUserId: number,
+	value: string,
+	now: number
+): SubmitResult
 	local objective = self:get(id)
 	if not objective then
 		return { ok = false, reason = "no such objective", solved = false }
@@ -157,10 +184,35 @@ function Objectives.submit(self: Board, id: string, actorUserId: number, value: 
 		return { ok = false, reason = "someone else has to patch this", solved = false }
 	end
 
+	-- Jammed. Checked AFTER the holder rule and BEFORE the answer is compared,
+	-- so a jammed player cannot use the reply to test a candidate answer.
+	local jammedUntil = objective.jammedUntil[actorUserId]
+	if jammedUntil and now < jammedUntil then
+		return {
+			ok = false,
+			reason = `that line is jammed - wait {math.ceil(jammedUntil - now)}s`,
+			solved = false,
+		}
+	end
+
 	local cleaned = string.gsub(value, "%D", "")
 	if cleaned ~= objective.answer then
+		local misses = (objective.misses[actorUserId] or 0) + 1
+		objective.misses[actorUserId] = misses
+		-- Misses are never reset by serving a jam, so the n-th jam is n times
+		-- as long as the first. That is what makes guessing hopeless rather
+		-- than merely slow.
+		if misses % Config.GuessesBeforeLockout == 0 then
+			local seconds = Config.LockoutSeconds * (misses // Config.GuessesBeforeLockout)
+			objective.jammedUntil[actorUserId] = now + seconds
+			return { ok = false, reason = `that line is jammed - wait {seconds}s`, solved = false }
+		end
 		return { ok = false, reason = "that line is dead", solved = false }
 	end
+
+	-- Right answer: this player was told the number, so forgive the fumbling.
+	objective.misses[actorUserId] = nil
+	objective.jammedUntil[actorUserId] = nil
 
 	objective.solved = true
 	if self.onSolved then

@@ -27,6 +27,10 @@ local function check(name: string, condition: boolean)
 	end
 end
 
+-- A fixed clock. `submit` takes the time so the jam is testable without
+-- sleeping; nothing here advances it unless a check is about the jam.
+local T0 = 1000
+
 local HOLDER = 100
 local ACTOR = 200
 local THIRD = 300
@@ -47,32 +51,126 @@ check("everyone else sees no prompt", otherView.prompt == nil)
 check("everyone else still sees the objective exists", otherView.id == "board")
 
 print("the invariant")
-local selfSolve = board:submit("board", HOLDER, jack.answer)
+local selfSolve = board:submit("board", HOLDER, jack.answer, T0)
 check("the holder cannot solve their own objective", selfSolve.ok == false)
 check("and it stays unsolved", jack.solved == false)
 
 print("submission")
-check("a wrong value fails", board:submit("board", ACTOR, "00").ok == false)
-check("wrong value does not leak the answer", board:submit("board", ACTOR, "00").reason == "that line is dead")
+check("a wrong value fails", board:submit("board", ACTOR, "00", T0).ok == false)
+check("wrong value does not leak the answer", board:submit("board", ACTOR, "00", T0).reason == "that line is dead")
 
 local solvedBy: number? = nil
 board.onSolved = function(_objective, actor: number)
 	solvedBy = actor
 end
-local good = board:submit("board", ACTOR, jack.answer)
+local good = board:submit("board", ACTOR, jack.answer, T0)
 check("a different player with the right value solves it", good.ok == true)
 check("onSolved reports the actor", solvedBy == ACTOR)
 check("board reports all solved", board:allSolved() == true)
 
 print("idempotence")
-check("re-submitting a solved objective is refused", board:submit("board", THIRD, jack.answer).ok == false)
+check("re-submitting a solved objective is refused", board:submit("board", THIRD, jack.answer, T0).ok == false)
 
 print("input cleaning")
 local b2 = Objectives.new()
 local o2 = b2:add("second", "breaker", "p")
 o2.holder = HOLDER
 o2.answer = "47"
-check("punctuation and spaces are ignored", b2:submit("second", ACTOR, " 4-7 ").ok == true)
+check("punctuation and spaces are ignored", b2:submit("second", ACTOR, " 4-7 ", T0).ok == true)
+
+-- GUESSING. The reason these exist: `holder ~= actor` was the only thing
+-- standing between a player and a solved line, and the answer is two digits.
+-- 90 values, median 45 guesses, 0.75s per attempt at the remote's rate limit
+-- is about 34 seconds of holding Enter -- a whole objective cleared without
+-- anyone speaking, in a game whose only premise is that you have to speak.
+print("guessing is not a strategy")
+local bJam = Objectives.new()
+local jamLine = bJam:add("board", "jack_number", "p")
+local otherLine = bJam:add("breaker", "breaker", "p")
+jamLine.holder = HOLDER
+otherLine.holder = HOLDER
+jamLine.answer = "47"
+otherLine.answer = "58"
+
+check("the first wrong answer is just wrong", bJam:submit("board", ACTOR, "11", T0).reason == "that line is dead")
+check("the second is too", bJam:submit("board", ACTOR, "12", T0).reason == "that line is dead")
+local third = bJam:submit("board", ACTOR, "13", T0)
+check("the third wrong answer jams the line", third.reason == "that line is jammed - wait 20s")
+check("and it is still not solved", jamLine.solved == false)
+
+-- The point of the jam: it beats the RIGHT answer too, or a guesser simply
+-- keeps going and the jam is decoration.
+local duringJam = bJam:submit("board", ACTOR, jamLine.answer, T0 + 5)
+check("a jammed player is refused even with the right answer", duringJam.ok == false)
+check("and the line stays unsolved while jammed", jamLine.solved == false)
+-- ...and the refusal must not become an oracle: same reply either way, so a
+-- jammed player cannot tell a right guess from a wrong one by the wording.
+check(
+	"the jammed reply does not say whether the value was right",
+	duringJam.reason == bJam:submit("board", ACTOR, "99", T0 + 5).reason
+)
+check("the countdown shrinks as the jam runs down", bJam:submit("board", ACTOR, "99", T0 + 15).reason == "that line is jammed - wait 5s")
+
+-- Per (line, actor), so one guesser cannot lock the game for anyone else.
+check("another player is not jammed", bJam:submit("board", THIRD, "11", T0 + 5).reason == "that line is dead")
+check("and the same player is not jammed on the other line", bJam:submit("breaker", ACTOR, "11", T0 + 5).reason == "that line is dead")
+
+-- Escalation. The second jam is twice the first, which is what turns guessing
+-- from slow into pointless.
+check("the jam expires", bJam:submit("board", ACTOR, "14", T0 + 21).reason == "that line is dead")
+check("the fifth wrong answer is just wrong", bJam:submit("board", ACTOR, "15", T0 + 22).reason == "that line is dead")
+check(
+	"the second jam is twice as long as the first",
+	bJam:submit("board", ACTOR, "16", T0 + 23).reason == "that line is jammed - wait 40s"
+)
+
+-- An honest actor who was TOLD the number is never punished for fumbling it.
+local bHonest = Objectives.new()
+local honest = bHonest:add("board", "jack_number", "p")
+honest.holder = HOLDER
+honest.answer = "47"
+bHonest:submit("board", ACTOR, "11", T0)
+bHonest:submit("board", ACTOR, "12", T0)
+check("two typos then the right answer still solves it", bHonest:submit("board", ACTOR, "47", T0).ok == true)
+check("and the right answer wipes the miss count", honest.misses[ACTOR] == nil)
+
+-- The holder hammering their own line must never earn a jam: they are refused
+-- by the invariant before a guess is ever counted, so they cannot lock the
+-- line against the person who is allowed to solve it.
+local bHolder = Objectives.new()
+local holderLine = bHolder:add("board", "jack_number", "p")
+holderLine.holder = HOLDER
+holderLine.answer = "47"
+for _ = 1, 9 do
+	bHolder:submit("board", HOLDER, "11", T0)
+end
+check("the holder's own attempts are not counted as guesses", holderLine.misses[HOLDER] == nil)
+check(
+	"so the holder cannot jam their own line",
+	bHolder:submit("board", HOLDER, "11", T0).reason == "someone else has to patch this"
+)
+
+-- The whole claim, simulated: a guesser who waits out every jam and never
+-- speaks. Before this change 45 wrong answers cost 45 * 0.75 = 33.75 seconds.
+local bBrute = Objectives.new()
+local target = bBrute:add("board", "jack_number", "p")
+target.holder = HOLDER
+target.answer = "47"
+local elapsed = 0
+local iterations = 0
+while (target.misses[ACTOR] or 0) < 45 and iterations < 1000 do
+	iterations += 1
+	local before = target.misses[ACTOR] or 0
+	bBrute:submit("board", ACTOR, "11", elapsed)
+	if (target.misses[ACTOR] or 0) == before then
+		-- Refused as jammed and not counted. Wait exactly as long as told.
+		elapsed = target.jammedUntil[ACTOR]
+	else
+		elapsed += 0.75
+	end
+end
+check("the brute-force simulation terminated", (target.misses[ACTOR] or 0) == 45)
+check(`45 guesses now costs over half an hour, not 34 seconds (got {math.floor(elapsed)}s)`, elapsed > 1800)
 
 print("dealing")
 local b3 = Objectives.new()
@@ -112,7 +210,7 @@ check("somebody can now see the orphaned answer", b4:viewFor(orphan.holder :: nu
 -- The whole point: the round can be finished again. Somebody who is NOT the
 -- new holder enters the answer.
 local other = if orphan.holder == ACTOR then THIRD else ACTOR
-check("the re-dealt line is solvable by another present player", b4:submit("breaker", other, orphan.answer).ok == true)
+check("the re-dealt line is solvable by another present player", b4:submit("breaker", other, orphan.answer, T0).ok == true)
 
 print("re-dealing orphans does not overreach")
 local b5 = Objectives.new()
@@ -165,6 +263,18 @@ check(
 check(
 	"and it excludes the leaving player from the re-deal",
 	removingBody ~= nil and string.find(removingBody :: string, "~= player", 1, true) ~= nil
+)
+
+-- Same shape of guard for the jam: the module can refuse every guess and the
+-- keypad still be free if the ONE call site forgets to pass a clock. `now` is a
+-- required parameter, but Luau's type error is not a test failure, and a nil
+-- `now` only explodes on the first comparison -- i.e. after a jam is set, in
+-- production, and never in the happy path anyone would notice.
+local submitCall = string.match(serverSource, "board:submit%b()")
+check("init.server calls board:submit", submitCall ~= nil)
+check(
+	"and passes it a clock, or nothing can ever be jammed",
+	submitCall ~= nil and string.find(submitCall :: string, "now", 1, true) ~= nil
 )
 
 print(`\n{checks - failures}/{checks} passed`)

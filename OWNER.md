@@ -45,3 +45,17 @@ Write in plain English. One item per line. Top item goes first.
   everyone else keeps what they were already holding, so this does not answer
   your open question about what should happen when someone JOINS mid-round.
   Nothing to decide here.
+
+- R9 - a player could just guess. The code you enter at a station is two digits,
+  and there was no penalty for a wrong one, so anybody standing at a keypad
+  could hold Enter and open a line in about half a minute without a word being
+  said - which is the one thing this game is not allowed to let you do. Now a
+  wrong answer jams that line for the player who gave it, and each jam is
+  longer than the last: three typos costs 20 seconds, but guessing your way to
+  the answer costs over half an hour. It never punishes the person who was
+  actually told the number, and one player guessing cannot lock anyone else out.
+  ONE THING FOR YOU: I fixed this with a timer, which is quiet. The other option
+  is to make guessing LOUD - a wrong code trips something the Operator hears, so
+  the cost of brute-forcing is that it comes looking for you. That is probably
+  the better horror game, but it might make the keypad frightening to use even
+  when you are doing it honestly. Your call; I did not make it.

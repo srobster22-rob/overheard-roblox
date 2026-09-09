@@ -147,7 +147,9 @@ submitRemote.OnServerEvent:Connect(function(player: Player, id: unknown, value: 
 	end
 	lastSubmit[player.UserId] = now
 
-	local result = board:submit(id :: string, player.UserId, value :: string)
+	-- The same `now` the cooldown used. The cooldown only paces attempts; the
+	-- jam inside `submit` is what makes guessing the answer not worth doing.
+	local result = board:submit(id :: string, player.UserId, value :: string, now)
 	if not result.ok and result.reason then
 		heardRemote:FireClient(player, Round.LINES.busy, result.reason, 0)
 	end

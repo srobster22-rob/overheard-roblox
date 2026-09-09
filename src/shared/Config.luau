@@ -32,6 +32,17 @@ local Config = {
 	-- unable to say anything at all.
 	CoolPerSecond = 0.01,
 
+	-- Guessing. The answer is two digits -- 90 possibilities -- and the submit
+	-- remote is rate-limited to one attempt every 0.75s, so a player alone at a
+	-- keypad brute-forces a line in about 34 seconds without anyone ever
+	-- speaking. That defeats the only invariant this game has. So a wrong
+	-- answer jams the line for the player who gave it, escalating: the n-th jam
+	-- that player earns on that line lasts n * LockoutSeconds. Three honest
+	-- typos in a row cost 20 seconds; guessing your way to the median 45 wrong
+	-- answers costs about 40 minutes, which is not a strategy any more.
+	GuessesBeforeLockout = 3,
+	LockoutSeconds = 20,
+
 	-- Rooms the Operator can be sent to. World.build must return a position for
 	-- every one of these, and every secret payload must name one of them.
 	-- tests/round.luau enforces the second half of that.

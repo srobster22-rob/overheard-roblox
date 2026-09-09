@@ -897,3 +897,166 @@ carries the change.
   without making a design call, which is why it was pickable.
 
 **Commit.** `dc747cb`
+
+---
+
+## R9 — the keypad can be brute-forced, and that is the whole game
+
+**Stage 1 — shortlist.**
+
+1. **A lone player can guess an answer in ~34 seconds.** `randomJack` picks
+   from `math.random(10, 99)` — 90 values — and `SUBMIT_COOLDOWN` is 0.75s
+   with no penalty for a wrong answer. Median 45 guesses is 33.75 seconds of
+   holding Enter. `Objectives.luau`'s own header says the invariant is that a
+   single player must never complete an objective alone, "or OVERHEARD stops
+   existing", and names `submit` as where it is enforced. `submit` enforces
+   holder≠actor and nothing else. In a two-player round both players can clear
+   the board without ever speaking. Player-facing, reachable by a bored player
+   and not only an exploiter, and it defeats the premise rather than a feature.
+2. **`Round.pickSecrets` is dead** — R8's candidate. Exported, called from
+   nowhere in `src/`, only `tests/round.luau` still exercises it. Worth noting
+   WHAT it is: it shuffles 3 of 5 secrets with no regard for the stations, which
+   is precisely the R5 defect (39.6% of servers ran an objective the Operator
+   was not listening for). So it is dead-and-loaded, not dead-and-harmless.
+   But it is not reachable from the product today, so no player can hit it.
+3. **A solved station's ProximityPrompt stays enabled** — R8's other candidate.
+   Real, but small: the client already closes the keypad on solve, so what is
+   left is an E-prompt that opens a panel the server answers "already restored"
+   to. It also lives in `prompt.Enabled`, a Roblox runtime property the headless
+   suite can only reach by reading source — weak evidence for a Studio-blocked
+   round.
+4. **Round flow** (`Config.Planned.RoundLength`, literally annotated "R9").
+   Rejected on cost: it is a system, not a fix, and it would swallow the round
+   and force several owner design calls that are already filed.
+5. **A wider answer space** (more digits) as the anti-guessing fix. Rejected:
+   the two-digit choice is deliberate and documented — "spoken aloud as two
+   words... a long code would just be tedious." Widening the code fixes the
+   arithmetic by damaging the thing the arithmetic exists for.
+
+**Pick: 1.** It is the only candidate a player actually hits, it is the game's
+own stated invariant rather than a tidiness argument, and the fix lands in a
+pure module the headless suite can hammer — which matters when Studio is
+blocked. #2 and #3 stay open; #3 in particular is now cheaper than it looks
+once solving has a server-side hook, but it is still runtime-shaped.
+
+**Stage 2 — built.**
+
+- `src/shared/Config.luau` — two new live dials, `GuessesBeforeLockout = 3` and
+  `LockoutSeconds = 20`, with the arithmetic that justifies them written next
+  to them.
+- `src/server/systems/Objectives.luau` — `submit` now takes `now: number`
+  (passed in, not read from a clock, same as `Operator.hear` takes `at`, so the
+  jam is testable without sleeping). Each objective carries `misses` and
+  `jammedUntil`, both keyed by actor userId. A wrong answer counts a miss;
+  every third miss jams that line for that player, and because misses are never
+  reset by serving a jam, the n-th jam lasts n x 20s. A right answer clears
+  both. Ordering is load-bearing in two places: the jam is checked AFTER the
+  holder rule (so the holder's own refused attempts never count as guesses and
+  they cannot jam the line against the person allowed to solve it) and BEFORE
+  the answer is compared (so a jammed player cannot use the reply as an oracle
+  to test a candidate).
+- `src/server/init.server.luau` — passes the `now` it already computed for the
+  rate limit. The cooldown paces attempts; the jam is what makes them useless.
+- `tests/objectives.luau` — 21 new checks, and the existing seven `submit`
+  calls take the clock. The last one is the whole claim as a simulation: a
+  guesser who waits out every jam and never speaks now needs **2123 seconds**
+  to reach the median 45 wrong answers, against 33.75 before.
+
+Nothing here touches the two filed owner questions. Per-(line, actor) keying is
+deliberate for the same reason R8 moved only orphans: one player guessing must
+not lock the line for the player who was actually told the number, and must not
+lock them out of the other line either.
+
+**Stage 3 — review.**
+
+`test.cmd`, real output: lexicon 14/14, operator all assertions, objectives
+53/53, pursuit 21/21, round 38/38, config 42/42, `suite passed`, exit 0.
+**168 checks, up from R8's 145.** `selene src`: 0 errors, 0 warnings, 0 parse
+errors. `rojo build` exit 0. `git status` shows only the five files this round
+means to touch.
+
+Eight plants. Each reported whether it applied, each failed BY NAME, each was
+restored from a backup taken AFTER this round's edit (R8's trap) and verified
+byte-identical by sha256:
+
+1. **The shipped defect** — jam check disabled, i.e. exactly the behaviour that
+   was live before this round: 9 red, 44/53, exit 1, including
+   `FAIL  45 guesses now costs over half an hour, not 34 seconds (got 33s)`.
+   That 33 is the real number the game shipped with.
+2. **Misses reset on each jam** (escalation gone): `FAIL  the second jam is
+   twice as long as the first` + the simulation fails to terminate, 51/53.
+3. **The jam shared by every player** rather than per-actor: `FAIL  another
+   player is not jammed`, exit 1.
+4. **The holder's refused attempts counted as guesses**: `FAIL  the holder's
+   own attempts are not counted as guesses`, 52/53.
+5. **A right answer no longer forgives typos**: `FAIL  and the right answer
+   wipes the miss count`, 52/53.
+6. **The jam turned into an oracle** — it lets the right answer through: 8 red,
+   45/53, led by `FAIL  a jammed player is refused even with the right answer`.
+7. **`init.server` drops the clock**: `FAIL  and passes it a clock, or nothing
+   can ever be jammed`, 52/53. `now` is a required parameter, but a Luau type
+   error is not a suite failure and a nil `now` only explodes on the first
+   comparison — in production, after a jam, never in the happy path.
+8. **Both new dials hardcoded** instead of read from Config: `FAIL
+   'GuessesBeforeLockout' is read somewhere in src/` and `FAIL
+   'LockoutSeconds' ...`, 40/42.
+
+Post-restore hashes, byte-identical to the post-edit baselines:
+`Objectives.luau` `FB1A002D...C46D4A5A`, `init.server.luau`
+`67F9BFC8...8DBE7C1E`, `Config.luau` `0E89D1D9...4DA8ADAF`,
+`tests/objectives.luau` `72F8503C...1E1C35B0`. Suite re-run green after.
+
+**Three of the eight plants misfired on the first pass, and two of those were
+my plants, not test gaps.** Worth writing down because a misfiring plant reads
+exactly like a missing test:
+- The "global jam" plant wrote to `jammedUntil[0]` while the read still used
+  `actorUserId` — a no-op edit that the suite correctly passed. A plant that
+  changes a WRITE must change the matching READ or it proves nothing.
+- The "hardcoded dial" plant used `.replace(..., 1)`, and each dial is read
+  twice, so one live `Config.` read survived and the dead-dial guard was right
+  to stay green. Sweep the whole range, not the first occurrence.
+- The oracle plant simply did not apply (the pattern was a one-line `return`;
+  the source has a multi-line table). It reported "PLANT DID NOT APPLY" rather
+  than passing silently, which is the only reason it was not read as a pass.
+  Every plant must say whether it applied.
+
+**Reached the product, not just the source.** `rojo build` to a
+uniquely-named scratch file (R8's shared-scratchpad trap), grepped with python
+and with controls, since `Select-String` returns 0 hits on `.rbxlx` for
+everything including strings that are certainly there. Controls known present:
+`OVERHEARD` x5, `PlayerRemoving` x2. New: `jammedUntil` x9,
+`GuessesBeforeLockout` x3, `LockoutSeconds` x3, `that line is jammed` x2,
+`guessing the answer not worth doing` x1. Control known absent:
+`ZZ_NOT_IN_THIS_FILE_ZZ` x0.
+
+**Studio-blocked.** Nothing was seen running; no claim here is a playtest
+claim. Specifically unverified: that the jam message actually renders in the
+keypad's status line (the path exists — `heardRemote` busy -> `status.Text` —
+but only when the panel is visible, and a player who walks away from the keypad
+mid-jam sees nothing), and whether 20 seconds FEELS like a fair penalty or like
+the game being broken. What the headless suite DID prove: the jam is enforced
+server-side in the only place a line can be solved, it beats the right answer
+as well as a wrong one, it does not leak whether a value was right, it is
+per-(line, actor), it escalates, it never punishes the holder or a fumbling
+honest actor, the clock is wired at the single call site, both dials are live,
+and a silent brute-forcer now needs 2123 seconds instead of 33.
+
+**Left open.**
+- `Round.pickSecrets` is still dead and still loaded (it is the pre-R5 selection
+  that ignores stations). Shortlist #2 again.
+- A solved station's ProximityPrompt stays enabled. Shortlist #3; cheaper now
+  that `onSolved` is a live server hook, but still a runtime-shaped claim.
+- R7's item stands: the shared scanner is a lexer and cannot tell live code
+  from dead code, so `if false and ...` would pass either wiring guard.
+- The jam is in-memory per Board and a player who rejoins gets a fresh slate.
+  Not worth fixing at 20s scale, and there is no persistence layer to hang it
+  on; noting it so it is not rediscovered as a surprise.
+- **Still with the owner, untouched:** `CoolPerSecond = 0.01`; the mid-round
+  re-deal on JOIN question; and the solo-player-cannot-finish question.
+- **NEW, filed for the owner, not decided:** a wrong answer is currently
+  punished with silence and a timer. The horror-native alternative is to make
+  guessing NOISY — a wrong code trips something the Operator hears, so the cost
+  of brute-forcing is the monster coming to you rather than a lockout. That is
+  a better game if it works and a worse one if it makes the keypad terrifying
+  to use honestly. It is a design call, so this round shipped the mechanical
+  fix and left the question open.
