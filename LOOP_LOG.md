@@ -43,12 +43,13 @@ Backlog, roughly in order. Reorder freely; do not skip the gate.
 - [ ] **R5** LLM comprehension backend behind the existing
       `ComprehensionBackend` interface, A/B against the heuristic. Harden the
       prompt against injection; players WILL try to talk it out of character.
-- [ ] **R2b** Second station (the breaker) so a second objective is reachable.
+- [x] **R2b** Second station (the breaker) so a second objective is reachable.
       Rule learned: never add an objective without a station to solve it at.
+      DONE in R5.
 - [ ] **R6** The Lexicon persists across sessions (DataStore), per group.
       This is the retention mechanic, so it needs to be real, not cosmetic.
-- [ ] **R7** Entity #4 The Supervisor — punishes silence. The first true
-      inversion; the clip-generating one.
+- [x] **R7** Entity #4 The Supervisor — punishes silence. The first true
+      inversion; the clip-generating one. DONE in R54 (hardened through R67).
 - [ ] **R8** Entity #7 The Translator — understands only figurative speech.
 - [ ] **R9** Round flow: cutover, three objectives, the call, the escape.
 - [x] **R10** Being "connected" — DONE in R16.
@@ -6984,3 +6985,49 @@ genuinely silent players, changes how often it fires in a real session overall
 — only that it is no longer split with a player it could never help.
 
 **Commit** `705fd24`
+
+
+## R68 — the axis backlog no longer matches what has shipped
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — Stage 0 outranks ideas, and Stage 0 was wrong.** The EXPANSION AXIS
+backlog, recovered in R53 from the R1-R19 cumulative log, still reads:
+
+```
+- [ ] R2b Second station (the breaker) so a second objective is reachable.
+- [ ] R7 Entity #4 The Supervisor — punishes silence.
+```
+
+Both are shipped. R2b was R5 (`R5: stations are the source of truth for the
+round, and the breaker station exists`). R7 was R54, R55, R56, R57, R58, R66 and
+R67 — six further rounds hardening and correcting it, none of which touched
+this checkbox. Every round since reads this list at Stage 0; a stale `[ ]` next
+to work already in the build is exactly the kind of small untruth that compounds
+the longer it sits, and it is a one-line fix now rather than a confusing one
+later.
+
+1. *(picked)* **Correct the two checkboxes.** No `src/` or `tests/` change; the
+   suite and build are unaffected and re-run only to confirm that.
+2. R63's queued-room drop, R59's corridor number, R62's loss-rate number — all
+   **still filed**, awaiting the owner.
+
+**Stage 2 — the fix.** Two checkboxes, `R2b` and `R7`, marked `[x]` with the
+round each actually shipped in, editing only `LOOP_LOG.md`.
+
+**Stage 3 — review.** No `src/` or `tests/` file changed, so no new test to
+plant against; the full suite is re-run to confirm the counts are identical to
+R67's — they are, line for line — proving the edit touched nothing it should
+not have.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green, unchanged from R67**: lexicon 22, heuristic 45, operator ok,
+objectives 122, pursuit 103, round 57, config 63, wiring 335, connected 32,
+ordering 4, heat 20, layout 91, lifecycle 90, hud 22, readout 29, soak 42,
+hum 29, log 18, silence 62.
+
+*Not claimed:* that R9 ("round flow: cutover, three objectives, the call, the
+escape") or R4/R5/R6/R8 are anywhere near done — they are left unchecked because
+they are not, and R9's own wording ("cutover", "the call", "the escape") names
+concepts this build has never built, worth the owner's eye if the axis is
+picked up again rather than something this round should guess at and rewrite.
