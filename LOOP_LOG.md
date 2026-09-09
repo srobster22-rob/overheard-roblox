@@ -6574,3 +6574,102 @@ when it filed the margin question.
 an improvement on one person talking for everybody, and it is still a model.
 
 **Commit** `ff411b9`
+
+
+## R63 — mutation-testing the soak's own couplings
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — generalising R62's accident.** R62's first plant did not fire.
+Disabling the main soak's Supervisor dispatch left the suite green at 318/318,
+because R59's and R60's guards ask whether the FILE contains the dispatch and
+the silent group satisfies them on its own. The lesson was written down —
+*a source sweep cannot tell you whether a system RAN* — and then answered for
+exactly one system, with a `silenceCalls` counter.
+
+That is one blind spot found by luck. The soak couples seven systems
+(`Objectives`, `Connected`, `Lifecycle`, `Operator`, `Pursuit`, `Supervisor`,
+`Layout`) and I have no idea how many of the others could be switched off
+without the suite noticing.
+
+So this round measures it instead of guessing: **disable each coupling in turn
+and record which disablings the suite fails to catch.** Mutation testing, aimed
+at the harness rather than at the code — a method this project has not used, and
+the only one that answers "what is my evidence blind to".
+
+1. *(picked)* **Run that sweep, then close every blind spot it finds.**
+2. The client's `BAND_COLOUR` restating band names — **still recorded**, latent.
+3. R21's corner fairness, R36's patience, the `%` in a server prompt,
+   geometry-blind movement, no player light, the stemming pair, R46's learning
+   gap, `anyFinishable`'s margin, R54's three, R59's corridor number, and R62's
+   loss-rate number — **all still filed.**
+
+**Stage 2 — the sweep.** Eight couplings, disabled one at a time from a scratch
+harness, whole suite run after each.
+
+| coupling disabled | caught? |
+|---|---|
+| the Operator never hears anybody | **NOTHING** |
+| understanding never moves the Operator | soak |
+| nobody is ever captured | soak |
+| nobody ever solves a line | **NOTHING** |
+| decay off | **NOTHING** |
+| queued rooms never taken up | **NOTHING** |
+| the Operator never gives up a room | **NOTHING** |
+| the board never reset between rounds | **NOTHING** |
+
+**Six of eight.** The soak could be gutted six ways and still print green.
+
+Six counters answer them — and one of the six turned out to be a real finding
+about the game rather than about the harness.
+
+**`takePending` never fires.** Across seven whole sessions rooms sat queued for
+**595 ticks** and **not one** was ever taken up; **21** were thrown away
+instead. The mechanism works — `tests/pursuit.luau` drives it busy → queued →
+arrived → withdrawn → idle and watches it promote — but in a session it never
+gets the chance: `stop()` on a loss and `sendHome()` on a restart both clear
+`pending`, and with the Supervisor in, rounds end long before the Operator is
+ever idle with something waiting. **Recorded, not asserted** — see the owner
+note below.
+
+**Stage 3 — proof, including two of my own checks failing their job.**
+
+*A counter beside a call measures the call SITE, not the call.* With both
+`operator:hear` calls gutted, `the Operator hears people (1050 utterances)`
+**still passed**. A check that cannot fail when the thing it names is broken is
+worse than no check — R48, R49, R55 and R62 are all that same mistake — so the
+tally is gone and the Lexicon high-water mark answers instead, because it only
+grows if something was really heard and really understood.
+
+*And the sweep's own anchors went stale as I fixed things.* Two mutations
+reported "nothing caught it" when they had silently been applied to
+`silentGroup` instead of the session under test. Verified by hand afterwards:
+both are caught — `the Operator gives rooms up (0 times)` and `every restart
+hands over a clean board (21 of 28)`.
+
+Re-run after the fixes, **all eight mutations are caught**, each by name.
+
+Restored; sha256 `d1b2afa7…9db235d6`.
+
+**Verified in the product, not the source.** Seven seeds: 28 Supervisor calls,
+14 lines solved, 1,127 ticks where decay changed the Lexicon, 42 rooms given up,
+28 of 28 restarts handing over a clean board, and a Lexicon high-water mark of
+10 coinages.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green and reproducible across two end-to-end runs**: lexicon 22,
+heuristic 40, operator ok, objectives 122, pursuit 103, round 57, config 63,
+wiring 318, connected 32, ordering 4, heat 20, layout 91, lifecycle 75, hud 22,
+readout 29, soak **38**, hum 21, log 18, silence 62.
+
+**FOR THE OWNER — a room somebody gave away is never visited.** When the
+Operator is already walking to one room and a second is given away, the second
+is remembered and then silently dropped: 21 times in seven sessions, 0 ever
+served. A finished round arguably SHOULD forget its queue — but the same clear
+happens on every restart, so the queue only ever survives inside one round, and
+inside one round the Operator is rarely idle. Options: keep it (the queue is
+decoration), take it up on arrival rather than only when idle, or drop the queue
+entirely and let the newest giveaway win. I filed it rather than choosing.
+
+*Not claimed:* that eight mutations is the whole space. It is the couplings I
+could name; a system nobody thought to disable is still unmeasured.

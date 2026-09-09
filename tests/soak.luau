@@ -60,6 +60,23 @@ export type Report = {
 	-- on its own -- so disabling this session's dispatch left the whole suite
 	-- green, which a plant proved. Only the session can say whether it ran.
 	silenceCalls: number,
+	-- R63. A mutation sweep switched each of the soak's couplings off in turn and
+	-- ran the suite. SIX of eight could be disabled with nothing noticing: the
+	-- Operator never hearing anybody, nobody ever solving a line, decay off,
+	-- queued rooms never taken up, the Operator never giving up a room, and the
+	-- board never being reset between rounds.
+	--
+	-- Every one of those is a system this file claims to model. R62 found the
+	-- seventh by luck and answered it with one counter; these are the rest,
+	-- measured rather than guessed at. A session that did not exercise a system
+	-- is not evidence about it, however green it prints.
+	solved: number,
+	decayed: number,
+	pendingTaken: number,
+	gaveUp: number,
+	cleanStarts: number,
+	everQueued: number,
+	queuedDropped: number,
 }
 
 -- The soak's OWN answer to "can anybody still finish anything", computed from
@@ -173,6 +190,13 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 		worstLexicon = 0,
 		stuckRejoins = 0,
 		silenceCalls = 0,
+		solved = 0,
+		decayed = 0,
+		pendingTaken = 0,
+		gaveUp = 0,
+		cleanStarts = 0,
+		everQueued = 0,
+		queuedDropped = 0,
 	}
 	local now = 0
 
@@ -243,7 +267,14 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 		end
 
 		pursuit:step(Config.TickSeconds)
-		pursuit:takePending()
+		-- `takePending` returns whether it promoted a queued room, so the count is
+		-- the module's own answer rather than an inference from its fields.
+		if pursuit:takePending() then
+			report.pendingTaken += 1
+		end
+		if pursuit.pending ~= nil then
+			report.everQueued += 1
+		end
 
 		if round:isPlaying() and pursuit.state == "arrived" then
 			-- `takeWhoeverIsHere`, as the server runs it.
@@ -258,6 +289,9 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 				-- leaving it travelling would keep the hum going over a finished
 				-- round. The soak cannot hear a hum, but it must not model a
 				-- monster still walking through an intermission either.
+				if pursuit.pending ~= nil then
+					report.queuedDropped += 1
+				end
 				pursuit:stop()
 			end
 		end
@@ -276,6 +310,7 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 
 		if pursuit:shouldLeave(Config.LingerSeconds) then
 			pursuit:withdrawTo(Layout.operatorPost())
+			report.gaveUp += 1
 		end
 
 		if round:isPlaying() and tick % 260 == 0 then
@@ -288,6 +323,7 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 						-- Through submit, and then the credit `board.onSolved` does.
 						if board:submit(objective.id, userId, objective.answer, now).ok then
 							operator:credit(objective.concept, now)
+							report.solved += 1
 						end
 						break
 					end
@@ -320,8 +356,23 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 		if round:readyToRestart(now, Config.IntermissionSeconds) and round:restart() then
 			report.rounds += 1
 			board:reset()
+			-- The restart must hand the next round an unsolved board. Counted as a
+			-- property rather than trusted: `board:reset()` could be deleted and
+			-- the suite noticed nothing.
+			local anySolved = false
+			for _, objective in board.list do
+				if objective.solved then
+					anySolved = true
+				end
+			end
+			if not anySolved then
+				report.cleanStarts += 1
+			end
 			line:clear()
 			operator:forgetObservations()
+			if pursuit.pending ~= nil then
+				report.queuedDropped += 1
+			end
 			pursuit:sendHome(Layout.operatorPost())
 			-- R31's boundary. Without it a player quiet through the intermission
 			-- is called in the first seconds of the new round.
@@ -345,7 +396,9 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 			board:deal(present)
 		end
 
-		operator:decay(now)
+		if operator:decay(now) then
+			report.decayed += 1
+		end
 
 		for _, objective in board.list do
 			local seen = 0
@@ -376,6 +429,13 @@ local function acrossSeeds(ticks: number, rejoinEvery: number, takeAllButOne: bo
 		worstLexicon = 0,
 		stuckRejoins = 0,
 		silenceCalls = 0,
+		solved = 0,
+		decayed = 0,
+		pendingTaken = 0,
+		gaveUp = 0,
+		cleanStarts = 0,
+		everQueued = 0,
+		queuedDropped = 0,
 	}
 	for _, seed in SEEDS do
 		local one = soak(ticks, rejoinEvery, takeAllButOne, seed)
@@ -384,6 +444,13 @@ local function acrossSeeds(ticks: number, rejoinEvery: number, takeAllButOne: bo
 		total.lost += one.lost
 		total.stuckRejoins += one.stuckRejoins
 		total.silenceCalls += one.silenceCalls
+		total.solved += one.solved
+		total.decayed += one.decayed
+		total.pendingTaken += one.pendingTaken
+		total.gaveUp += one.gaveUp
+		total.cleanStarts += one.cleanStarts
+		total.everQueued += one.everQueued
+		total.queuedDropped += one.queuedDropped
 		-- These three are failures, so they ACCUMULATE rather than average: one
 		-- bad seed must not be diluted by six good ones.
 		total.unfinishableTicks += one.unfinishableTicks
@@ -458,6 +525,42 @@ check(`(guard) and players were caught in them ({long.won} won, {long.lost} lost
 -- bound, R47's seen-set bound, R48's stranded-loss rule and R49's
 -- unfinishable-tick count were every one of them measured in the pre-R54 game.
 check(`the Supervisor runs in a normal session ({long.silenceCalls} calls)`, long.silenceCalls > 0)
+
+-- R63. Each of these was switched off in a mutation sweep and NOTHING in the
+-- suite noticed. A session that did not exercise a system is not evidence about
+-- it, however green it prints.
+-- Checked by its EFFECT, not by a tally at the call site.
+--
+-- The first version of this counted `operator:hear` calls, and the mutation
+-- sweep caught it out live: with BOTH hear calls gutted, `the Operator hears
+-- people (1050 utterances)` still passed, because a counter next to a call
+-- measures the call SITE and increments whether or not the call does anything.
+-- A check that cannot fail when the thing it names is broken is worse than no
+-- check -- R48, R49, R55 and R62 are all that same mistake -- so the tally is
+-- gone and the Lexicon answers instead. It only grows if something was really
+-- heard and really understood.
+check(`the Operator is heard and learns ({long.worstLexicon} coinages at the high-water mark)`, long.worstLexicon > 0)
+check(`lines actually get solved ({long.solved})`, long.solved > 0)
+check(`heat actually decays ({long.decayed} ticks changed the Lexicon)`, long.decayed > 0)
+check(`(measured) rooms were queued behind a busy Operator ({long.everQueued} ticks)`, long.everQueued >= 0)
+-- MEASURED, NOT ASSERTED. `takePending` works -- `tests/pursuit.luau` drives it
+-- busy, queued, arrived, withdrawn, idle and watches it promote -- but across
+-- seven whole sessions it promoted NOTHING, while rooms sat queued for hundreds
+-- of ticks. They are thrown away instead: `stop()` on a loss and `sendHome()` on
+-- a restart both clear `pending`, and with the Supervisor in, rounds end long
+-- before the Operator is ever idle with something waiting.
+--
+-- So a room somebody gave away is silently never visited. Whether that is right
+-- -- a finished round should probably forget its queue -- is the owner's call,
+-- and a test demanding either answer would be making it. See LOOP_LOG R63.
+check(`(recorded, see R63) queued rooms taken up ({long.pendingTaken})`, long.pendingTaken >= 0)
+check(`(recorded, see R63) queued rooms thrown away instead ({long.queuedDropped})`, long.queuedDropped >= 0)
+check(`(guard) the queue really does fill up ({long.everQueued} ticks with a room waiting)`, long.everQueued > 0)
+check(`the Operator gives rooms up ({long.gaveUp} times)`, long.gaveUp > 0)
+check(
+	`every restart hands over a clean board ({long.cleanStarts} of {long.rounds})`,
+	long.rounds > 0 and long.cleanStarts == long.rounds
+)
 
 -- R48: a live round must always be finishable by somebody, or it ends.
 check(`no live round is ever unfinishable ({long.unfinishableTicks} ticks)`, long.unfinishableTicks == 0)
