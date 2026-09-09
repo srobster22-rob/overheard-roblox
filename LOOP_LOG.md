@@ -2350,3 +2350,78 @@ picked unilaterally would be worse than filing them together.
 **Next round.** The stemming cluster (2-4) is the biggest remaining known
 defect area but wants direction. Absent that, R7 (The Supervisor — punishes
 silence) is pure comprehension logic and fully verifiable headlessly.
+
+
+## R18 — the round could be won but never lost
+
+**Stage 0.** `OWNER.md` still has nothing under `## Next`. The four owner
+questions stay filed and were NOT decided here.
+
+**Stage 1 — shortlist.** AGENT_LOOP lists "exported helpers nothing calls —
+capability written and never wired" as a high-yield source. Swept
+`systems/Connected`'s exports against the server:
+
+1. *(picked)* **`Connected.allTaken` is never called.** R16 — last round, mine —
+   wrote the loss condition and never wired it. Probe:
+   `grep -rn allTaken src/` outside the module itself returns NOTHING, while
+   `board:allSolved()` IS wired. So the Operator could take every player on the
+   server and the round would simply sit there: board still open, hum still
+   running, nothing said, no way to finish. The game had a win state and no
+   lose state. Player-facing, demonstrated, cheap, and my own defect from the
+   previous round, which is the best reason to take it first.
+2. `Connected.count` and `Connected.clear` also have zero callers. Left alone:
+   they are small, honest accessors and unwiring them is not a player-visible
+   improvement. Recorded so a later round does not re-probe them.
+3. `Config.RoundLength = 600` is read by nothing either — there is still no
+   round timer. Real, but that is R9 (round flow) and a feature, not a defect.
+   **Filed.**
+4. The stemming cluster (R17's items 2-4). Still needs an owner decision about
+   which way to be wrong. **Still filed.**
+
+**Stage 2 — built.** The capture path now checks `line:allTaken(present)` and,
+when nobody is left who can act, says its own line and calls `pursuit:stop()` —
+leaving it travelling would keep the hum going over a finished round. `present`
+is rebuilt from `Players:GetPlayers()` at the moment of capture, so a player
+leaving cannot strand the round.
+
+`Round.LINES.lost` is a THIRD distinct sentence. `completed` (won) and `taken`
+(it arrived) were split in R10 for exactly this reason; a loss that reused
+either would undo that, so the test asserts all three differ pairwise.
+
+**Stage 3 — review.**
+- Full suite green: lexicon 22, heuristic 23, objectives 84, pursuit 36,
+  round 48, config 47, wiring 139, connected 21, ordering 4, plus the operator
+  assertions. `suite passed`.
+- **Proved the new checks can fail.** Backup after the fix
+  (sha256 `d8c429a2...bdb`), loss wiring deleted, suite re-run: four failures by
+  name — `allTaken` is actually called in the server, the loss says its own
+  line, the loss stops the Operator, the loss is checked inside the capture
+  path — 135/139. Restored from that backup, sha256 byte-identical.
+- **Two defects found in my own test while writing it**, both of the kind this
+  file exists to catch:
+  1. The block was spliced before the FIRST `checks - failures` line, which sits
+     inside an early-exit branch, so it never executed — and the suite still
+     said 130/130 green. A test that does not run looks exactly like a test that
+     passes. Moved to the top-level summary; the count moving 130 -> 139 is the
+     proof it now runs.
+  2. It parsed the Operator's lines out of `stripNonCode` output. The lexer
+     REMOVES string bodies, so `said.lost` was nil and all four comparisons
+     passed vacuously against nil. Switched to raw source, which is what the
+     remote-names block three sections above already says to do for exactly
+     this reason.
+- **Verified it reached the PRODUCT**: the loss sentence appears in the
+  Rojo-built place file, not only in `src/`.
+
+**Stage 4 — shipped.** `selene src` 0/0, `rojo build` clean, full suite green
+with output pasted above. Studio is DEVICE-BLOCKED: no visual, feel or playtest
+claim is made here. What is proven is the wiring, the lint, the build, and the
+line's presence in the built artifact. Unproven and needing a human at a
+keyboard: whether losing FEELS like an ending, and whether `OperatorReach = 22`
+takes a whole team too easily now that being taken actually ends the round.
+
+**Commit** `%%HASH%%`.
+
+**Next round.** With the loss wired, the honest next gap is R9 round flow — a
+timer (`RoundLength` is still read by nothing) and what happens after either
+ending. That is a feature with a design opinion in it, so if `OWNER.md` gains a
+`## Next` item before then, that outranks it.

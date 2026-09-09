@@ -57,6 +57,7 @@ end)
 check("Shared.Keypad loads (the harness adopts it)", loaded == true)
 if not loaded then
 	print(`  (require said: {Keypad})`)
+
 	print(`\n{checks - failures}/{checks} passed`)
 	process.exit(1)
 end
@@ -469,6 +470,49 @@ table.sort(declaredSorted)
 for _, name in declaredSorted do
 	check(`test.cmd's '{name}' exists as tests/{name}.luau`, fs.isFile(`tests/{name}.luau`))
 end
+
+print("")
+print("the round can be LOST, not only won")
+
+-- R16 wrote `Connected.allTaken` and nothing ever called it, so the Operator
+-- could take every player and the round would just sit there: board still open,
+-- nothing said, no way to finish. A capability written and never wired reads as
+-- a shipped feature in the log and is invisible to every other test, so the
+-- wiring itself is asserted here rather than the logic (which tests/connected
+-- already covers).
+
+local serverSource = fs.readFile("src/server/init.server.luau")
+local serverCode = LuauCode.stripNonCode(serverSource)
+
+check("`allTaken` is actually called in the server", string.find(serverCode, "allTaken(", 1, true) ~= nil)
+check("the loss says its own line", string.find(serverCode, "LINES.lost", 1, true) ~= nil)
+
+-- Three opposite events must not share one sentence. `completed` and `taken`
+-- were already split for exactly this reason; `lost` must not undo it.
+-- RAW source, not stripped. These lines ARE string bodies, and the lexer
+-- removes string bodies -- reading them from stripped code finds nothing and
+-- every comparison below then passes vacuously on nil. Same reasoning as the
+-- remote-names block above.
+local roundCode = fs.readFile("src/server/systems/Round.luau")
+local said: { [string]: string } = {}
+for key, text in string.gmatch(roundCode, '(%w+) = "([^"]+)",') do
+	said[key] = text
+end
+check("`lost` exists as a line", said.lost ~= nil and #said.lost > 0)
+check("`lost` is not the same sentence as `completed`", said.lost ~= said.completed)
+check("`lost` is not the same sentence as `taken`", said.lost ~= said.taken)
+check("`lost` is not the same sentence as `onTheLine`", said.lost ~= said.onTheLine)
+
+-- It must stop hunting once there is nobody left, or the hum runs over a
+-- finished round.
+-- Newline built with string.char rather than an escape: this repo's tooling has
+-- twice collapsed a backslash in a patch and turned "\n" inside a Luau string
+-- into a real line break, producing "Malformed string".
+local NL = string.char(10)
+local capture = string.match(serverCode, "local function takeWhoeverIsHere%(.-" .. NL .. "end") or ""
+check("(guard) found the capture function", #capture > 0)
+check("the loss stops the Operator", string.find(capture, "pursuit:stop()", 1, true) ~= nil)
+check("the loss is checked inside the capture path", string.find(capture, "allTaken(", 1, true) ~= nil)
 
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then

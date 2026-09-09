@@ -101,6 +101,21 @@ local function takeWhoeverIsHere()
 		-- waiting for them to act.
 		pushObjectives(nil)
 	end
+
+	-- The loss. R16 wrote `allTaken` and never called it, so the round could be
+	-- WON but never LOST: the Operator could take every player and the game
+	-- would sit there, the board still open, nothing said. Checked against who
+	-- is actually present, so a player leaving cannot strand the round.
+	local present: { number } = {}
+	for _, p in Players:GetPlayers() do
+		table.insert(present, p.UserId)
+	end
+	if line:allTaken(present) then
+		heardRemote:FireAllClients(Round.LINES.lost, "", 1)
+		-- It stops hunting once there is nobody left to hunt. Leaving it
+		-- travelling would keep the hum going over a finished round.
+		pursuit:stop()
+	end
 end
 
 pursuit.onStateChanged = function(state: string, targetName: string?)

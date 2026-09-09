@@ -142,6 +142,10 @@ Round.LINES = {
 	-- Said to the player it just took. Polite, procedural, and the worst thing
 	-- it could say: you are on the line now, and it is holding it.
 	onTheLine = "Hold the line, please.",
+	-- Everyone present is on the line: the round is LOST. Distinct from
+	-- `completed` (won) and `taken` (it arrived) for the same reason those two
+	-- were split -- three different events must not share one sentence.
+	lost = "I'm sorry, your call cannot be completed as dialled.",
 	understood = "I have that party for you.",
 	connecting = "I'm connecting you now.",
 	busy = "That line is busy.",
