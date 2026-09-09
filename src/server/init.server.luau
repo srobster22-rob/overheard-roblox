@@ -17,6 +17,7 @@ local Presence = require(script.systems.Presence)
 local Pursuit = require(script.systems.Pursuit)
 local Round = require(script.systems.Round)
 local Connected = require(script.systems.Connected)
+local Lifecycle = require(script.systems.Lifecycle)
 local Station = require(script.systems.Station)
 local World = require(script.systems.World)
 
@@ -45,6 +46,8 @@ local desk = Station.new()
 -- Who the Operator has taken. Being connected costs you the ability to ACT;
 -- it does not cost you your voice. See systems/Connected.
 local line = Connected.new()
+-- Whether a round is being played. See systems/Lifecycle.
+local round = Lifecycle.new()
 
 for _, station in Round.STATIONS do
 	board:add(station.id, station.concept, station.prompt)
@@ -127,7 +130,7 @@ local function takeWhoeverIsHere()
 	for _, p in Players:GetPlayers() do
 		table.insert(present, p.UserId)
 	end
-	if line:allTaken(present) then
+	if line:allTaken(present) and round:finish("lost", os.clock()) then
 		heardRemote:FireAllClients(Round.LINES.lost, "", 1)
 		-- It stops hunting once there is nobody left to hunt. Leaving it
 		-- travelling would keep the hum going over a finished round.
@@ -169,11 +172,15 @@ board.onSolved = function(objective, _actor: number)
 	operator:credit(objective.concept, os.clock())
 	pushObjectives(nil)
 	broadcastLexicon()
-	if board:allSolved() then
+	if board:allSolved() and round:finish("won", os.clock()) then
 		-- `completed`, not `taken`. `taken` is what it says when the MONSTER
 		-- arrives; firing the same string for winning made the two opposite
 		-- events render as one sentence on the client.
 		heardRemote:FireAllClients(Round.LINES.completed, "", 1)
+		-- And it STOPS. Until R29 winning left the Operator hunting, so a group
+		-- could finish the board and then be taken by a monster that had no idea
+		-- the round was over.
+		pursuit:stop()
 	end
 end
 
@@ -326,6 +333,28 @@ end)
 --
 -- DECAY stays on its one-second beat. It is time-based, so a faster tick would
 -- be correct but would replicate the whole lexicon four times a second.
+-- Begin the next round. The LEXICON deliberately survives: a group's shared
+-- vocabulary carrying between rounds is the retention mechanic GAME.md is built
+-- on, and resetting it would make every round a first round with strangers.
+-- Everything else starts over.
+local function beginRound()
+	board:reset()
+	line:clear()
+
+	local userIds: { number } = {}
+	for _, p in Players:GetPlayers() do
+		table.insert(userIds, p.UserId)
+		connectedRemote:FireClient(p, false)
+	end
+	board:deal(userIds)
+
+	pursuit:stop()
+	heardRemote:FireAllClients(Round.LINES.greeting, "", 0)
+	pushObjectives(nil)
+	broadcastLexicon()
+	print(`[server] round {round.number} begins`)
+end
+
 local running = true
 task.spawn(function()
 	local sinceDecay = 0
@@ -335,9 +364,15 @@ task.spawn(function()
 			break
 		end
 
-		-- Still standing in the room it understood? Then it is still taking.
-		if pursuit.state == "arrived" then
+		-- A finished round is not a hunting ground. Without this the Operator
+		-- keeps taking people during the intermission, after the line that told
+		-- them it was over.
+		if round:isPlaying() and pursuit.state == "arrived" then
 			takeWhoeverIsHere()
+		end
+
+		if round:readyToRestart(os.clock(), Config.IntermissionSeconds) and round:restart() then
+			beginRound()
 		end
 
 		-- ...but not forever. Nothing except the loss ever released it before

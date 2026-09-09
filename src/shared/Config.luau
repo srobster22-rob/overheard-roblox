@@ -48,6 +48,11 @@ local Config = {
 	-- one is not.
 	LingerSeconds = 20,
 
+	-- Breath between rounds. Until R29 there was no next round at all: both
+	-- endings fired a line and left the server a dead lobby, and a WIN did not
+	-- even stop the Operator hunting.
+	IntermissionSeconds = 8,
+
 	-- How the Operator moves, and when it goes quiet. These lived as literals
 	-- inside `Pursuit.new` until R27, which meant the invariant that matters --
 	-- that every approach STARTS outside the silence radius, so players always

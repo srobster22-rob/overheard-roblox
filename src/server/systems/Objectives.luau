@@ -234,6 +234,17 @@ end
 -- which is R9's entire round undone by a tidiness change. The leak is two
 -- integers per departed player per line. `tests/objectives.luau` asserts the
 -- survival, so this is a guarded decision rather than an oversight.
+-- Start the board over for a new round: nothing solved, fresh answers, no
+-- holders. New answers matter — reusing them would let a group that finished a
+-- round simply retype last round's numbers.
+function Objectives.reset(self: Board)
+	for _, objective in self.list do
+		objective.solved = false
+		objective.holder = nil
+		objective.answer = randomJack()
+	end
+end
+
 function Objectives.allSolved(self: Board): boolean
 	for _, o in self.list do
 		if not o.solved then

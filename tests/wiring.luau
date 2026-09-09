@@ -565,6 +565,21 @@ check("the linger is a dial, not a literal", string.find(tickBody, "Config.Linge
 -- released the room silently with the body motionless -- nothing told players
 -- it was safe.
 check("and the tick actually releases it", string.find(tickBody, "pursuit:withdrawTo", 1, true) ~= nil)
+
+-- R29. A finished round is not a hunting ground, and there has to BE a next one.
+check("capture is gated on the round still being played", string.find(tickBody, "round:isPlaying()", 1, true) ~= nil)
+check("the tick waits out an intermission", string.find(tickBody, "Config.IntermissionSeconds", 1, true) ~= nil)
+check("and starts the next round", string.find(tickBody, "beginRound()", 1, true) ~= nil)
+
+-- Winning must stop the monster. Until R29 it did not, so a group finished the
+-- board and was then taken by something that had no idea the round was over.
+-- NL built with string.char, never an escape: this repo's patching has turned
+-- "\n" inside a Luau string into a real line break three times now (R22, R24,
+-- and again this round).
+local solvedBlock = string.match(serverCode, "if board:allSolved%(%).-" .. NL .. "\tend") or ""
+check("(guard) found the win path", #solvedBlock > 0)
+check("winning goes through the lifecycle", string.find(solvedBlock, "round:finish", 1, true) ~= nil)
+check("winning stops the Operator", string.find(solvedBlock, "pursuit:stop()", 1, true) ~= nil)
 check("the release is announced", string.find(tickBody, "LINES.givingUp", 1, true) ~= nil)
 
 print(`\n{checks - failures}/{checks} passed`)
