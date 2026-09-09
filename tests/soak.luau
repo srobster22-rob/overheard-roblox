@@ -103,6 +103,28 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean):
 	local nextId = 5
 	board:deal(present)
 
+	-- WHERE everybody is standing, because the server catches people by asking
+	-- `Connected.reachedInRoom` which players are inside the room the Operator
+	-- arrived in. The soak used to take the first N entries of `present`, so the
+	-- Operator's position did not enter into it and R23 -- "it takes the ROOM,
+	-- not a circle around it" -- was never exercised here.
+	--
+	-- `takeAllButOne` used to be an index trick. It is now a PLACE: everybody but
+	-- the last player stands in the board room, so one arrival takes all of them
+	-- and strands whatever line the survivor is holding. That is R48's shape,
+	-- produced by where people are rather than by arithmetic on an array.
+	local standing: { [number]: { x: number, z: number } } = {}
+	local function placeEveryone()
+		for index, userId in present do
+			if takeAllButOne then
+				standing[userId] = if index == #present then rooms.archive else rooms.board
+			else
+				standing[userId] = if index % 2 == 0 then rooms.archive else rooms.board
+			end
+		end
+	end
+	placeEveryone()
+
 	local report: Report = {
 		rounds = 0,
 		won = 0,
@@ -142,14 +164,19 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean):
 		pursuit:takePending()
 
 		if round:isPlaying() and pursuit.state == "arrived" then
-			local caught = if takeAllButOne then #present - 1 else math.max(1, #present // 2)
-			for i = 1, caught do
-				line:connect(present[i], now)
+			-- `takeWhoeverIsHere`, as the server runs it.
+			for _, userId in line:reachedInRoom(pursuit.position, standing, Layout.halfRoom()) do
+				line:connect(userId, now)
 			end
 			local able = ableNow()
 			local stranded = #present > 0 and not board:allSolved() and not board:anyFinishable(able)
 			if (line:allTaken(present) or stranded) and round:finish("lost", now) then
 				report.lost += 1
+				-- The server stops it hunting once there is nobody left to hunt;
+				-- leaving it travelling would keep the hum going over a finished
+				-- round. The soak cannot hear a hum, but it must not model a
+				-- monster still walking through an intermission either.
+				pursuit:stop()
 			end
 		end
 
@@ -207,9 +234,16 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean):
 				table.insert(present, nextId)
 				nextId += 1
 				if #present > 6 then
-					table.remove(present, 1)
+					local gone = table.remove(present, 1)
+					if gone then
+						standing[gone] = nil
+					end
 				end
 			end
+			-- Somebody who joined has to stand somewhere, or they are never in any
+			-- room and cannot be caught at all -- which would quietly turn the
+			-- harsh soak into the gentle one as the server filled up.
+			placeEveryone()
 			board:deal(present)
 		end
 

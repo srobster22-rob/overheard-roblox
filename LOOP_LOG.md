@@ -6228,3 +6228,99 @@ derived the requirement for ONE function, the Supervisor's dispatch. The capture
 path, the loss check and the restart are still mirrored by hand and by habit.
 
 **Commit** `85734fa`
+
+
+## R60 — the soak catches people by array index
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — finishing R59's sentence.** R59 ended: *"This round derived the
+requirement for ONE function, the Supervisor's dispatch. The capture path, the
+loss check and the restart are still mirrored by hand and by habit."* So this
+round read the capture path.
+
+The server:
+
+```
+local caught = line:reachedInRoom(pursuit.position, livePositions(), Layout.halfRoom())
+```
+
+The soak:
+
+```
+local caught = if takeAllButOne then #present - 1 else math.max(1, #present // 2)
+for i = 1, caught do line:connect(present[i], now) end
+```
+
+It takes the first N players in the array. **`reachedInRoom` is never called**,
+no player has a position, and where the Operator is standing does not enter into
+it. So R23 — "it takes the ROOM, not a circle around it", the round that found
+a circle big enough to cover the square also covered 9.94 studs of corridor
+outside every wall, so running out of the door did not save you — is not
+exercised by the soak at all.
+
+And that matters beyond R23, because the soak's two best findings depend on WHO
+gets caught: R47's seen-set bound and R48's "a round nobody can finish is lost".
+Both were derived against a capture that picks victims by index.
+
+1. *(picked)* **Give the soak positions and catch people the way the game does**,
+   and extend R59's derived guard to cover the capture path so this one cannot
+   drift back either.
+2. The client's `BAND_COLOUR` restating band names — **still recorded**, latent.
+3. R21's corner fairness, R36's patience, the `%` in a server prompt,
+   geometry-blind movement, no player light, the stemming pair, R46's learning
+   gap, `anyFinishable`'s margin, R54's three, and R59's corridor number —
+   **all still filed.**
+
+**Stage 2 — the fix.** The soak's players now stand somewhere, and capture asks
+`line:reachedInRoom(pursuit.position, standing, Layout.halfRoom())` — the same
+question the server asks.
+
+`takeAllButOne` used to be an index trick. It is now a **place**: everybody but
+the last player stands in the board room, so one arrival takes all of them and
+strands whatever line the survivor holds. R48's shape, produced by where people
+are rather than by arithmetic on an array. Players who join are placed, or they
+would stand nowhere, never be caught, and quietly turn the harsh soak into the
+gentle one as the server filled up.
+
+The derived guard then found a second divergence I had not looked for: the
+server calls `pursuit:stop()` when the round is lost — *"leaving it travelling
+would keep the hum going over a finished round"* — and the soak never did, so it
+modelled a monster still walking through an intermission. Now it stops too.
+
+**Stage 3 — proof.** R59's guard is generalised: it sweeps a LIST of server
+paths, deriving what each reaches for from its own source and requiring the soak
+to reach for it too. Remotes, `Players` and `Instance` lookups are excluded by
+name — the soak has no clients, and that is the part it is right not to mirror.
+
+Two plants, each failed by name:
+
+| plant | what failed |
+|---|---|
+| catch the first N players again, as R54–R59 did | `the soak never touches: Layout.halfRoom, line.reachedInRoom, pursuit.position` |
+| leave the Operator hunting after a loss | `the soak never touches: pursuit.stop` |
+
+Restored; sha256 `8194ee25…a031eb9e`.
+
+**Verified in the product, not the source.** Same seeds, same tick counts:
+
+| | by array index | by `reachedInRoom` | + stopping on a loss |
+|---|---|---|---|
+| harsh soak, rounds stranded | **7** | **10** | **15** |
+| ticks a stranded round survived | 7 over 7 | 7 over 10 | 10 over 15 |
+
+R48's rule — *a round nobody can finish is lost, instead of running forever* —
+is now exercised **more than twice as often**, and it still ends every stranded
+round inside a tick. The rule was right; the evidence for it was thin.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon 22, heuristic 40, operator ok, objectives 122,
+pursuit 103, round 57, config 63, wiring **315**, connected 32, ordering 4,
+heat 20, layout 91, lifecycle 75, hud 22, readout 29, soak 23, hum 21, log 18,
+silence 62.
+
+*Not claimed:* that the soak now mirrors every server path. Two are derived and
+guarded; the loss check on the tick, the restart and `beginRound` are still
+mirrored by hand. The guard takes a list, so adding them is a line each — but
+each one may move the numbers again, the way this one did, and that is a round's
+work rather than a line's.
