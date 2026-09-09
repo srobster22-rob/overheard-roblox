@@ -6326,3 +6326,135 @@ each one may move the numbers again, the way this one did, and that is a round's
 work rather than a line's.
 
 **Commit** `2500051`
+
+
+## R61 — the soak's main session is playing the pre-R54 game
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — adding the remaining paths to R60's list, and finding out why they
+were not there.** R60 ended: *"the tick's loss check, the restart and
+`beginRound` are still by hand. The guard takes a list, so adding them is a line
+each."* Adding them turned out not to be a line each.
+
+`tests/soak.luau` has two sessions. The **silent group** (R54, rewired in R59)
+has a Supervisor. The **main soak** — the one that plays 6,000 ticks with
+rounds, joins, leaves, captures, stranding and restarts, and which carries the
+file's four real invariants (R46's Lexicon bound, R47's seen-set bound, R48's
+stranded-loss rule, R49's unfinishable-tick count) — **has no Supervisor at
+all.** No `Supervisor.new`, no clock, no dispatch.
+
+So every number that file reports about a *session* is measured in the game as
+it stood before R54: nobody is ever called for silence, the Operator is only
+ever sent by something a player said, and the rounds are quieter and longer than
+the shipped game's. Its restart is missing `supervisor:reset` for the same
+reason, which is the R31 boundary the silent group has and the main soak does
+not.
+
+This is the same fault R59 and R60 each found once, at a larger size: not a call
+that drifted, but a whole system the model never had.
+
+1. *(picked)* **Give the main soak the Supervisor the game actually runs**, add
+   `beginRound` and `endTheRoundIfNobodyCanWin` to R60's derived list, and see
+   which of the four invariants move.
+2. The client's `BAND_COLOUR` restating band names — **still recorded**, latent.
+3. R21's corner fairness, R36's patience, the `%` in a server prompt,
+   geometry-blind movement, no player light, the stemming pair, R46's learning
+   gap, `anyFinishable`'s margin, R54's three, and R59's corridor number —
+   **all still filed.**
+
+**Stage 1, corrected — the pick was wrong, and so was R60's evidence.**
+
+Before touching the main soak I ran it three times unchanged:
+
+| run | harsh soak, rounds stranded |
+|---|---|
+| 1 | 6 |
+| 2 | 7 |
+| 3 | 13 |
+
+**The soak is not deterministic.** `Round.dealSecrets` shuffles with
+`math.random` and nothing seeds it, so every session is a different game.
+
+That invalidates the evidence in my own last two entries. **R60's headline
+table — 7 stranded by array index, 10 by `reachedInRoom`, 15 once it also
+stopped on a loss — was three single runs of a simulation whose spread on
+identical code is 6 to 13.** The progression I attributed to the fix is inside
+the noise. The FIX is still right (the capture path genuinely did not call
+`reachedInRoom`, and the derived guard genuinely catches its absence), but the
+numbers I used to argue it were not measurements. R59's 36-vs-18 comparison is
+open to the same doubt.
+
+This is worse than the drift R59 and R60 each found, because a wired-wrong model
+gives you a wrong answer while a seedless one gives you a different answer every
+time and lets you keep the run that agrees with you.
+
+1. *(picked, replacing the above)* **Seed the soak, and re-measure R60's claim
+   across many seeds rather than one run.** Assert on the spread, not on a
+   single session.
+2. **Deferred, not dropped:** the main soak still has no Supervisor, so its
+   invariants are measured in the pre-R54 game. That is real and stands — but it
+   is a second round's work, and doing it on top of unseeded numbers would
+   produce another table I could not trust.
+3. Everything previously filed stays filed.
+
+**Stage 2 — the fix.**
+
+- `soak` and `silentGroup` take a **seed** and call `math.randomseed` with it.
+- Every scenario runs across **seven seeds**, folded into one report. Failures
+  accumulate and the worst is kept, so an invariant that holds on six seeds and
+  breaks on the seventh is broken. Tick counts came down (6,000 → 1,200 each) so
+  seven sessions cost about what one long one did.
+- The four other suites that consume the same randomness are seeded too, each
+  with a different value so a number that happens to suit one is not quietly
+  load-bearing for all of them.
+
+**Stage 3 — proof.** Two guards, because a seed line is a claim and neither
+kind of check is enough alone.
+
+*The property*, in the soak: one scenario run twice at one seed must agree in
+every field, with a `(control)` that a **different** seed produces a different
+session — or the check would pass for the wrong reason, by the seed being
+ignored entirely.
+
+*The class*, in wiring: every suite whose code calls `dealSecrets` or
+`math.random(` must also call `math.randomseed`. Read from the stripped source,
+so a comment mentioning dice cannot answer for a file that rolls them.
+
+**It found a sixth file on its first run.** `tests/wiring.luau` calls
+`Round.dealSecrets(99)` itself — the sweep caught its own host.
+
+Two plants, each failed by name:
+
+| plant | what failed |
+|---|---|
+| the seed line removed from `tests/round.luau` | `every suite that rolls dice seeds them (1 unseeded)` — `unseeded: round.luau` |
+| the soak ignores the seed it is handed | `the same seed replays exactly (3 fields differed)` |
+
+Restored; sha256 `0f89bdd5…b95cde6b` and `2fd0fb1e…c33aabfeb`.
+
+**Verified in the product, not the source.** The full suite run twice end to end
+gives identical counts in all twenty files. And R60's claim, re-measured
+properly — same code paths, seven seeds each:
+
+| harsh soak, rounds stranded | R60 reported | actually |
+|---|---|---|
+| catching by array index, no stop on loss | 7 | **15** |
+| catching by `reachedInRoom`, stopping on loss | 15 | **22** |
+
+**R60's fix was right and its numbers were wrong.** The effect is +47%, not
++114%, and the "7 → 10 → 15" progression in that entry was three draws from a
+distribution whose spread on unchanged code is 6 to 13. The capture path really
+did fail to call `reachedInRoom`, and the derived guard really does catch its
+absence — that part stands on the code, not on the counts.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green and reproducible**: lexicon 22, heuristic 40, operator ok,
+objectives 122, pursuit 103, round 57, config 63, wiring **318**, connected 32,
+ordering 4, heat 20, layout 91, lifecycle 75, hud 22, readout 29, soak **26**,
+hum 21, log 18, silence 62.
+
+*Not claimed, and deferred rather than dropped:* the main soak still has no
+Supervisor, so its four invariants are measured in the pre-R54 game. That is
+real, it is written up in Stage 1 above, and it is the next round's work — now
+that there is a seed to measure it against.

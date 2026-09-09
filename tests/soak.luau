@@ -83,7 +83,24 @@ end
 -- and R23 made that everyone. A gentler soak never strands a line at all, so it
 -- cannot exercise the stranded-loss rule -- the first version of this file
 -- passed with that rule deleted, for exactly that reason.
-local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean): Report
+-- SEEDS. `Round.dealSecrets` shuffles with `math.random`, and nothing seeded
+-- it, so every run of this file was a different game. Measured on identical
+-- code, three runs of the harsh soak stranded 6, 7 and 13 rounds.
+--
+-- That is worse than a model wired wrong. A wired-wrong model gives you the same
+-- wrong answer every time and can be caught; a seedless one gives a different
+-- answer every time and lets you keep the run that agrees with you. R60's
+-- headline table -- 7 stranded by array index, 10 by `reachedInRoom`, 15 once it
+-- also stopped on a loss -- was three single runs of a simulation whose spread
+-- on unchanged code is 6 to 13. The fix was right; the numbers arguing for it
+-- were not measurements.
+--
+-- So every scenario runs across all of these, and the checks below are made
+-- against the WORST and the TOTAL rather than against one session.
+local SEEDS = { 1, 7, 19, 42, 101, 2024, 31337 }
+
+local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, seed: number): Report
+	math.randomseed(seed)
 	local rooms = { board = Layout.boardCentre(), archive = Layout.archiveCentre() }
 	local secrets = Round.dealSecrets(3)
 
@@ -266,8 +283,66 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean):
 	return report
 end
 
+-- Every seed, folded into one report by taking the WORST of each measure. An
+-- invariant that holds on six seeds and breaks on the seventh is broken.
+local function acrossSeeds(ticks: number, rejoinEvery: number, takeAllButOne: boolean): Report
+	local total: Report = {
+		rounds = 0,
+		won = 0,
+		lost = 0,
+		unfinishableTicks = 0,
+		worstSeen = 0,
+		worstLexicon = 0,
+		stuckRejoins = 0,
+	}
+	for _, seed in SEEDS do
+		local one = soak(ticks, rejoinEvery, takeAllButOne, seed)
+		total.rounds += one.rounds
+		total.won += one.won
+		total.lost += one.lost
+		total.stuckRejoins += one.stuckRejoins
+		-- These three are failures, so they ACCUMULATE rather than average: one
+		-- bad seed must not be diluted by six good ones.
+		total.unfinishableTicks += one.unfinishableTicks
+		total.worstSeen = math.max(total.worstSeen, one.worstSeen)
+		total.worstLexicon = math.max(total.worstLexicon, one.worstLexicon)
+	end
+	return total
+end
+
+print("the same seed is the same session")
+
+-- The seed line is a claim; this is the check. Two runs of one scenario at one
+-- seed must agree in every field. Without it, `math.randomseed` could be
+-- deleted, or a second source of randomness added, and the file would go back
+-- to reporting a different game every run while still looking seeded.
+local twiceA = soak(600, 0, true, 4242)
+local twiceB = soak(600, 0, true, 4242)
+local differed: { string } = {}
+for field, value in twiceA :: any do
+	if (twiceB :: any)[field] ~= value then
+		table.insert(differed, `{field} {value} vs {(twiceB :: any)[field]}`)
+	end
+end
+check(`(guard) the sample session did something ({twiceA.rounds} rounds)`, twiceA.rounds > 0)
+check(`the same seed replays exactly ({#differed} fields differed)`, #differed == 0)
+if #differed > 0 then
+	print(`        {table.concat(differed, ", ")}`)
+end
+
+-- (control) a DIFFERENT seed must produce a different session, or the seed is
+-- being ignored and the check above passes for the wrong reason.
+local other = soak(600, 0, true, 99)
+local anyDifference = false
+for field, value in twiceA :: any do
+	if (other :: any)[field] ~= value then
+		anyDifference = true
+	end
+end
+check("(control) a different seed is a different session", anyDifference)
+
 print("a server's whole life")
-local long = soak(6000, 0, false)
+local long = acrossSeeds(1200, 0, false)
 check(`(guard) the soak actually played rounds ({long.rounds})`, long.rounds >= 5)
 check(`(guard) and players were caught in them ({long.won} won, {long.lost} lost)`, long.won + long.lost >= 5)
 
@@ -294,7 +369,8 @@ print("a group that never says a word in-game")
 --
 -- No rule-level test could see it: every rule was right on its own. The defect
 -- was in what they left out.
-local function silentGroup(ticks: number): (number, number, boolean)
+local function silentGroup(ticks: number, seed: number): (number, number, boolean)
+	math.randomseed(seed)
 	local rooms = { board = Layout.boardCentre(), archive = Layout.archiveCentre() }
 	local secrets = Round.dealSecrets(3)
 	local board = Objectives.new()
@@ -443,7 +519,7 @@ local function silentGroup(ticks: number): (number, number, boolean)
 end
 
 local TICKS = 2400 -- 600 simulated seconds, the length that was measured
-local _silentWins, calls, moved, longestRound, roundsPlayed, unreachable, announced = silentGroup(TICKS)
+local _silentWins, calls, moved, longestRound, roundsPlayed, unreachable, announced = silentGroup(TICKS, SEEDS[1])
 check(`(guard) the silent run was long enough to matter ({TICKS} ticks)`, TICKS >= 2400)
 check(`silence is called out ({calls} calls in {TICKS} ticks)`, calls > 0)
 check("the Operator no longer stands still through a silent session", moved)
@@ -490,7 +566,7 @@ check(`(guard) ...and announcements do happen ({announced})`, announced > 0)
 print("")
 print("one player with a bad connection")
 -- R47's exact shape: every return fires PlayerAdded and re-deals the board.
-local churny = soak(6000, 25, false)
+local churny = acrossSeeds(1200, 25, false)
 check(`(guard) it kept playing through the churn ({churny.rounds} rounds)`, churny.rounds >= 5)
 check(`rejoining never strands the board ({churny.stuckRejoins} times)`, churny.stuckRejoins == 0)
 check(`...and no round is left unfinishable ({churny.unfinishableTicks} ticks)`, churny.unfinishableTicks == 0)
@@ -506,7 +582,7 @@ print("the Operator takes everyone but one")
 -- A gentler soak cannot exercise this at all: with half the group caught the
 -- team still wins every round, nothing is ever stranded, and the first version
 -- of this file passed with the stranded-loss rule deleted for that reason.
-local harsh = soak(6000, 0, true)
+local harsh = acrossSeeds(1200, 0, true)
 check(`(guard) the harsh soak played rounds ({harsh.rounds})`, harsh.rounds >= 3)
 check(`(guard) and it really did strand people ({harsh.lost} rounds lost)`, harsh.lost >= 1)
 -- At most ONE tick of lag per stranded round: the capture strands it, and the

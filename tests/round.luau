@@ -167,6 +167,14 @@ print("a station's prompt never gives away somebody else's room")
 -- is not.
 
 local Heuristic = rt.require(rt.systems.Heuristic)
+
+-- SEEDED. `Round.dealSecrets` shuffles with `math.random`, and an unseeded test
+-- is a different test every run: `tests/soak.luau` stranded 6, 7 and 13 rounds
+-- on three runs of identical code, and two log entries argued from single runs
+-- of it. Nothing in THIS file's assertions depends on the shuffle today, which
+-- is exactly why it would go unnoticed the day one does.
+math.randomseed(53)
+
 local livePool = Round.dealSecrets(99)
 check(`(guard) the whole pool is in play ({#livePool} concepts)`, #livePool >= 3)
 

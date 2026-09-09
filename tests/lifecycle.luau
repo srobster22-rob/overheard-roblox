@@ -239,6 +239,13 @@ print("a reset is COMPLETE, not merely called")
 local fs = require("@lune/fs")
 local LuauCode = require("./luaucode")
 
+-- SEEDED. `Round.dealSecrets` shuffles with `math.random`, and an unseeded test
+-- is a different test every run: `tests/soak.luau` stranded 6, 7 and 13 rounds
+-- on three runs of identical code, and two log entries argued from single runs
+-- of it. Nothing in THIS file's assertions depends on the shuffle today, which
+-- is exactly why it would go unnoticed the day one does.
+math.randomseed(23)
+
 local NEWLINE = string.char(10)
 local objectivesSource = fs.readFile("src/server/systems/Objectives.luau")
 -- Fields are read from STRIPPED code. The first version read the raw type block

@@ -867,6 +867,44 @@ check(
 	string.find(clientCode, "Config.", 1, true) ~= nil
 )
 
+-- R61, and this is the CLASS. `Round.dealSecrets` shuffles with `math.random`
+-- and nothing seeded it, so every run of `tests/soak.luau` was a different game:
+-- 6, 7 and 13 stranded rounds on three runs of IDENTICAL code. Two log entries
+-- argued from single runs of it, and R60'''s headline table was noise.
+--
+-- A wired-wrong model gives the same wrong answer every time and can be caught.
+-- A seedless one gives a different answer every time and lets you keep the run
+-- that agrees with you.
+--
+-- Four other suites consume the same randomness. None of their assertions
+-- depended on the shuffle, which is exactly why it would go unnoticed the day
+-- one did.
+print("")
+print("a test that rolls dice says which dice")
+
+local unseeded: { string } = {}
+local rolled = 0
+for _, entry in fs.readDir("tests") do
+	if not string.match(entry, "%.luau$") then
+		continue
+	end
+	local body = LuauCode.stripNonCode(fs.readFile(`tests/{entry}`))
+	local rolls = string.find(body, "dealSecrets", 1, true) or string.find(body, "math.random(", 1, true)
+	if not rolls then
+		continue
+	end
+	rolled += 1
+	if not string.find(body, "math.randomseed", 1, true) then
+		table.insert(unseeded, entry)
+	end
+end
+check(`(guard) some suites do roll dice ({rolled})`, rolled >= 3)
+check(`every suite that rolls dice seeds them ({#unseeded} unseeded)`, #unseeded == 0)
+if #unseeded > 0 then
+	print(`        unseeded: {table.concat(unseeded, ", ")}`)
+end
+check("(control) the reader is not matching every file", rolled < 20)
+
 -- R59 and R60, and this is the CLASS. R49 wrote the rule in `tests/soak.luau` in
 -- capitals -- "IT IS WIRED LIKE THE SERVER OR IT IS NOT EVIDENCE" -- after its
 -- own first draft called `board:submit` directly, skipped `board.onSolved`, and
@@ -1156,6 +1194,11 @@ print("nothing the client DISPLAYS is a giveaway")
 
 local Round = rt.require(rt.systems.Round)
 local Heuristic = rt.require(rt.systems.Heuristic)
+
+-- SEEDED. This file calls `Round.dealSecrets(99)` itself, so it rolls the same
+-- dice `tests/soak.luau` did -- and its own sweep below is what found that out.
+math.randomseed(71)
+
 local livePool = Round.dealSecrets(99)
 
 local function saidAloud(text: string): { string }
