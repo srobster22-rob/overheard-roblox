@@ -728,3 +728,5 @@ the built `.rbxlx` carries the source change.
   **Owner question, filed not decided.**
 - **Still with the owner, untouched:** `CoolPerSecond = 0.01` needs a playtest;
   the mid-round re-deal question; and the solo-player question above.
+
+**Commit.** `7d582f5`
