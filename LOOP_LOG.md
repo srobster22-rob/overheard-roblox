@@ -7642,3 +7642,5 @@ log 18, silence 62, lexiconsave 28.
 than none), keep them as a documented primitive (the `Connected.reached`
 precedent), or repurpose them for a future entity's reach is a real choice
 this round did not have grounds to make either way.
+
+**Commit** `6346a55`
