@@ -150,6 +150,42 @@ for _, id in second:reachedInRoom(board, movers, Layout.halfRoom()) do
 end
 check("a player who left the room is not taken", out == 0)
 
+-- R25: and the room has to become SAFE again, or R24's continuous capture is a
+-- permanent softlock. Same driver, now including the release the server runs.
+local LINGER = 10
+local released = false
+local function tickWithRelease()
+	if tracker.state == "arrived" then
+		for _, id in occupancy:reachedInRoom(tracker.position, positions, Layout.halfRoom()) do
+			if occupancy:connect(id, 0) then
+				captured += 1
+			end
+		end
+	end
+	if tracker:shouldLeave(LINGER) then
+		tracker:stop()
+		released = true
+	end
+end
+
+local latecomer = 42
+positions[latecomer] = { x = board.x, z = board.z }
+for _ = 1, LINGER + 2 do
+	tracker:step(1)
+	tickWithRelease()
+end
+check("the Operator eventually gives up the room", released)
+check("(guard) it is no longer standing on the objective", tracker.state == "idle")
+check("(guard) somebody was taken while it was still there", occupancy:isConnected(latecomer))
+
+-- The point of the fix: a player arriving AFTER it leaves can work in peace.
+local afterwards = 43
+positions[afterwards] = { x = board.x, z = board.z }
+for _ = 1, 20 do
+	tickWithRelease()
+end
+check("a player who comes after it has gone is safe", occupancy:isConnected(afterwards) == false)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

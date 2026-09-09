@@ -549,6 +549,13 @@ check("the tick runs capture", string.find(tickBody, "takeWhoeverIsHere()", 1, t
 check("the tick is paced by a dial, not a literal", string.find(tickBody, "Config.TickSeconds", 1, true) ~= nil)
 check("decay keeps its own slower beat", string.find(tickBody, "Config.DecaySeconds", 1, true) ~= nil)
 
+-- R25. The room must be RELEASED, or capture-while-arrived (R24) becomes a
+-- permanent softlock: one plain word parks the Operator on an objective and
+-- nobody can ever finish that station.
+check("the tick asks whether it should leave", string.find(tickBody, "shouldLeave", 1, true) ~= nil)
+check("the linger is a dial, not a literal", string.find(tickBody, "Config.LingerSeconds", 1, true) ~= nil)
+check("and the tick actually releases it", string.find(tickBody, "pursuit:stop()", 1, true) ~= nil)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

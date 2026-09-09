@@ -340,6 +340,13 @@ task.spawn(function()
 			takeWhoeverIsHere()
 		end
 
+		-- ...but not forever. Nothing except the loss ever released it before
+		-- R25, so a single plain word parked it on an objective for the rest of
+		-- the round and nobody could ever finish that station.
+		if pursuit:shouldLeave(Config.LingerSeconds) then
+			pursuit:stop()
+		end
+
 		sinceDecay += Config.TickSeconds
 		if sinceDecay >= Config.DecaySeconds then
 			sinceDecay = 0

@@ -203,6 +203,74 @@ st:step(1)
 check("stopping returns it to idle", st.state == "idle")
 check("and silences it", st:isAudible() == false)
 
+print("")
+print("it loses interest instead of parking forever")
+
+-- R25. Nothing except the round being lost ever returned it to idle, and since
+-- R24 it captures the whole time it is `arrived`. So one plain word parked it on
+-- top of an objective for the rest of the round: nobody could reach that
+-- station, `allSolved` was unreachable, and the round could only end in a loss.
+-- Both required stations were lockable this way.
+
+local dweller = tracker()
+dweller:sendTo("board")
+for _ = 1, 40 do
+	dweller:step(1)
+	if dweller.state == "arrived" then
+		break
+	end
+end
+check("(guard) it arrived", dweller.state == "arrived")
+check("it does not leave the instant it lands", dweller:shouldLeave(10) == false)
+
+-- Dwell is real time, accumulated by step.
+for _ = 1, 9 do
+	dweller:step(1)
+end
+check("nine seconds in, it is still interested", dweller:shouldLeave(10) == false)
+dweller:step(1)
+check("ten seconds in, it has had enough", dweller:shouldLeave(10) == true)
+
+-- The server acts on the answer; the module only reports it.
+check("it is still arrived until someone stops it", dweller.state == "arrived")
+dweller:stop()
+check("stopping releases the room", dweller.state == "idle")
+check("and a released Operator is not still leaving", dweller:shouldLeave(10) == false)
+
+-- Dwell must not survive the trip: arriving somewhere new starts the clock over,
+-- or the second room would be released the moment it got there.
+local again = tracker()
+again:sendTo("board")
+for _ = 1, 40 do
+	again:step(1)
+	if again.state == "arrived" then
+		break
+	end
+end
+for _ = 1, 30 do
+	again:step(1)
+end
+check("(guard) it has dwelt long enough to leave", again:shouldLeave(10) == true)
+again:sendTo("archive")
+check("being sent somewhere new resets the dwell", again:shouldLeave(10) == false)
+for _ = 1, 40 do
+	again:step(1)
+	if again.state == "arrived" then
+		break
+	end
+end
+check("(guard) it arrived at the new room", again.state == "arrived")
+check("and it does not immediately leave that one", again:shouldLeave(10) == false)
+
+-- A tracker that never arrived must never claim it is time to go.
+local travelling = tracker()
+travelling:sendTo("board")
+travelling:step(1)
+check("(guard) it is still on its way", travelling.state ~= "arrived")
+check("something still travelling never wants to leave", travelling:shouldLeave(0) == false)
+local idle = tracker()
+check("an idle Operator never wants to leave", idle:shouldLeave(0) == false)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

@@ -21,6 +21,9 @@ export type Tracker = typeof(setmetatable(
 		target: Point?,
 		targetName: string?,
 		state: State,
+		-- Seconds spent standing in the room it arrived at. Reset the moment it
+		-- is anything other than `arrived`.
+		dwell: number,
 		speed: number,
 		-- Inside this radius it stops making noise.
 		silenceRadius: number,
@@ -45,6 +48,7 @@ function Pursuit.new(rooms: { [string]: Point }, start: Point): Tracker
 		target = nil,
 		targetName = nil,
 		state = "idle" :: State,
+		dwell = 0,
 		speed = 9,
 		silenceRadius = 26,
 		arriveRadius = 4,
@@ -56,6 +60,10 @@ end
 function Pursuit.setState(self: Tracker, state: State)
 	if self.state == state then
 		return
+	end
+	if state ~= "arrived" then
+		-- Dwell only means anything while it is standing somewhere.
+		self.dwell = 0
 	end
 	self.state = state
 	if self.onStateChanged then
@@ -114,6 +122,11 @@ function Pursuit.isAudible(self: Tracker): boolean
 end
 
 function Pursuit.step(self: Tracker, dt: number)
+	if self.state == "arrived" then
+		-- Real seconds, because `step` is driven by Heartbeat.
+		self.dwell += dt
+	end
+
 	local target = self.target
 	if not target then
 		self:setState("idle")
@@ -138,6 +151,20 @@ function Pursuit.step(self: Tracker, dt: number)
 
 	-- Recompute after moving so the state matches where it actually is.
 	self:setState(self:classify(distance(self.position, target)))
+end
+
+-- Has it stood in this room long enough to lose interest?
+--
+-- Until R25 nothing ever returned it to idle except the round being lost, so
+-- once it arrived it stayed for good — and since R24 it captures the whole time
+-- it is arrived. A single plain word therefore parked it on top of an objective
+-- permanently: nobody could patch that station, `allSolved` was unreachable,
+-- and the round could only end in a loss. Both required stations were lockable.
+--
+-- Asked rather than acted on, so the DURATION stays a dial in Config and this
+-- module stays free of clocks.
+function Pursuit.shouldLeave(self: Tracker, after: number): boolean
+	return self.state == "arrived" and self.dwell >= after
 end
 
 return Pursuit

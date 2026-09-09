@@ -40,6 +40,14 @@ local Config = {
 	-- would be correct but would replicate the whole lexicon four times a second.
 	DecaySeconds = 1,
 
+	-- How long the Operator stands in the room it understood before losing
+	-- interest. Until R25 the answer was FOREVER, and since R24 it captures the
+	-- whole time it is standing there -- so one plain word parked it on top of an
+	-- objective permanently and the round could only end in a loss.
+	-- The number is a balance question filed for the owner; that there must BE
+	-- one is not.
+	LingerSeconds = 20,
+
 	-- Guessing. The answer is two digits -- 90 possibilities -- and the submit
 	-- remote is rate-limited to one attempt every 0.75s, so a player alone at a
 	-- keypad brute-forces a line in about 34 seconds without anyone ever
