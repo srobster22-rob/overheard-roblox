@@ -431,3 +431,5 @@ routed to the right room, and the built `.rbxlx` carries all of it.
 
 **Next.** Either the LLM backend (R5 on the backlog) or DataStore persistence
 (R6). The station work that was blocking a fuller round is done.
+
+**Commit.** `5da2adc`
