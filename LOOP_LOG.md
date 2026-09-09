@@ -2345,7 +2345,7 @@ coinage storage. All three live in the same stemming redesign and item 2 needs
 an owner decision about which way to be wrong, so bundling them into a fix I
 picked unilaterally would be worse than filing them together.
 
-**Commit** `%%HASH%%`.
+**Commit** `ae02ab5`.
 
 **Next round.** The stemming cluster (2-4) is the biggest remaining known
 defect area but wants direction. Absent that, R7 (The Supervisor — punishes
