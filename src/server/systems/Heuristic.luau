@@ -21,6 +21,20 @@ local BURNED_AT = 1.0
 local Heuristic = {}
 Heuristic.name = "heuristic"
 
+-- Does `joined` contain `phrase` as WHOLE words?
+--
+-- `joined` is stems separated by single spaces, so surrounding both sides with
+-- one space turns "is a substring of" into "is a run of whole words". Without
+-- the padding, `string.find` matched inside a longer token in both directions:
+-- the phrase's last word could be a prefix of a token ("the blue" understood
+-- inside "check the bluetooth") and its first word could be a suffix of one
+-- ("one blue" inside "someone blue"). Both were probed at confidence 1.0, on
+-- bigrams the Operator mints from ordinary sentences, so a player speaking
+-- normally moved the monster for a phrase they never said.
+local function containsWords(joined: string, phrase: string): boolean
+	return string.find(` {joined} `, ` {phrase} `, 1, true) ~= nil
+end
+
 local function matchesAny(stems: { string }, joined: string, candidates: { string }): boolean
 	for _, candidate in candidates do
 		local candidateStems = Lexicon.stemAll(Lexicon.tokenize(candidate))
@@ -32,8 +46,10 @@ local function matchesAny(stems: { string }, joined: string, candidates: { strin
 				return true
 			end
 		else
-			-- Multi-word term: require the whole phrase, in order.
-			if string.find(joined, table.concat(candidateStems, " "), 1, true) then
+			-- Multi-word term: require the whole phrase, in order, on word
+			-- boundaries. Single-word terms go through `Lexicon.contains`,
+			-- which compares whole stems and was never affected.
+			if containsWords(joined, table.concat(candidateStems, " ")) then
 				return true
 			end
 		end

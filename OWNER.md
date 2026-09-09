@@ -117,3 +117,18 @@ Write in plain English. One item per line. Top item goes first.
   cools all the way to zero is now dropped, so the list drains on its own and
   only shows words it actually knows something about. Nothing to decide here.
 
+
+- R15 - the monster could understand a phrase you did not say. Once your group
+  burns a two-word phrase, it was matched as raw letters rather than as words,
+  so it fired on any longer word that happened to start the same way. Real
+  examples, all tested: with "the blue" burned, saying "check the bluetooth"
+  moved it; with "big red" burned, "the big redhead" moved it; with "one blue"
+  burned, "someone blue" moved it. The game mints exactly those short phrases
+  from ordinary sentences - one line of normal chat produced "the blue" and
+  "is fine" - so this was reachable by talking normally, and the Lexicon panel
+  gave you no way to see why it happened. Phrases now have to be said as whole
+  words. The phrase still works everywhere it should: said alone, mid-sentence,
+  at either end, and in the plural.
+  Also: the part of the code that decides what the monster understood had no
+  test of its own until now, which is why this survived fifteen rounds.
+  Nothing to decide here.

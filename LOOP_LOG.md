@@ -1989,3 +1989,200 @@ discarded but the player's screen still shows.
   loud-vs-quiet wrong-code question. **No new owner question this round** — a
   module documented as forgetting, which kept every word it ever heard, has one
   correct answer.
+
+**Commit.** `c382c1d`
+
+## R15 — a coinage understood inside a longer word
+
+**Stage 0.** `OWNER.md` has nothing under `## Next`, so this round picks for
+itself. Four questions stay with the owner and were NOT decided here:
+`CoolPerSecond`, the mid-round re-deal on JOIN, solo-player-cannot-finish, and
+R9's loud-vs-quiet wrong keypad code.
+
+Staying on the half R14 pointed at. R14's framing is the thing to keep: a defect
+count is a property of where you point, and the listener half — `Operator`,
+`Heuristic`, `Lexicon` — is the half the game is named after and the half with
+the least test surface. Eight probes against the real modules this round.
+
+**Stage 1 — shortlist.** Every item below is a live probe result, not a read.
+
+1. *(picked)* **A multi-word coinage is understood inside a longer word.**
+   `matchesAny` joins stems with spaces and calls `string.find(joined, phrase,
+   1, true)` — a plain substring with no word boundary on either end. Probed
+   against a real `Heuristic` with a burned coinage at heat 1.0:
+   `'blue one'` vs "the blue oneself" -> **conf 1.00**; `'the blue'` vs "check
+   the bluetooth" -> **1.00**; `'is fine'` vs "the board is finest" -> **1.00**;
+   `'one blue'` vs "someone blue" -> **1.00**; `'big red'` vs "the big
+   redhead" -> **1.00**. Both directions fail: the phrase's last word may be a
+   prefix of a longer token, and its first word may be a suffix of one.
+   What makes this the pick rather than a curiosity is a second probe: a real
+   `Operator.new` fed the single ordinary sentence "the blue one is fine" plus
+   one credit mints five coinages, and **two of them are stopword-bearing
+   bigrams** — `the blue` and `is fine`. So the game itself manufactures
+   exactly the short, common phrases whose prefixes turn up inside ordinary
+   English words. This is a player speaking normally being understood — the
+   monster moving — for a phrase they did not say, and the panel gives them no
+   way to tell why. Player-facing, demonstrated, cheap, reversible.
+2. **The burst cap** — R14's filed item. Re-probed: a 230-char message inside
+   Roblox's chat cap offers 10 distinct terms when the words repeat and ~79 when
+   they do not. Real, but R14's fix already drains it in ~25s, so it is a
+   transient, and capping it is a tuning dial with a design opinion inside it.
+   **Filed again, not built.**
+3. **The undealt-line invariant** (`holder == actorUserId` is false for `nil`).
+   Real, but unreachable before the first `PlayerAdded` and nobody can read the
+   answer to type it — under R9's jam it costs a guesser 40 minutes.
+   **Deferred, third round running.**
+4. **Degenerate coinage phrases.** Probed whether a coinage that stems to
+   nothing matches everything: `'the'` (stopword), `'!!'` (no stems) and `''`
+   all return conf 0.00 against an unrelated sentence. `matchesAny` already
+   `continue`s on an empty stem list, and stopwords never enter the register.
+   **No defect. Recorded so a later round does not re-probe it.**
+5. **The listener half has no assertion-bearing test file at all.**
+   `tests/operator.luau` is 20 lines that shell out to `TestOperator`;
+   `tests/lexicon.luau` covers the text layer. `Heuristic` — the module that
+   decides what the monster understood — is exercised by nothing that counts a
+   check. That is why #1 survived fifteen rounds. **Folded into the pick**, not
+   run separately: the fix needs a test and the test needs a file.
+6. **Nothing asserts that a test file is actually run.** `test.cmd`'s list of
+   suites is hand-kept. A new `tests/heuristic.luau` that never reaches that
+   line ships unrun and green — this project's oldest recurring shape (a thing
+   declared and wired to nothing), aimed at the suite itself. **Folded in** as
+   the guard that keeps the pick honest.
+
+**Pick: #1, as a class fix**, with #5 and #6 folded in. Padding the one
+`string.find` call would fix today's phrase and leave the next matcher free to
+repeat it, and would leave the fix guarded by nothing.
+
+**Stage 2 — built.**
+
+- `Heuristic.matchesAny` now matches multi-word terms on WORD BOUNDARIES, via a
+  named `containsWords(joined, phrase)`. `joined` is stems separated by single
+  spaces, so padding both sides with one space turns "is a substring of" into
+  "is a run of whole words" — three characters of change, given a name and a
+  comment because the next person to touch this function is the one who has to
+  know why the padding is there. Single-word terms were never affected: they go
+  through `Lexicon.contains`, which compares whole stems.
+- Deliberately NOT exported as `Heuristic._containsWords`. A private matcher
+  tested directly can be correct while the caller quietly stops using it — this
+  project has shipped that shape more than once — so every check goes through
+  `Heuristic.understand`, the function the game actually calls.
+- `tests/heuristic.luau` — NEW, 23 checks, the first assertion-bearing test the
+  comprehension module has ever had. Six checks are the KEEP side (said exactly,
+  mid-sentence, at either end, through the stemmer, and a stopword-bearing
+  bigram), because a boundary rule that rejected those would be worse than the
+  bug: the coinage the group worked for would stop working. Six are the reject
+  side, one per probed false positive, in both directions. Two hold adjacency
+  and order. Three are the degenerate phrases from shortlist item 4, so that
+  probe result becomes a guard rather than a paragraph. Three hold the heat
+  ladder including R14's neutrality claim with a hot control beside it. Two hold
+  the plain path, asserted rather than assumed, because the fix edits a function
+  both paths share.
+- One check in that file names its own trap: "the board is finest" was the
+  first sentence written for the tail-prefix case and it PASSED with the bug
+  still in — `board` is plain language for `jack_number`, so the sentence was
+  understood for a legitimate reason. The sentence is now "the wire is finest"
+  and the comment says why, because the failure mode is invisible.
+- `test.cmd` runs `heuristic`, and `tests/wiring.luau` gains 13 checks
+  (111 -> 124) that a test file which exists is a test file that RUNS. Both
+  lists are derived — suites from the `for %%T in (...)` line, helpers from the
+  fact that another test `require`s them — so nothing is hand-kept. This guard
+  caught its own author mid-round: it failed by name on `tests/r15_probe.luau`,
+  the scratch probe file, before that file was removed.
+
+**Stage 3 — review.**
+
+`C:\Users\srobs\roblox-game\test.cmd` by ABSOLUTE path, output asserted
+non-empty before any tally was read: **19,704 chars**, exit 0. lexicon 14/14,
+heuristic 23/23, `[TestOperator] all assertions passed` / `operator: all
+assertions passed`, objectives 84/84, pursuit 36/36, round 46/46, config 44/44,
+wiring 124/124, `suite passed`. **371 counted checks, up from R14's 328.**
+`selene src`: 0 errors, 0 warnings, 0 parse errors. `rojo build
+default.project.json -o <scratch>/r15_overheard_check.rbxlx` exit 0.
+
+**Reached the product.** Built place grepped with python. Controls known
+present: `OVERHEARD` x5, `PlayerRemoving` x4; R14's `table.remove(self.lexicon`
+still x1. New: `local function containsWords` x1, `is a run of whole words` x1,
+`containsWords(joined, table.concat` x1. **The old call is gone:**
+`string.find(joined, table.concat` x0. Control known absent:
+`ZZ_NOT_IN_THIS_FILE_ZZ` x0.
+
+**Six plants.** Each reported whether it applied before the suite ran, each
+asserted >2000 chars of output so a silent runner could not read as a dead
+plant, each exited 1 and failed BY NAME with no crash, each restored by byte
+copy and verified by sha256 (`Heuristic.luau` `2953DB72…3A38ED2B`, `test.cmd`
+`47B5970C…89FB9B7E`, both identical to the post-edit baselines).
+
+1. **The shipped defect** — the plain substring match restored, which is R14's
+   exact behaviour: all six reject-side checks red by name, heuristic 17/23.
+2. **The half fix, left end only** — pad `joined` but not the phrase's tail:
+   4 red, led by `FAIL the phrase's tail is a prefix of a longer token`, 19/23.
+3. **The half fix, right end only:** exactly 1 red, `FAIL the phrase's head is
+   a suffix of a longer token`, 22/23. Plants 2 and 3 are why both directions
+   have their own checks — either half-fix leaves the other direction wide open
+   and passes most of the file.
+4. **Over-eager** — the utterance must BE the phrase: all six keep-side checks
+   red plus the heat ladder, 15/23. This is the plant that justifies the keep
+   side existing; every reject-side check passes under it.
+5. **The new suite file is not run** — `heuristic` removed from `test.cmd`:
+   `FAIL tests/heuristic.luau is listed in test.cmd`, wiring 122/123. Note the
+   shape: the heuristic block simply does not appear in the output at all, and
+   without this guard the suite would print `suite passed`.
+6. **`test.cmd` names a suite that does not exist** (`heuristik`): both
+   directions red, wiring 122/124.
+
+**Honest note on plant 4.** It was caught by name by this round's own keep-side
+checks first, but it ALSO tripped `TestOperator`'s older `guard: the same phrase
+HOT must be understood, or 10 proves nothing`. Recording the collateral hit
+rather than implying the new file was the only thing standing there. R14's note
+that `TestOperator` aborts at the first failure still stands and was not fixed —
+it did not block this round, because the new checks live in a counting file that
+runs every check before exiting.
+
+Suite re-run green after all six: exit 0, 19,704 chars, 371 checks.
+
+**Studio-blocked.** Roblox Studio is device-blocked; nothing here was seen or
+heard running and no claim in this entry is a playtest claim. Specifically
+unverified: whether a group ever actually says "bluetooth" or "redhead" in a
+round (the false positives are demonstrated against the real `Heuristic`, not
+observed in play), and how a wrongly-triggered pursuit reads on screen. What the
+headless suite DID prove: a burned coinage is still understood in six ways it
+must be, is no longer understood in six ways it must not be, in both directions
+separately; adjacency and order survive; a degenerate phrase conveys nothing;
+the heat ladder and the plain path are unchanged; every test file in `tests/` is
+run by `test.cmd`; and the built `.rbxlx` carries the new matcher with the old
+call gone.
+
+**Retired this round.** Two carried items, both from R14's shortlist: the
+degenerate-coinage question (item 4) is retired as a NO DEFECT with three checks
+holding it there rather than a paragraph, and the substring match is retired by
+being fixed. A third thing is retired quietly: "the listener half has no test
+that counts a check" was true for fourteen rounds and is not any more.
+
+**Left open.**
+- **The burst cap** — one message can offer many candidate terms. Re-probed and
+  still real; still a tuning dial with a design opinion in it, and R14's drain
+  makes it a transient. Filed, third round running.
+- **The undealt-line invariant** (`holder == actorUserId` with `holder = nil`).
+  Unreachable before the first `PlayerAdded`. Filed, third round running.
+- **Spam-burn** — R14's note stands, untouched: whether a "use" is a message or
+  an occasion is a design fork.
+- `TestOperator` is `assert`-based and aborts at the first failure, so an older
+  assertion can shadow a newer one. It did not block this round and was left
+  alone rather than gold-plated; the fix is to port it to the counting `check`
+  shape every other file uses.
+- R7's item stands for an EIGHTH round: the shared scanner is a lexer, so
+  `if false and ...` passes any wiring guard. Still the oldest thing here.
+- R12's filed self-audit: the `src/server/systems/` adoption list is hand-kept
+  and needs a per-entry exemption list. **Narrower now** — the `tests/` half of
+  that family is swept as of this round, `src/` is not.
+- The two overlapping remote-name guards are still two.
+- R13's fifth seam shape — a re-deal landing between being told a number and
+  entering it — remains blocked on the owner's join-reshuffle question.
+- **Still with the owner, untouched and NOT decided here:** `CoolPerSecond`; the
+  mid-round re-deal on JOIN; the solo-player-cannot-finish question; and R9's
+  loud-vs-quiet wrong-code question. **No new owner question this round** — a
+  matcher that understands a phrase nobody said has one correct answer, and the
+  keep-side checks pin the boundary so the fix cannot drift into the other
+  failure mode.
+
+**Commit.** `PENDING`

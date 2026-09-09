@@ -418,6 +418,63 @@ check(
 	movedBranch ~= nil and string.find(movedBranch :: string, "table.remove", 1, true) == nil
 )
 
+-- A SUITE FILE THAT IS NEVER RUN. `test.cmd` hand-keeps the list of suites, so
+-- a new test file that never reaches that line ships unrun and the suite still
+-- prints `suite passed` -- this project's oldest shape (a thing written and
+-- wired to nothing) aimed at the guard rig itself. R15 added
+-- `tests/heuristic.luau`, and this is what stops the next one being forgotten.
+--
+-- Both lists are DERIVED: the suites from the `for %%T in (...)` line, and the
+-- helper files from the fact that another test requires them. Nothing here is
+-- hand-kept, so it cannot drift the way `test.cmd` did.
+print("every test file is actually run")
+local testCmd = fs.readFile("test.cmd")
+local suiteList = string.match(testCmd, "for %%%%T in %(([^)]*)%)")
+check("test.cmd's suite list was found (guard)", suiteList ~= nil)
+
+local declared: { [string]: boolean } = {}
+local declaredCount = 0
+if suiteList then
+	for name in string.gmatch(suiteList :: string, "%S+") do
+		declared[name] = true
+		declaredCount += 1
+	end
+end
+check("and it names more than one suite (guard)", declaredCount > 1)
+
+-- Anything another test requires as `./name` is a helper, not a suite.
+local helpers: { [string]: boolean } = {}
+local testFiles: { string } = {}
+for _, entry in fs.readDir("tests") do
+	local stem = string.match(entry, "^(.+)%.luau$")
+	if stem then
+		table.insert(testFiles, stem)
+		for required in string.gmatch(fs.readFile(`tests/{entry}`), 'require%("%./([%w_]+)"%)') do
+			helpers[required] = true
+		end
+	end
+end
+check("tests/ was read and holds files (guard)", #testFiles > 1)
+check("and helper files were detected (guard)", helpers.harness == true)
+
+table.sort(testFiles)
+for _, stem in testFiles do
+	if not helpers[stem] then
+		check(`tests/{stem}.luau is listed in test.cmd`, declared[stem] == true)
+	end
+end
+-- The other direction: a suite renamed or deleted leaves test.cmd invoking a
+-- file that is not there.
+local declaredSorted: { string } = {}
+for name in declared do
+	table.insert(declaredSorted, name)
+end
+table.sort(declaredSorted)
+for _, name in declaredSorted do
+	check(`test.cmd's '{name}' exists as tests/{name}.luau`, fs.isFile(`tests/{name}.luau`))
+end
+
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

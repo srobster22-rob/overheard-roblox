@@ -3,7 +3,8 @@ REM Run the whole headless suite. No Studio required.
 cd /d "%~dp0"
 set ROKIT=%USERPROFILE%\.rokit\bin
 set FAILED=0
-for %%T in (lexicon operator objectives pursuit round config wiring) do (
+REM tests/wiring.luau asserts this list covers every suite file in tests/.
+for %%T in (lexicon heuristic operator objectives pursuit round config wiring) do (
     echo(
     echo === %%T ===
     "%ROKIT%\lune.exe" run tests/%%T || set FAILED=1
