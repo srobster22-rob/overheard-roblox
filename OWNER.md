@@ -138,3 +138,66 @@ Write in plain English. One item per line. Top item goes first.
   Also: the part of the code that decides what the monster understood had no
   test of its own until now, which is why this survived fifteen rounds.
   Nothing to decide here.
+
+- R16-R77 (summary) - sixty-two rounds shipped without an entry here; this one
+  catches the file up. Rough shape of the work:
+  - R16-R29: the Operator got a body that can be taken, be lost to, leave
+    audibly, and the game gained a real round boundary (win, lose, restart).
+  - R30-R49: per-round state stopped leaking across restarts; the acquisition
+    math (how a coinage burns) was measured against real sessions; a
+    permanent soak test was built after three straight rounds shipped defects
+    a soak would have caught.
+  - R50-R58: Entity #4, the Supervisor (punishes silence), designed, measured,
+    built, and given its own remote, HUD panel, and a bar that actually moves.
+  - R59-R77: the evidence itself came under audit - the soak was found to be
+    testing a different game than the one shipping (no seed, wrong capture
+    model, missing systems), a log-recovery incident (LOOP_LOG.md itself was
+    silently emptied by its own "record the commit" step for 33 rounds, R53),
+    six mutation-testing sweeps across the whole game, and the first piece of
+    R6 (Lexicon persistence) - the save FORMAT, proven to round-trip through
+    real JSON, with no DataStoreService call yet.
+  Full detail for any of this is in LOOP_LOG.md, which outranks this file and
+  is searched by round number (e.g. "## R54").
+
+## Open questions — filed by the loop, waiting on you
+
+Nothing below blocks the build; each is either a feel question Studio would
+answer (device-blocked all session) or a design choice with real trade-offs on
+both sides. Full detail for each is in LOOP_LOG.md at the round named.
+
+- **R21 - does being caught in a corner read as unfair?** The Operator's reach
+  covers 66% of a room's floor by radius; the corners are further. Feel
+  question.
+- **R36 - does deferring a call read as patience, or as ignoring you?** Same
+  category as R21.
+- **The stemming pair (R17-ish; see LOOP_LOG "the stemming pair").** An `es`
+  over-strip makes plain plurals free to say and kills a burned coinage in the
+  plural. Fixing it needs a decision about which way the game should be wrong
+  in the meantime; three related items bundle with it.
+- **R46 - the Operator can never actually learn a coinage in real play.**
+  Measured: a normal session credits about 2 uses toward burning a phrase; 4
+  are needed. `ActThreshold`/`HeatPerCredit`/`CreditWindow` are all candidates
+  to retune, and it's your call which.
+- **R50-51's boolean-guards-hiding-a-degree family, including
+  `anyFinishable`'s margin.** Several yes/no checks in the suite (is the round
+  finishable, is the hum audible) may be hiding an unasked question of DEGREE
+  (finishable by how much, audible how loud) rather than kind.
+- **R54 - three questions from building the Supervisor:** whether the
+  corridor should be a place silence goes unpunished (it currently is, by
+  omission); whether `SpeakEvery` (45s) is the right pressure; whether the
+  Supervisor needs a body distinct from the Operator's.
+- **R59/R62 - two numbers, not decisions:** a silent player standing in the
+  corridor is unreachable by the Supervisor 225 times in one measured
+  session; a group with one quiet member in four loses 21 of 28 simulated
+  rounds. Whether either number is a problem is a balance call.
+- **R63 - a room somebody gives away while the Operator is already busy is
+  silently dropped, never visited.** Keep it as decoration, take it up on
+  arrival instead of only when idle, or drop the queue and let the newest
+  giveaway win.
+- **R73 - what counts as "the same group" for Lexicon persistence to key on**
+  across separate server instances: a private-server code, a passphrase, or
+  Roblox's friends graph. The save format itself does not depend on the
+  answer.
+- **R77 - `Layout.reach()` and `Layout.cornerDistance()` have no production
+  caller** (superseded by room-based capture, R23). Delete, keep as a
+  documented primitive, or repurpose for a future entity.

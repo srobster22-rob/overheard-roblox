@@ -7644,3 +7644,52 @@ precedent), or repurpose them for a future entity's reach is a real choice
 this round did not have grounds to make either way.
 
 **Commit** `6346a55`
+
+
+## R78 — OWNER.md's own Done section stopped at R15, sixty-two rounds ago
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — the file meant for the owner has not spoken to them since R15.**
+`OWNER.md`'s own header says the agent "moves finished items here with the
+round number and result," and its early entries (R4–R15) did exactly that,
+several of them ending in an explicit **"ONE THING FOR YOU"** — a question laid
+out for the owner to answer, in the one file whose entire purpose is being read
+by them.
+
+That stopped at R15. Sixty-two rounds have shipped since (R16–R77) and not one
+appended to `## Done`, even though many of them filed real, undecided
+questions — R21's corner fairness, the stemming pair, R46's learning gap,
+`anyFinishable`'s margin, R54's three, R59's corridor number, R62's loss-rate
+number, R63's queued-room drop, R73's group-identity question, R77's
+`Layout.reach()` question. Every one of those lives buried in a `LOOP_LOG.md`
+entry the owner would have to read seventy-odd rounds of history to find. The
+mechanism for surfacing them already existed and simply went unused.
+
+1. *(picked)* **Catch `OWNER.md` up: a summary of what shipped since R15, and
+   every currently-open question in one place, in the file built for exactly
+   that.**
+2. Nothing new filed this round; this is the filing catching up to itself.
+
+**Stage 2 — the fix.** `OWNER.md`'s `## Done` section now has one summary
+entry for R16–R77, grouped by era, pointing at `LOOP_LOG.md` for full detail
+rather than restating seventy rounds of it. A new `## Open questions` section
+lists every currently-filed question in one place — R21, R36, the stemming
+pair, R46, the R50/51 boolean-guard family, R54's three, R59/R62's two
+numbers, R63, R73, R77 — each with a one-line description and enough of the
+measurement to act on without re-reading the round that found it.
+
+**Stage 3 — review.** No `src/` or `tests/` file changed, so no new test to
+plant against; the full suite is re-run to confirm the counts are identical to
+R77's — they are, line for line.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green, unchanged from R77**: lexicon 22, heuristic 49, operator ok,
+objectives 122, pursuit 104, round 59, config 63, wiring 354, connected 32,
+ordering 4, heat 20, layout 104, lifecycle 90, hud 26, readout 29, soak 42,
+hum 29, log 18, silence 62, lexiconsave 28.
+
+*Not claimed:* that any of these ten questions is now more decided than it was
+— only that they are now readable in one place without opening `LOOP_LOG.md`
+at all. The next round to file a new owner question should add it here too,
+not let this list go another sixty-two rounds stale.
