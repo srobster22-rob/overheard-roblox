@@ -36,3 +36,12 @@ Write in plain English. One item per line. Top item goes first.
   can finish a round - both lines deal to that player, and the rule is that the
   holder may not enter their own answer. Should there be a minimum player
   count, or should a solo player be allowed to solve their own?
+
+- R8 - if the player holding a line disconnected, that line was stranded for
+  good. Nobody else had ever been shown the answer, so it could never be
+  entered and the round could never be completed by the people still in the
+  server - the station just sat there being useless. Now a line whose holder
+  has left is passed to somebody still playing. Only stranded lines move;
+  everyone else keeps what they were already holding, so this does not answer
+  your open question about what should happen when someone JOINS mid-round.
+  Nothing to decide here.

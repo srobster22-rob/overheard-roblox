@@ -169,6 +169,20 @@ end)
 
 Players.PlayerRemoving:Connect(function(player: Player)
 	lastSubmit[player.UserId] = nil
+	-- The leaver may have been holding a line. Nobody else was ever shown that
+	-- answer, so without this the objective is unsolvable and the round can
+	-- never end for the players still here. Only orphaned lines move.
+	local userIds: { number } = {}
+	for _, p in Players:GetPlayers() do
+		-- GetPlayers still contains the leaver during PlayerRemoving; dealing
+		-- an orphan straight back to them would re-strand it.
+		if p ~= player then
+			table.insert(userIds, p.UserId)
+		end
+	end
+	if board:redealOrphans(userIds) > 0 then
+		pushObjectives(nil)
+	end
 end)
 
 -- The Operator forgets, in real time. Ticked here rather than inside Operator

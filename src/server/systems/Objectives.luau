@@ -92,6 +92,39 @@ function Objectives.deal(self: Board, userIds: { number })
 	end
 end
 
+-- A holder who disconnects takes the answer out of the server with them:
+-- `viewFor` shows it only to `o.holder`, so once that userId is gone nobody can
+-- read the line, `submit` can never match it, and `allSolved` can never become
+-- true. The station stays live as a thing nobody in the room can act on and the
+-- round is unwinnable for everyone still playing.
+--
+-- Re-deal only the objectives whose holder is no longer present. Deliberately
+-- NOT a full re-deal: whether JOINING should reshuffle everyone's lines is an
+-- open design question for the owner, and moving only orphans does not answer
+-- it. Derived from who is present rather than from who just left, so it also
+-- repairs a holder that was never set. Returns how many lines moved.
+function Objectives.redealOrphans(self: Board, userIds: { number }): number
+	if #userIds == 0 then
+		return 0
+	end
+	local present: { [number]: boolean } = {}
+	for _, id in userIds do
+		present[id] = true
+	end
+
+	local moved = 0
+	local i = math.random(#userIds)
+	for _, o in self.list do
+		local holder = o.holder
+		if not o.solved and (holder == nil or not present[holder]) then
+			o.holder = userIds[((i - 1) % #userIds) + 1]
+			i += 1
+			moved += 1
+		end
+	end
+	return moved
+end
+
 -- What a given player is allowed to know. The answer is included ONLY for the
 -- holder; everyone else gets the same shape with the answer withheld.
 function Objectives.viewFor(self: Board, userId: number): { any }

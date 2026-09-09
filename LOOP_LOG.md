@@ -730,3 +730,168 @@ the built `.rbxlx` carries the source change.
   the mid-round re-deal question; and the solo-player question above.
 
 **Commit.** `7d582f5`
+
+## R8 — a holder who disconnects strands the line forever (2026-09-08)
+
+**Stage 0.** `OWNER.md` still has nothing under `## Next`, so this round picks
+for itself. Three items stay with the owner and were NOT touched: the decay
+rate (`CoolPerSecond`), the mid-round re-deal question (what happens to holders
+when someone JOINS), and the solo-player-cannot-finish question.
+
+**Stage 1 — shortlist.**
+
+1. *(picked)* **`PlayerRemoving` never re-deals, so a disconnecting holder takes
+   an objective's answer out of the server with them.** `board:deal` runs on
+   `PlayerAdded` and nowhere else; `PlayerRemoving` clears one rate-limit entry
+   and returns. `Objectives.viewFor` gives the answer only to `o.holder`, so
+   once that userId is gone the answer is visible to nobody, `submit` can never
+   match it, `allSolved` can never be true, and the station's ProximityPrompt
+   stays live forever as a thing nobody in the room can act on. This is the R4
+   and R5 shape exactly: a group left permanently stuck by a state change
+   nobody can see, in a 4-player horror game where someone leaving mid-round is
+   the normal case, not the edge case. Fixable server-side, provable headlessly,
+   and reversible.
+2. **`Round.pickSecrets` is exported and nothing in `src/` calls it** — R5's
+   `dealSecrets` replaced it and only `tests/round.luau` still exercises it, so
+   38 of the suite's checks defend a function the game does not run. Real, and
+   it is the "capability written and never wired" shape. But it is dead weight,
+   not a defect a player can feel, and deleting it deletes test coverage rather
+   than adding any. Filed, not picked.
+3. **A parser to close R7's read-vs-write hole in the dead-dial guard.** R7
+   filed this honestly as beyond a lexer. Weighed and rejected for this round:
+   it is a fifth consecutive guard round, it is the most expensive item on the
+   list by a wide margin, and its payoff is a class of defect (a dial assigned
+   but never consumed) that has never actually occurred here — while #1 is a
+   defect that is in the shipped code right now.
+4. **The station ProximityPrompt stays enabled after its objective is solved**,
+   so players can keep walking up to a patched board and typing at it. Real but
+   cosmetic, and it is entangled with round flow (R9), which does not exist yet.
+   Rejected for now.
+5. **`redealOrphans` vs re-deal-on-join** — the two are deliberately NOT the
+   same mechanism. The join case reshuffles every holder and is the owner's
+   filed question; the leave case only needs to move lines whose holder is gone.
+   Building #1 as an orphan-only re-deal means it does not pre-empt the owner's
+   decision either way. Recorded so a later round does not merge them by
+   accident.
+
+**Pick: #1.** Four straight rounds have been guard work and the guards are now
+strong (128 checks). This one is a thing a player would feel: the round stops
+being unwinnable when your friend rage-quits.
+
+**Stage 2 — built.**
+
+- `src/server/systems/Objectives.luau` — new `redealOrphans(userIds) -> number`.
+  It moves an unsolved objective only when its holder is not in the list of
+  players present, and returns how many moved. Derived from who IS present
+  rather than from who just left, so it also repairs a line that was never
+  dealt at all. Deliberately not a full re-deal: whether a player JOINING
+  should reshuffle everyone's lines is the owner's open question, and moving
+  only orphans leaves that question open either way.
+- `src/server/init.server.luau` — `PlayerRemoving` now builds the list of
+  remaining players, excluding the leaver (`Players:GetPlayers()` still
+  contains them during this event, and dealing an orphan straight back to a
+  disconnecting player would re-strand it), calls `redealOrphans`, and pushes
+  the objectives only when something actually moved.
+- `tests/objectives.luau` — 17 new checks. Twelve on the module: the leaver's
+  line moves, it goes to somebody present, exactly one line moves, a line held
+  by a present player is untouched, somebody can now SEE the orphaned answer,
+  and the round can be finished again (a third player actually solves the
+  re-dealt line). Plus the four ways it must not overreach: a solved line, an
+  empty server, a never-dealt line, and an all-present board.
+- Three more read `init.server.luau` itself. The module can be perfect and the
+  round still unwinnable if nothing CALLS it, and `init.server` needs a real
+  Roblox runtime, so the guard reads its source and checks the handler body.
+- `tests/luaucode.luau` — NEW. R7's `stripNonCode` scanner, moved out of
+  `tests/config.luau` into a module both guards share.
+
+**Why the scanner moved, and it was not planned.** The first draft of the
+wiring guard searched RAW source for `redealOrphans`. Planting `if false and
+board:redealOrphans(...)` to check it, I saw it print `ok` — and realised the
+guard would equally have been satisfied by the explanatory COMMENT sitting
+directly above the call. That is the exact defect R4, R6 and R7 each caught in
+turn, committed a fourth time, in the round that was supposed to be about
+something else. So the scanner became shared rather than copied: one
+implementation, one set of credibility checks, no drift. `tests/config.luau`
+still owns those 17 checks and now proves the scanner for both callers.
+
+**KNOWN LIMIT, stated in the test file.** The scanner is a lexer, so the
+`if false and ...` plant that started all this is still CODE to it and would
+pass. That is R7's filed open item, untouched: this round narrows the guard
+from "a mention passes" to "only real code passes", not to "only LIVE code
+passes."
+
+**Stage 3 — review.**
+
+`test.cmd`, real output: lexicon 14/14, operator all assertions, objectives
+32/32, pursuit 21/21, round 38/38, config 40/40, `suite passed`, exit 0.
+**145 checks, up from R7's 128.** `selene src`: 0 errors, 0 warnings, 0 parse
+errors. `rojo build` exit 0.
+
+Seven plants, each reporting whether it applied, each failing BY NAME, each
+restored and hash-verified byte-identical:
+
+1. **The shipped defect** — the `redealOrphans` call deleted from
+   `PlayerRemoving`, which is exactly the code that was live before this round:
+   `FAIL  the PlayerRemoving handler re-deals orphaned lines`, 31/32, exit 1.
+2. **The leaver included in the re-deal** (`if p ~= player` removed):
+   `FAIL  and it excludes the leaving player from the re-deal`, 31/32, exit 1.
+3. **A MENTION instead of the call** — the call replaced by a comment reading
+   `-- board:redealOrphans(userIds) would go here`:
+   `FAIL  the PlayerRemoving handler re-deals orphaned lines`, 31/32, exit 1.
+   This is the plant the first draft of the guard passed.
+4. **`redealOrphans` made a no-op** — five checks red, 27/32, exit 1.
+5. **Solved lines re-dealt too** — `FAIL  a solved line held by a leaver is not
+   re-dealt` and `FAIL  and its holder is untouched`, 30/32, exit 1.
+6. **Presence ignored, everything moves** — three red including `a line held by
+   someone present is left alone`, 29/32, exit 1.
+7. **The shared scanner made a no-op** — ten red in `tests/config.luau`, 30/40,
+   exit 1, confirming the moved scanner is still load-bearing where it lived.
+
+Post-restore hashes, byte-identical to the pre-plant baselines:
+`Objectives.luau` `89BC0769…DE62BE4F`, `init.server.luau` `6DE4EE1A…D25BAEC0`,
+`tests/objectives.luau` `77CB4688…F4C596B67`, `tests/config.luau`
+`C0F7EBB9…2116CCF9`, `tests/luaucode.luau` `CA13222A…D80993E69`. `git status`
+shows only the five files this round means to touch. Suite re-run green after.
+
+Three process notes, all caught by checking rather than by noticing:
+- **A restore can silently undo your own work.** Backups were taken BEFORE the
+  build; restoring plant 1 from them rolled `init.server.luau` back past the
+  round's own edit, and the suite then failed in a way that looked like the new
+  scanner was broken. Twenty minutes went into debugging a scanner that was
+  fine. Re-baseline the backups AFTER the intended edit, and treat "the test
+  broke right after a restore" as a restore bug first.
+- **PowerShell `Select-String` returned 0 hits on the built `.rbxlx` for every
+  string in it, including controls** like `PlayerRemoving` and `OVERHEARD`.
+  A control grep is what exposed it; without one this would have read as "the
+  change did not reach the product." Grep the built place with python.
+  Python on the same file: `redealOrphans` x2 (the method and its call site),
+  `Only orphaned lines move` x1, `would re-strand it` x1 — the change IS in
+  the product.
+- The scratchpad is shared: a helper file written there was overwritten
+  mid-round by another session's file of the same name. Uniquely-named scratch
+  files only.
+
+**Studio-blocked.** Roblox Studio is device-blocked, so nothing was seen
+running and nothing here is a playtest claim. Specifically unverified: that a
+real disconnect fires `PlayerRemoving` before the client is gone, that the
+re-dealt holder's UI actually repaints from the `pushObjectives` broadcast, and
+anything about how the hand-off FEELS mid-round. What the headless suite DID
+prove: the module moves exactly the orphaned lines and nothing else in six
+scenarios, a third player can solve a re-dealt line so the round becomes
+finishable again, the leave path is wired in `init.server` and excludes the
+leaver, that wiring guard reads code rather than text, and the built `.rbxlx`
+carries the change.
+
+**Left open.**
+- R7's item stands, narrowed but not closed: the scanner is a lexer, so it
+  still cannot tell live code from dead code or a read from a write.
+- `Round.pickSecrets` is exported and called from nowhere in `src/` — R5's
+  `dealSecrets` replaced it and only `tests/round.luau` still exercises it.
+  Shortlist #2; a good candidate for R9.
+- A station's ProximityPrompt stays enabled after its objective is solved.
+  Entangled with round flow, which does not exist yet.
+- **Still with the owner, untouched:** `CoolPerSecond = 0.01` needs a playtest;
+  the mid-round re-deal question (JOIN, not leave — this round deliberately did
+  not answer it); and the solo-player-cannot-finish question.
+- **No new owner decision was filed this round.** The leave case was fixable
+  without making a design call, which is why it was pickable.
