@@ -6226,3 +6226,5 @@ log 18, silence 62.
 *Not claimed:* that the soak now mirrors the server everywhere. This round
 derived the requirement for ONE function, the Supervisor's dispatch. The capture
 path, the loss check and the restart are still mirrored by hand and by habit.
+
+**Commit** `85734fa`
