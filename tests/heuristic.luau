@@ -175,6 +175,73 @@ local unrelated = Heuristic.understand(
 )
 check("...nor a sentence missing half the phrase", unrelated.confidence == 0)
 
+print("")
+print("every giveaway in a sentence is heard, not just the loudest")
+
+-- R40. `understand` returned ONE reading, so a sentence carrying plain
+-- giveaways for two concepts gave away one and left the other free:
+-- "the jack is right by the fuse" registered `jack_number` and nothing else,
+-- while either word alone was understood. The combination hid one, and
+-- Config's own comment says plain speech is ALWAYS punished.
+
+local Operator = rt.require(rt.systems.Operator)
+
+-- Two concepts from the real pool, so this cannot drift from what the game deals.
+local pool = Round.dealSecrets(5)
+local first, second
+for _, secret in pool do
+	if secret.concept == "jack_number" then
+		first = secret
+	elseif secret.concept == "breaker" then
+		second = secret
+	end
+end
+check("(guard) both concepts are in the real pool", first ~= nil and second ~= nil)
+
+if first and second then
+	local both = { first, second }
+	local sentence = `the {first.plain[1]} is right by the {second.plain[2]}`
+
+	-- Each alone, as a control: if these fail the sentence proves nothing.
+	local aloneA = Heuristic.conveyed(utterance(`the {first.plain[1]}`), both, {})
+	local aloneB = Heuristic.conveyed(utterance(`the {second.plain[2]}`), both, {})
+	check("(control) the first word alone is understood", #aloneA == 1 and aloneA[1].concept == first.concept)
+	check("(control) the second word alone is understood", #aloneB == 1 and aloneB[1].concept == second.concept)
+
+	local together = Heuristic.conveyed(utterance(sentence), both, {})
+	check(`both giveaways in one sentence are reported ({#together})`, #together == 2)
+
+	local seen: { [string]: boolean } = {}
+	for _, item in together do
+		seen[item.concept :: string] = true
+	end
+	check("...the first among them", seen[first.concept] == true)
+	check("...and the second", seen[second.concept] == true)
+	check("both at full confidence, since both are plain", together[1].confidence == 1 and together[2].confidence == 1)
+
+	-- Order is stable, so the Operator's first destination is not decided by how
+	-- the pool happened to be shuffled.
+	local again = Heuristic.conveyed(utterance(sentence), { second, first }, {})
+	check("the reading order does not depend on the pool's order", again[1].concept == together[1].concept)
+
+	-- And the Operator ACTS on both: the first moves it, the second queues
+	-- behind it under R36's commitment rule.
+	local fired: { string } = {}
+	local op = Operator.new(both)
+	op.onUnderstood = function(concept: string)
+		table.insert(fired, concept)
+	end
+	op:hear(utterance(sentence))
+	check(`the Operator is told about both ({#fired})`, #fired == 2)
+
+	-- The novel terms must still be counted ONCE, or a sentence conveying two
+	-- concepts would credit its coinages twice and inflate their heat.
+	local counting = Operator.new(both)
+	counting:hear(utterance(`the {first.plain[1]} is by the {second.plain[2]} near the purple lantern`))
+	check("(guard) the sentence offered novel terms", #counting.observations == 1)
+	check("novel terms are recorded once per utterance, not once per concept", #counting.observations == 1)
+end
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

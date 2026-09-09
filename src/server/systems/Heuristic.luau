@@ -79,17 +79,20 @@ local function matchesAny(stems: { string }, joined: string, candidates: { strin
 	return false
 end
 
-function Heuristic.understand(utterance: Utterance, secrets: { Secret }, lexicon: { Coinage }): Understanding
+-- EVERY concept the utterance conveys, strongest first.
+--
+-- `understand` below reports only the strongest, and reporting one was a real
+-- hole in "plain speech is always punished": "the jack is right by the fuse"
+-- carries plain giveaways for TWO concepts, and the Operator registered
+-- `jack_number` and nothing else. Either word alone is understood, so it was
+-- the COMBINATION that hid one -- a group that noticed could bury every
+-- dangerous word inside a sentence giving away something already lost.
+function Heuristic.conveyed(utterance: Utterance, secrets: { Secret }, lexicon: { Coinage }): { Understanding }
 	local words = Lexicon.tokenize(utterance.text)
 	local stems = Lexicon.stemAll(words)
 	local joined = table.concat(stems, " ")
 
-	local best: Understanding = {
-		concept = nil,
-		confidence = 0,
-		novelTerms = {},
-		source = Heuristic.name,
-	}
+	local found: { Understanding } = {}
 
 	for _, secret in secrets do
 		local confidence = 0
@@ -111,15 +114,33 @@ function Heuristic.understand(utterance: Utterance, secrets: { Secret }, lexicon
 			end
 		end
 
-		if confidence > best.confidence then
-			best = {
+		if confidence > 0 then
+			table.insert(found, {
 				concept = secret.concept,
 				confidence = confidence,
 				novelTerms = {},
 				source = Heuristic.name,
-			}
+			})
 		end
 	end
+
+	-- Strongest first, and ties broken by concept name so the order is stable
+	-- rather than dependent on how the pool happened to be shuffled.
+	table.sort(found, function(a, b)
+		if a.confidence ~= b.confidence then
+			return a.confidence > b.confidence
+		end
+		return (a.concept or "") < (b.concept or "")
+	end)
+
+	return found
+end
+
+-- The novel terms an utterance offered. Computed once per utterance, never once
+-- per concept: crediting them twice would inflate every coinage's heat.
+function Heuristic.novelTerms(utterance: Utterance, secrets: { Secret }): { string }
+	local words = Lexicon.tokenize(utterance.text)
+	local stems = Lexicon.stemAll(words)
 
 	-- Everything contentful that is NOT already plain language for some secret
 	-- is a candidate coinage. The Operator does not understand these yet, but it
@@ -157,7 +178,21 @@ function Heuristic.understand(utterance: Utterance, secrets: { Secret }, lexicon
 		end
 	end
 
-	best.novelTerms = novel
+	return novel
+end
+
+-- The single strongest reading, kept because most callers and every existing
+-- test ask "what did that convey", singular.
+function Heuristic.understand(utterance: Utterance, secrets: { Secret }, lexicon: { Coinage }): Understanding
+	local all = Heuristic.conveyed(utterance, secrets, lexicon)
+	local best: Understanding = all[1]
+		or {
+			concept = nil,
+			confidence = 0,
+			novelTerms = {},
+			source = Heuristic.name,
+		}
+	best.novelTerms = Heuristic.novelTerms(utterance, secrets)
 	return best
 end
 

@@ -54,9 +54,16 @@ end
 
 -- Feed it something a player said. Safe to call on every chat message.
 function Operator.hear(self: Operator, utterance: Utterance)
-	local understanding = self.backend.understand(utterance, self.secrets, self.lexicon)
+	-- EVERY concept the utterance conveyed, not just the strongest. Taking the
+	-- best one meant "the jack is right by the fuse" gave away `jack_number` and
+	-- left `breaker` free, because both words are plain language and only one
+	-- could be reported. Either alone was understood; the combination hid one.
+	local conveyed = (self.backend :: any).conveyed(utterance, self.secrets, self.lexicon)
 
-	if understanding.concept and understanding.confidence >= Config.ActThreshold then
+	for _, understanding in conveyed do
+		if understanding.concept == nil or understanding.confidence < Config.ActThreshold then
+			continue
+		end
 		local payload = ""
 		for _, secret in self.secrets do
 			if secret.concept == understanding.concept then
@@ -71,9 +78,14 @@ function Operator.hear(self: Operator, utterance: Utterance)
 
 	-- Remember the unfamiliar words for a little while. If the players turn out
 	-- to have been coordinating about a concept, we credit these retroactively.
-	if #understanding.novelTerms > 0 then
+	--
+	-- Recorded ONCE per utterance, outside the loop above: a sentence conveying
+	-- two concepts still offered its novel terms once, and crediting them twice
+	-- would inflate every coinage minted from it.
+	local novel = (self.backend :: any).novelTerms(utterance, self.secrets)
+	if #novel > 0 then
 		table.insert(self.observations, {
-			terms = understanding.novelTerms,
+			terms = novel,
 			at = utterance.at,
 			speaker = utterance.speaker,
 		})
