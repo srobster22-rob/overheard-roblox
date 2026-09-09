@@ -7269,3 +7269,47 @@ client-to-server, so `FireAllClients` on it is not a category this defect can
 occur in, and adding the check would be testing something that cannot happen.
 
 **Commit** `8466004`
+
+
+## R72 — DESIGN.md still asks questions GAME.md has answered for 71 rounds
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — a second stale doc, same shape as R68.** `DESIGN.md` is a
+pre-implementation questionnaire: "Shape (pick one, cut the rest)", "Players
+per server: ?", "Round length: ?", "What is the monster, and what is its ONE
+learnable rule: ?", "What does the player have to push back the dark: ?", "Why
+does a player come back tomorrow: ?" — every field blank.
+
+Every one of those has been answered, in `GAME.md`, since before R1 shipped:
+the shape is co-op PvE (four players inventing a private language against one
+listener); "Four players, roughly ten minutes, one exchange building"; the
+monster is the Operator and its rule is stated in the file's own epigraph
+("teaches the monster the player's" rule); shared context defeats it; the
+Lexicon and its escalation are the return mechanic. A doc that still asks these
+as open questions is not neutral — it tells a reader (or a future round) that
+none of this has been decided, when 71 rounds of build say otherwise.
+
+1. *(picked)* **Answer `DESIGN.md`'s own questions from `GAME.md`, in place,**
+   rather than leave it contradicting the design bible it predates.
+2. R63's queued-room drop, R59's corridor number, R62's loss-rate number — all
+   **still filed**, awaiting the owner.
+
+**Stage 2 — the fix.** `DESIGN.md`'s five open questions and its shape pick are
+now answered in place, each citing where in `GAME.md` (or `LOOP_LOG.md`, for
+the parts GAME.md doesn't cover) the decision actually lives, with a header
+note that `GAME.md` is the design bible and outranks this file.
+
+**Stage 3 — review.** No `src/` or `tests/` file changed, so no new test to
+plant against; the full suite is re-run to confirm the counts are identical to
+R71's — they are, line for line.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green, unchanged from R71**: lexicon 22, heuristic 49, operator ok,
+objectives 122, pursuit 103, round 59, config 63, wiring 348, connected 32,
+ordering 4, heat 20, layout 99, lifecycle 90, hud 22, readout 29, soak 42,
+hum 29, log 18, silence 62.
+
+*Not claimed:* that `DESIGN.md`'s persistence answer means R6 (the Lexicon
+DataStore work) is close to done — it is not, and the entry says so, pointing
+at the EXPANSION AXIS backlog rather than implying otherwise.
