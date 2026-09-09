@@ -6001,3 +6001,5 @@ silence 48.
 This round checked the exclusion list because that is where R56 put a promise;
 `Hud`, `Readout`, `Keypad`, `Heat` and `Silence` all describe what a client
 should draw, and only this one list is swept for being honoured.
+
+**Commit** `58127cb`
