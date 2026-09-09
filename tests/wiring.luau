@@ -709,6 +709,14 @@ check("the phase is pushed when the round is won", string.find(solvedBlock, "pus
 -- so it now lives in a function of its own that BOTH the capture path and the
 -- tick ask. These checks follow it there.
 local loseBody = string.match(serverCode, "local function endTheRoundIfNobodyCanWin%(.-" .. NL .. "end") or ""
+-- R51. `Presence` must SPEAK through Shared.Hum, or the pitch difference is a
+-- module nobody consults and coming still sounds like going.
+local presenceCode = LuauCode.stripNonCode(fs.readFile("src/server/systems/Presence.luau"))
+check("Presence requires Shared.Hum", string.find(presenceCode, "Shared.Hum", 1, true) ~= nil)
+check("...and asks it per state", string.find(presenceCode, "Hum.forState(tracker.state)", 1, true) ~= nil)
+check("...and sets the pitch it returns", string.find(presenceCode, "hum.PlaybackSpeed = voice.pitch", 1, true) ~= nil)
+check("...and no longer carries its own volume", string.find(presenceCode, "then 0.35 else 0", 1, true) == nil)
+
 check("(guard) found the losing rule", #loseBody > 0)
 check(
 	"...and everyone being taken still loses (control)",

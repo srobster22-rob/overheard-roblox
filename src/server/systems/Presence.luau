@@ -8,6 +8,7 @@
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
+local Hum = require(game:GetService("ReplicatedStorage").Shared.Hum)
 local Pursuit = require(script.Parent.Pursuit)
 
 local Presence = {}
@@ -63,8 +64,17 @@ function Presence.spawn(tracker: Pursuit.Tracker): Body
 
 		-- The silence rule, made audible. Fade rather than cut, or it reads as
 		-- a bug instead of a decision.
-		local wanted = if tracker:isAudible() then 0.35 else 0
-		hum.Volume += (wanted - hum.Volume) * math.min(dt * 3, 1)
+		--
+		-- The VOICE comes from Shared.Hum, which gives approaching and leaving
+		-- different pitches. They used to share one hum at one volume, and
+		-- `isAudible()` is true for both -- so the sound of it coming and the
+		-- sound of it going were identical, and hearing the hum told a player
+		-- only that it was moving.
+		local voice = Hum.forState(tracker.state)
+		hum.Volume += (voice.volume - hum.Volume) * math.min(dt * 3, 1)
+		-- Pitch snaps rather than slides: a retreat should announce itself, not
+		-- ease into being a different sound.
+		hum.PlaybackSpeed = voice.pitch
 	end)
 
 	return {
