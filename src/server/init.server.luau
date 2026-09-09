@@ -172,6 +172,14 @@ local function takeWhoeverIsHere()
 	local caught = line:reachedInRoom(pursuit.position, livePositions(), Layout.halfRoom())
 	for _, userId in caught do
 		if line:connect(userId, os.clock()) then
+			-- A caught player cannot act -- Objectives.submit refuses anyone
+			-- isConnected -- and nothing in this round releases them again, so
+			-- there is no more silence left to punish. Without this the
+			-- Supervisor kept chasing them anyway: measured, roughly HALF of
+			-- every dispatch and every audible "putting you through" went to a
+			-- player who could not possibly benefit from the visit, taken
+			-- directly from whoever the mechanic still has a reason to reach.
+			supervisor:forget(userId)
 			local victim = Players:GetPlayerByUserId(userId)
 			if victim then
 				heardRemote:FireClient(victim, Round.LINES.onTheLine, "", 1)

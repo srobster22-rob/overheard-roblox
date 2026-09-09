@@ -6896,3 +6896,89 @@ sat "recorded" for four rounds running (R58-R65) rather than finding a new one �
 worth doing before it aged into something nobody remembered the reason for.
 
 **Commit** `bdf800b`
+
+
+## R67 — the Supervisor keeps chasing a player it has already caught
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — reading the dispatch against capture.** `takeWhoeverIsHere` and
+`putThroughTheSilentLine` are two systems on the same tick, and nothing joins
+them: capturing a player (`line:connect`) never tells the Supervisor to stop
+watching them, and nothing in `Supervisor.overdue` excludes somebody already on
+the line.
+
+A caught player cannot act — `Objectives.submit` refuses anyone `isConnected` —
+so there is no more silence left to punish, and the game has no way to release
+them again inside a round. Their clock keeps running anyway, and once it does
+they are `overdue` forever afterward.
+
+Measured. One player alone in the board room, ALREADY caught from tick one;
+another player alone in the archive room, silent but not yet caught. If the
+Supervisor genuinely favoured the longest-quiet player, the caught one — whose
+clock only grows — would win every time and the archive player would never be
+visited. Over 8,000 ticks (2,000 simulated seconds):
+
+| | dispatches |
+|---|---|
+| to the board (the already-caught player) | **76** |
+| to the archive (the genuinely silent player) | **75** |
+
+Not starvation — the per-player cooldown (`SupervisorCooldown`) forces it to
+alternate rather than fixate — but **roughly HALF of every "I have a silent
+line. Putting you through." announcement, and half the Operator's trips, were
+spent on a player who could not possibly benefit from the visit.** That is
+wasted pressure taken directly from the player the mechanic actually exists to
+reach, and every one of those trips is a real, audible, broadcast event for
+nothing.
+
+1. *(picked)* **Forget a player's silence clock the moment they are caught.**
+   `Supervisor.forget` already exists for the leave-path; capture is the same
+   shape — there is nothing left to watch for.
+2. R63's queued-room drop, R59's corridor number, R62's loss-rate number — all
+   **still filed**, awaiting the owner.
+
+**Stage 2 — the fix.** `takeWhoeverIsHere` now calls `supervisor:forget(userId)`
+immediately after a successful `line:connect`, right beside the existing
+per-victim notifications. `Supervisor.forget` already existed for the
+leave-path (`PlayerRemoving`); capture is the same shape — a player with no more
+silence left to punish.
+
+**Stage 3 — proof.** Two layers, because the fix lives in `init.server.luau`,
+which cannot be `rt.require`'d and run directly.
+
+*The concept*, in `tests/soak.luau`: a `chaseScenario` mirrors the real dispatch
+and capture loop with and without the forget call. Unfixed, it reproduces the
+measured 76/75 split exactly; with the forget call, dispatches to the caught
+player drop to **zero** and every one goes to the genuinely silent player
+instead.
+
+*The wiring*, in `tests/wiring.luau`: the capture path's own source is read, and
+`supervisor:forget(userId)` must appear in it, **after** the `line:connect` call
+that makes the capture succeed — so the order (connect first, then release the
+clock) is checked, not merely that both calls exist somewhere in the function.
+
+Two plants, each failed by name:
+
+| plant | what failed |
+|---|---|
+| `supervisor:forget(userId)` removed from `takeWhoeverIsHere` | `the Supervisor is told to forget them` |
+| the soak's own `chaseScenario(true)` stops calling `forget` | `forgetting on capture stops the wasted dispatches (76 to the caught player)` |
+
+Restored; sha256 `aa338e61…75fc66d64` (unchanged — the fix was already the
+shipped state; this re-confirmed removing it is caught).
+
+**Verified in the product, not the source.** The exact shape `takeWhoeverIsHere`
+now runs — watch, wait past the deadline, connect, forget — checked directly
+against `Supervisor`: before capture, `overdue()` reports the player (1); after
+capture, `overdue()` reports nobody (0) and `quietFor` returns `nil`.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon 22, heuristic 45, operator ok, objectives 122,
+pursuit 103, round 57, config 63, wiring **335**, connected 32, ordering 4,
+heat 20, layout 91, lifecycle 90, hud 22, readout 29, soak **42**, hum 29,
+log 18, silence 62.
+
+*Not claimed:* whether the "traced" announcement, now spent entirely on
+genuinely silent players, changes how often it fires in a real session overall
+— only that it is no longer split with a player it could never help.

@@ -961,6 +961,25 @@ check(`no two outcomes read the same ({collisions} collisions)`, collisions == 0
 -- (control) an outcome the type does not name must not be found to have words.
 check("(control) the reader does not invent outcomes", said["abandoned"] == nil)
 
+-- R67, checked in the PRODUCT's own file. A caught player cannot act and is
+-- never released mid-round, so once takeWhoeverIsHere connects them there is
+-- no more silence left for the Supervisor to punish -- and nothing joined the
+-- two systems, so it kept chasing them. Measured: roughly half of every
+-- dispatch and every audible announcement was wasted on a player who could not
+-- benefit from it.
+print("")
+print("a captured player stops being chased for silence")
+
+local captureBody = string.match(serverCode, "local function takeWhoeverIsHere%(%).-" .. NL .. "end") or ""
+check("(guard) found the capture path", #captureBody > 0)
+local connectAt = string.find(captureBody, "line:connect(userId, os.clock())", 1, true)
+local forgetAt = string.find(captureBody, "supervisor:forget(userId)", 1, true)
+check("(guard) the capture path connects a caught player", connectAt ~= nil)
+check("the Supervisor is told to forget them", forgetAt ~= nil)
+if connectAt and forgetAt then
+	check("...right after they are connected, not before", forgetAt > connectAt)
+end
+
 -- R59 and R60, and this is the CLASS. R49 wrote the rule in `tests/soak.luau` in
 -- capitals -- "IT IS WIRED LIKE THE SERVER OR IT IS NOT EVIDENCE" -- after its
 -- own first draft called `board:submit` directly, skipped `board.onSolved`, and

@@ -814,6 +814,80 @@ check(
 	harsh.unfinishableTicks <= harsh.lost
 )
 
+print("")
+print("a caught player is no longer chased for silence")
+
+-- R67. A caught player cannot act -- Objectives.submit refuses anyone
+-- isConnected -- and nothing releases them again inside a round, so there is no
+-- more silence left to punish once they are on the line. Nothing joined capture
+-- to the Supervisor's clock, so it kept chasing them anyway.
+--
+-- Measured before the fix: one player alone in a room, already caught from
+-- tick one, against another player alone elsewhere, genuinely silent. Over
+-- 8,000 ticks the Operator was dispatched to the CAUGHT player 76 times and to
+-- the silent one 75 -- not starvation (the per-player cooldown forces
+-- alternation), but roughly HALF of every dispatch, and every audible "putting
+-- you through", spent on someone who could not possibly benefit from it.
+local function chaseScenario(forgetOnCapture: boolean): (number, number)
+	local rooms = { board = Layout.boardCentre(), archive = Layout.archiveCentre() }
+	local pursuit = Pursuit.new(rooms, Layout.operatorPost())
+	local supervisor = Supervisor.new()
+	local line = Connected.new()
+	local standing = { [1] = rooms.board, [2] = rooms.archive }
+
+	local now = 0
+	supervisor:watch(1, now)
+	supervisor:watch(2, now)
+	line:connect(1, now) -- player 1 starts already caught
+	if forgetOnCapture then
+		supervisor:forget(1)
+	end
+
+	local toBoard, toArchive = 0, 0
+	for _ = 1, 8000 do
+		now += Config.TickSeconds
+		for _, userId in supervisor:overdue(now) do
+			local at = standing[userId]
+			if not at then
+				continue
+			end
+			local found = false
+			for name, centre in rooms do
+				if Layout.inRoom(centre, at) then
+					found = true
+					local _, onItsWay = pursuit:sendTo(name)
+					if onItsWay then
+						supervisor:called(userId, now)
+						if name == "board" then
+							toBoard += 1
+						else
+							toArchive += 1
+						end
+					end
+					break
+				end
+			end
+			if found then
+				break
+			end
+		end
+		pursuit:step(Config.TickSeconds)
+		pursuit:takePending()
+		if pursuit:shouldLeave(Config.LingerSeconds) then
+			pursuit:withdrawTo(Layout.operatorPost())
+		end
+	end
+	return toBoard, toArchive
+end
+
+local beforeBoard, beforeArchive = chaseScenario(false)
+check(`(guard) the unfixed shape wastes real dispatches on the caught player ({beforeBoard})`, beforeBoard > 10)
+check(`(control) ...roughly evenly with the genuinely silent player ({beforeArchive})`, beforeArchive > 10)
+
+local afterBoard, afterArchive = chaseScenario(true)
+check(`forgetting on capture stops the wasted dispatches ({afterBoard} to the caught player)`, afterBoard == 0)
+check(`...and every dispatch instead reaches the silent player ({afterArchive})`, afterArchive > 0)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)
