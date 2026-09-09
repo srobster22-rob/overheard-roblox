@@ -7523,3 +7523,5 @@ silence 62, lexiconsave 28.
 *Not claimed:* that every line's WORDING is right, only that no two currently
 collide and the next one added is checked against all ten rather than whichever
 one the round adding it happened to be thinking about.
+
+**Commit** `07b205a`
