@@ -10,7 +10,11 @@
 
 export type Point = { x: number, z: number }
 
-export type State = "idle" | "approaching" | "closing" | "arrived"
+-- `leaving` is the walk back out after it loses interest. It is AUDIBLE and it
+-- never captures, which is the whole point: R25 released the room by switching
+-- to `idle` where it stood, and both `arrived` and `idle` are silent with no
+-- movement, so the room went from lethal to safe with nothing to signal it.
+export type State = "idle" | "approaching" | "closing" | "arrived" | "leaving"
 
 local Pursuit = {}
 Pursuit.__index = Pursuit
@@ -117,8 +121,10 @@ function Pursuit.stop(self: Tracker)
 end
 
 -- True while it should be making noise. The whole design hangs off this.
+-- True while it should be making noise. Approaching AND leaving: you hear it
+-- come and you hear it go. The silence in between is the tell.
 function Pursuit.isAudible(self: Tracker): boolean
-	return self.state == "approaching"
+	return self.state == "approaching" or self.state == "leaving"
 end
 
 function Pursuit.step(self: Tracker, dt: number)
@@ -137,7 +143,12 @@ function Pursuit.step(self: Tracker, dt: number)
 
 	if remaining <= self.arriveRadius then
 		self.position = { x = target.x, z = target.z }
-		self:setState("arrived")
+		-- Getting home ends the walk out. It must NOT become `arrived`, or the
+		-- place it retreated to would start capturing.
+		self:setState(if self.state == "leaving" then "idle" else "arrived")
+		if self.state == "idle" then
+			self.target = nil
+		end
 		return
 	end
 
@@ -149,8 +160,22 @@ function Pursuit.step(self: Tracker, dt: number)
 		z = self.position.z + dz * travel,
 	}
 
+	if self.state == "leaving" then
+		-- Still on its way out; classify() describes hunting, not retreating.
+		return
+	end
+
 	-- Recompute after moving so the state matches where it actually is.
 	self:setState(self:classify(distance(self.position, target)))
+end
+
+-- Walk back out to a point that is not a room. Used when it loses interest:
+-- audible the whole way, capturing nothing, and it ends `idle` rather than
+-- `arrived` so the room it just left cannot start taking people again.
+function Pursuit.withdrawTo(self: Tracker, point: Point)
+	self.target = { x = point.x, z = point.z }
+	self.targetName = nil
+	self:setState("leaving")
 end
 
 -- Has it stood in this room long enough to lose interest?

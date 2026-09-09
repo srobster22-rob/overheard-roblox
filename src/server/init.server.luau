@@ -344,7 +344,12 @@ task.spawn(function()
 		-- R25, so a single plain word parked it on an objective for the rest of
 		-- the round and nobody could ever finish that station.
 		if pursuit:shouldLeave(Config.LingerSeconds) then
-			pursuit:stop()
+			-- It WALKS out, audibly, rather than switching off where it stands.
+			-- `stop()` released the room in silence with the body motionless, so
+			-- nothing told players it was safe -- and a monster whose rule cannot
+			-- be learned reads as unfair. It also says so, in its own register.
+			pursuit:withdrawTo(built.operatorStart)
+			heardRemote:FireAllClients(Round.LINES.givingUp, "", 0)
 		end
 
 		sinceDecay += Config.TickSeconds

@@ -271,6 +271,86 @@ check("something still travelling never wants to leave", travelling:shouldLeave(
 local idle = tracker()
 check("an idle Operator never wants to leave", idle:shouldLeave(0) == false)
 
+print("")
+print("it walks out audibly instead of switching off")
+
+-- R26. R25 released the room with `stop()`, which sets `idle` WHERE IT STANDS.
+-- Both `arrived` and `idle` are silent and the body does not move, so the room
+-- went from lethal to safe with no signal at all. A monster whose rule cannot be
+-- learned reads as unfair -- CLAUDE.md's own words.
+
+local home = { x = 0, z = 0 }
+local leaver = tracker()
+leaver:sendTo("board")
+for _ = 1, 40 do
+	leaver:step(1)
+	if leaver.state == "arrived" then
+		break
+	end
+end
+check("(guard) it arrived and went quiet", leaver.state == "arrived" and leaver:isAudible() == false)
+
+leaver:withdrawTo(home)
+check("withdrawing puts it in the leaving state", leaver.state == "leaving")
+check("YOU HEAR IT GO", leaver:isAudible() == true)
+check("it is no longer arrived, so it captures nothing on the way out", leaver.state ~= "arrived")
+
+-- Audible for the whole walk, not just the first frame.
+local heardEvery = true
+local steps = 0
+for _ = 1, 60 do
+	leaver:step(1)
+	steps += 1
+	if leaver.state == "idle" then
+		break
+	end
+	if not leaver:isAudible() then
+		heardEvery = false
+	end
+end
+check(`(guard) the walk out took more than one step ({steps})`, steps > 1)
+check("it is audible for the whole walk out", heardEvery)
+
+check("reaching home ends as idle, never arrived", leaver.state == "idle")
+check("and it goes quiet again", leaver:isAudible() == false)
+check("an idle Operator has no target left", leaver.target == nil)
+check("and it does not want to leave again", leaver:shouldLeave(0) == false)
+
+-- The dangerous mistake this could make: retreating INTO a room and counting as
+-- arrived there, which would start capturing at the place it fled to.
+local intoRoom = tracker()
+intoRoom:sendTo("board")
+for _ = 1, 40 do
+	intoRoom:step(1)
+	if intoRoom.state == "arrived" then
+		break
+	end
+end
+intoRoom:withdrawTo({ x = ROOMS.archive.x, z = ROOMS.archive.z })
+for _ = 1, 60 do
+	intoRoom:step(1)
+	if intoRoom.state == "idle" then
+		break
+	end
+end
+check("withdrawing onto a room centre still ends idle, not arrived", intoRoom.state == "idle")
+
+-- And it can be called back out of a withdrawal mid-walk.
+local recalled = tracker()
+recalled:sendTo("board")
+for _ = 1, 40 do
+	recalled:step(1)
+	if recalled.state == "arrived" then
+		break
+	end
+end
+recalled:withdrawTo(home)
+recalled:step(1)
+check("(guard) it is on its way out", recalled.state == "leaving")
+recalled:sendTo("board")
+check("hearing something again pulls it back", recalled.state ~= "leaving")
+check("and it is hunting, not retreating", recalled.targetName == "board")
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

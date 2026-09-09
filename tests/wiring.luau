@@ -503,6 +503,13 @@ check("`lost` is not the same sentence as `completed`", said.lost ~= said.comple
 check("`lost` is not the same sentence as `taken`", said.lost ~= said.taken)
 check("`lost` is not the same sentence as `onTheLine`", said.lost ~= said.onTheLine)
 
+-- R26 added a fifth. Reusing `busy` -- the keypad's private rejection -- would
+-- have repeated exactly the collision R10 and R13 each had to unpick.
+check("`givingUp` exists as a line", said.givingUp ~= nil and #said.givingUp > 0)
+for _, other in { "busy", "taken", "completed", "lost", "onTheLine", "understood", "connecting", "greeting" } do
+	check(`\`givingUp\` is not the same sentence as \`{other}\``, said.givingUp ~= said[other])
+end
+
 -- It must stop hunting once there is nobody left, or the hum runs over a
 -- finished round.
 -- Newline built with string.char rather than an escape: this repo's tooling has
@@ -554,7 +561,11 @@ check("decay keeps its own slower beat", string.find(tickBody, "Config.DecaySeco
 -- nobody can ever finish that station.
 check("the tick asks whether it should leave", string.find(tickBody, "shouldLeave", 1, true) ~= nil)
 check("the linger is a dial, not a literal", string.find(tickBody, "Config.LingerSeconds", 1, true) ~= nil)
-check("and the tick actually releases it", string.find(tickBody, "pursuit:stop()", 1, true) ~= nil)
+-- R26: it WALKS out rather than switching off in place, and says so. `stop()`
+-- released the room silently with the body motionless -- nothing told players
+-- it was safe.
+check("and the tick actually releases it", string.find(tickBody, "pursuit:withdrawTo", 1, true) ~= nil)
+check("the release is announced", string.find(tickBody, "LINES.givingUp", 1, true) ~= nil)
 
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then

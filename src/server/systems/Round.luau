@@ -142,6 +142,11 @@ Round.LINES = {
 	-- Said to the player it just took. Polite, procedural, and the worst thing
 	-- it could say: you are on the line now, and it is holding it.
 	onTheLine = "Hold the line, please.",
+	-- It has lost interest and is walking back out. A DISTINCT sentence: `busy`
+	-- is the keypad's private rejection and reusing it here would repeat exactly
+	-- the collision R10 and R13 each had to unpick -- two unrelated events
+	-- rendering as one line.
+	givingUp = "I'll try that number again later.",
 	-- Everyone present is on the line: the round is LOST. Distinct from
 	-- `completed` (won) and `taken` (it arrived) for the same reason those two
 	-- were split -- three different events must not share one sentence.
