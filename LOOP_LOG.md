@@ -6460,3 +6460,115 @@ real, it is written up in Stage 1 above, and it is the next round's work — now
 that there is a seed to measure it against.
 
 **Commit** `338b232`
+
+
+## R62 — the main soak plays the pre-R54 game
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — the work R61 deferred, now that there is a seed to measure it
+against.** `tests/soak.luau` has two sessions. The **silent group** has a
+Supervisor. The **main soak** — 1,200 ticks per seed across seven seeds, with
+rounds, joins, leaves, captures, stranding and restarts, and which carries the
+file's four real invariants — **has no Supervisor at all.** No `Supervisor.new`,
+no clock, no dispatch, and no `supervisor:reset` at the round boundary.
+
+So R46's Lexicon bound, R47's seen-set bound, R48's stranded-loss rule and
+R49's unfinishable-tick count are all measured in the game as it stood before
+R54: nobody is ever called for silence, the Operator only ever moves because
+somebody said something, and rounds are quieter and longer than the shipped
+game's.
+
+R59 and R60 each found a call that had drifted. This is a whole system the model
+never had — and R61 is why it is worth doing now rather than then: without a
+seed, whatever the numbers did afterwards would have been another table I could
+not trust.
+
+1. *(picked)* **Give the main soak the Supervisor the server runs**, and report
+   which of the four invariants move.
+2. The client's `BAND_COLOUR` restating band names — **still recorded**, latent.
+3. R21's corner fairness, R36's patience, the `%` in a server prompt,
+   geometry-blind movement, no player light, the stemming pair, R46's learning
+   gap, `anyFinishable`'s margin, R54's three, and R59's corridor number —
+   **all still filed.**
+
+**Stage 2 — the fix, and two things it uncovered.**
+
+The main soak now has a Supervisor: watched on arrival and on restart, forgotten
+on leave, `supervisor:hear` fed from the same utterance as `operator:hear`, the
+dispatch run on every beat exactly as `putThroughTheSilentLine` runs it, and
+`supervisor:reset` at the round boundary.
+
+Turning it on made every round in the session lose — **28 won / 0 lost became
+0 won / 28 lost**, and the Lexicon fell from 10 coinages to 0 because no round
+ever completed to credit one.
+
+That was the MODEL, not the game. Until now only `present[1]` ever spoke. That
+was harmless while nothing punished silence and pathological the moment
+something did: three of four players permanently overdue, the Operator
+permanently dispatched. A group where nobody but one person speaks for a whole
+session is what `silentGroup` is for. **The chatter now rotates**, skipping the
+last player — a group with one quiet member is ordinary, and it keeps the
+Supervisor firing here rather than never.
+
+Then R47's invariant started failing, 28 times. Also the model: the rejoin check
+asked "can anybody finish anything" **without gating on the phase**, and
+"nobody can finish anything" is the normal, correct state of a round that is
+already over. It had never mattered because losses were rare; it went from 0 to
+28 with no rule changing, which is what an ungated measurement looks like when
+the thing it forgot to exclude starts happening. The deal stays unconditional,
+because `PlayerAdded` is; the measurement is gated.
+
+**Stage 3 — proof.** Two plants. The first was **not caught**, and that is the
+useful part:
+
+| plant | first attempt | after |
+|---|---|---|
+| the main soak's dispatch disabled | **passed, 318/318** — R59's and R60's guards ask whether the FILE contains the dispatch, and the silent group satisfies them on its own | `the Supervisor runs in a normal session (0 calls)` |
+| the rejoin measurement stops gating on the phase | `rejoining never strands the board (28 times)` | — |
+
+So the session now counts the calls it actually made and asserts it made some. A
+source sweep cannot tell you whether a system RAN; only the session can.
+
+The R61 determinism control had to be rebuilt too. It compared two sessions'
+reports, and with the Supervisor in, outcomes became uniform enough that two
+seeds produced identical summaries — it began failing while the seeding was
+perfectly correct. It now probes what the seed actually governs, the deal, and
+**sweeps `SEEDS` rather than one pair**: `dealSecrets(3)` fixes the first two
+secrets from the stations and shuffles only the third out of five, so any two
+seeds coincide about one time in five, and the first rewrite drew exactly such a
+pair.
+
+Restored; sha256 `fc92644d…dbeb5048`.
+
+**Verified in the product, not the source.** Seven seeds, before and after:
+
+| main session (`long`) | no Supervisor | with it |
+|---|---|---|
+| rounds won / lost | 28 / 0 | **7 / 21** |
+| Supervisor calls | — | **28** |
+| Lexicon high-water | 10 | 10 |
+| seen set | 1 | 1 |
+| unfinishable ticks | 0 | 0 |
+| stuck rejoins | 0 | 0 |
+
+**Three of the four invariants are unchanged, and that is the result.** R46's
+Lexicon bound, R47's seen-set bound and R49's unfinishable-tick count hold just
+as well in the game that has a Supervisor as in the game that did not. What
+changed is the outcome mix: a group with one quiet member now loses three
+rounds in four rather than winning every one.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green and reproducible across two end-to-end runs**: lexicon 22,
+heuristic 40, operator ok, objectives 122, pursuit 103, round 57, config 63,
+wiring 318, connected 32, ordering 4, heat 20, layout 91, lifecycle 75, hud 22,
+readout 29, soak **29**, hum 21, log 18, silence 62.
+
+**FOR THE OWNER — a number worth your eye.** With the Supervisor on and one
+quiet player in four, the simulated group **loses 21 rounds in 28**. That is the
+model, not a playtest, and the quiet player never speaks at all — but if that
+ratio is anywhere near right, `SpeakEvery` (45s) is harsher than R54 assumed
+when it filed the margin question.
+
+*Not claimed:* that a rotating chatter is what a real group sounds like. It is
+an improvement on one person talking for everybody, and it is still a model.

@@ -54,6 +54,12 @@ export type Report = {
 	worstSeen: number,
 	worstLexicon: number,
 	stuckRejoins: number,
+	-- How many times the Supervisor actually put a call through DURING THIS
+	-- SESSION. A source sweep cannot answer that: R59's and R60's guards check
+	-- that the FILE contains the dispatch, and the silent group satisfies them
+	-- on its own -- so disabling this session's dispatch left the whole suite
+	-- green, which a plant proved. Only the session can say whether it ran.
+	silenceCalls: number,
 }
 
 -- The soak's OWN answer to "can anybody still finish anything", computed from
@@ -115,6 +121,13 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 	operator.onUnderstood = function(_concept: string, payload: string)
 		pursuit:sendTo(payload)
 	end
+	-- THE SUPERVISOR. Without it this session plays the game as it stood before
+	-- R54: nobody is ever called for silence, the Operator only moves because
+	-- somebody said something, and rounds are quieter and longer than the
+	-- shipped game's. Every invariant this file carries -- R46's Lexicon bound,
+	-- R47's seen-set bound, R48's stranded-loss rule, R49's unfinishable-tick
+	-- count -- was being measured in that other game.
+	local supervisor = Supervisor.new()
 
 	local present = { 1, 2, 3, 4 }
 	local nextId = 5
@@ -142,6 +155,15 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 	end
 	placeEveryone()
 
+	-- Watched from the moment they are present, never from zero: a clock starting
+	-- at zero calls a player before they could have said anything.
+	local function watchEveryone(at: number)
+		for _, userId in present do
+			supervisor:watch(userId, at)
+		end
+	end
+	watchEveryone(0)
+
 	local report: Report = {
 		rounds = 0,
 		won = 0,
@@ -150,6 +172,7 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 		worstSeen = 0,
 		worstLexicon = 0,
 		stuckRejoins = 0,
+		silenceCalls = 0,
 	}
 	local now = 0
 
@@ -167,14 +190,56 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 		now += Config.TickSeconds
 
 		if tick % 8 == 0 then
-			operator:hear({ speaker = { UserId = present[1] } :: any, text = "meet me by the purple lantern", at = now })
+			-- One utterance, both listeners. The server's chat handler feeds
+			-- `supervisor:hear` and `operator:hear` from the same message.
+			--
+			-- IT ROTATES. Until R62 only `present[1]` ever spoke, which was
+			-- harmless while nothing punished silence and pathological the moment
+			-- something did: three of four players permanently overdue, the
+			-- Operator permanently dispatched, and every round lost. That is the
+			-- model being wrong, not the game -- a group where nobody but one
+			-- person speaks for a whole session is what `silentGroup` is for.
+			--
+			-- The LAST player is skipped: a group with one quiet member is
+			-- ordinary, and it keeps the Supervisor firing here instead of never.
+			local speakers = math.max(1, #present - 1)
+			local who = present[(tick // 8) % speakers + 1]
+			supervisor:hear(who, now)
+			operator:hear({ speaker = { UserId = who } :: any, text = "meet me by the purple lantern", at = now })
 		end
 		if tick % 40 == 0 then
+			supervisor:hear(present[1], now)
 			operator:hear({
 				speaker = { UserId = present[1] } :: any,
 				text = `check the {secrets[1].plain[1]}`,
 				at = now,
 			})
+		end
+
+		-- `putThroughTheSilentLine`, as the server runs it on every beat.
+		if round:isPlaying() then
+			for _, userId in supervisor:overdue(now) do
+				local at = standing[userId]
+				if not at then
+					continue
+				end
+				local found = false
+				for _, name in Config.Rooms do
+					local centre = rooms[name]
+					if centre and Layout.inRoom(centre, at) then
+						found = true
+						local _, onItsWay = pursuit:sendTo(name)
+						if onItsWay then
+							supervisor:called(userId, now)
+							report.silenceCalls += 1
+						end
+						break
+					end
+				end
+				if found then
+					break
+				end
+			end
 		end
 
 		pursuit:step(Config.TickSeconds)
@@ -235,8 +300,19 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 
 		-- A player rejoining. Every return re-deals the whole board.
 		if rejoinEvery > 0 and tick % rejoinEvery == 0 then
+			-- The deal is unconditional, because `PlayerAdded` is: the server
+			-- re-deals whatever the phase.
 			board:deal(present)
-			if not anybodyCouldFinish(board, ableNow()) and not board:allSolved() then
+			-- The MEASUREMENT is not. "Nobody can finish anything" is the normal,
+			-- correct state of a round that is already over -- everyone is still
+			-- on the line and the board is not reset until the restart -- so
+			-- counting it during an intermission counts the game working.
+			--
+			-- This was invisible until R62 put the Supervisor in this session and
+			-- losses became common: the count went from 0 to 28 with no change to
+			-- any rule, which is what a measurement that was never gated looks
+			-- like when the thing it forgot to exclude starts happening.
+			if round:isPlaying() and not anybodyCouldFinish(board, ableNow()) and not board:allSolved() then
 				report.stuckRejoins += 1
 			end
 		end
@@ -247,6 +323,9 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 			line:clear()
 			operator:forgetObservations()
 			pursuit:sendHome(Layout.operatorPost())
+			-- R31's boundary. Without it a player quiet through the intermission
+			-- is called in the first seconds of the new round.
+			supervisor:reset(now)
 			if report.rounds % 3 == 0 then
 				table.insert(present, nextId)
 				nextId += 1
@@ -254,6 +333,7 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 					local gone = table.remove(present, 1)
 					if gone then
 						standing[gone] = nil
+						supervisor:forget(gone)
 					end
 				end
 			end
@@ -261,6 +341,7 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 			-- room and cannot be caught at all -- which would quietly turn the
 			-- harsh soak into the gentle one as the server filled up.
 			placeEveryone()
+			watchEveryone(now)
 			board:deal(present)
 		end
 
@@ -294,6 +375,7 @@ local function acrossSeeds(ticks: number, rejoinEvery: number, takeAllButOne: bo
 		worstSeen = 0,
 		worstLexicon = 0,
 		stuckRejoins = 0,
+		silenceCalls = 0,
 	}
 	for _, seed in SEEDS do
 		local one = soak(ticks, rejoinEvery, takeAllButOne, seed)
@@ -301,6 +383,7 @@ local function acrossSeeds(ticks: number, rejoinEvery: number, takeAllButOne: bo
 		total.won += one.won
 		total.lost += one.lost
 		total.stuckRejoins += one.stuckRejoins
+		total.silenceCalls += one.silenceCalls
 		-- These three are failures, so they ACCUMULATE rather than average: one
 		-- bad seed must not be diluted by six good ones.
 		total.unfinishableTicks += one.unfinishableTicks
@@ -330,21 +413,51 @@ if #differed > 0 then
 	print(`        {table.concat(differed, ", ")}`)
 end
 
--- (control) a DIFFERENT seed must produce a different session, or the seed is
--- being ignored and the check above passes for the wrong reason.
-local other = soak(600, 0, true, 99)
-local anyDifference = false
-for field, value in twiceA :: any do
-	if (other :: any)[field] ~= value then
-		anyDifference = true
+-- (control) the seed must actually reach the randomness, or the replay check
+-- above passes for the wrong reason -- by nothing being random at all.
+--
+-- Asked of the DEAL rather than of the report. R62 put the Supervisor in this
+-- session and its outcomes became uniform enough that two seeds produced
+-- identical summaries: the old control compared reports and started failing
+-- while the seeding was perfectly correct. A control has to probe the thing the
+-- seed governs, which is the shuffle.
+local function firstSecrets(seed: number): string
+	math.randomseed(seed)
+	local dealt = Round.dealSecrets(3)
+	local names: { string } = {}
+	for _, secret in dealt do
+		table.insert(names, `{secret.concept}:{secret.payload}`)
 	end
+	return table.concat(names, "|")
 end
-check("(control) a different seed is a different session", anyDifference)
+-- Swept, not asked of one pair. `dealSecrets(3)` fixes the first two secrets
+-- from the stations and shuffles only the THIRD out of five candidates, so any
+-- two seeds coincide about one time in five -- and the first version of this
+-- control drew such a pair (4242 and 99) and failed while the seeding was
+-- perfectly correct.
+local dealtA = firstSecrets(4242)
+check(`(guard) a deal produces something ({dealtA})`, #dealtA > 0)
+local distinct: { [string]: boolean } = {}
+for _, seed in SEEDS do
+	distinct[firstSecrets(seed)] = true
+end
+local shapes = 0
+for _ in distinct do
+	shapes += 1
+end
+check(`(control) different seeds deal different games ({shapes} across {#SEEDS} seeds)`, shapes > 1)
+check("...and the same seed deals the same game", firstSecrets(4242) == dealtA)
 
 print("a server's whole life")
 local long = acrossSeeds(1200, 0, false)
 check(`(guard) the soak actually played rounds ({long.rounds})`, long.rounds >= 5)
 check(`(guard) and players were caught in them ({long.won} won, {long.lost} lost)`, long.won + long.lost >= 5)
+
+-- R62. The Supervisor has to actually run in THIS session, not merely exist in
+-- the file. Before this round the main soak had none at all, so R46's Lexicon
+-- bound, R47's seen-set bound, R48's stranded-loss rule and R49's
+-- unfinishable-tick count were every one of them measured in the pre-R54 game.
+check(`the Supervisor runs in a normal session ({long.silenceCalls} calls)`, long.silenceCalls > 0)
 
 -- R48: a live round must always be finishable by somebody, or it ends.
 check(`no live round is ever unfinishable ({long.unfinishableTicks} ticks)`, long.unfinishableTicks == 0)
