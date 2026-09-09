@@ -126,6 +126,75 @@ r:sendTo("archive")
 check("a new target makes it audible again", r:isAudible() == true)
 check("and it is no longer arrived", r.state ~= "arrived")
 
+-- THE MAIN PATH. `onUnderstood` calls `sendTo` on every utterance it
+-- understands, not just the first, and the whole game is players talking about
+-- the thing it is listening for. So `sendTo` being called repeatedly WHILE it
+-- travels is the normal case, not an edge case. It used to assert
+-- "approaching" outright, which re-armed the hum at every distance.
+print("re-sent while it is already on the way")
+
+local band = tracker()
+check("classify: far away is approaching", band:classify(band.silenceRadius + 1) == "approaching")
+check("classify: inside the silence radius is closing", band:classify(band.silenceRadius) == "closing")
+check("classify: on top of it is arrived", band:classify(band.arriveRadius) == "arrived")
+
+local nagged = tracker()
+local arrivals = 0
+nagged.onStateChanged = function(state: string)
+	if state == "arrived" then
+		arrivals += 1
+	end
+end
+nagged:sendTo("board")
+local nagAudible: { number } = {}
+for _ = 1, 12 do
+	nagged:step(1)
+	-- Somebody says the giveaway again.
+	nagged:sendTo("board")
+	table.insert(nagAudible, if nagged:isAudible() then 1 else 0)
+end
+check("it still arrives even while being re-sent", nagged.state == "arrived")
+check("it is NOT audible on arrival, however much was said", nagged:isAudible() == false)
+check("arrived is announced exactly once, not once per utterance", arrivals == 1)
+
+local nagWentQuiet, nagBrokeSilence = false, false
+for _, v in nagAudible do
+	if v == 0 then
+		nagWentQuiet = true
+	elseif nagWentQuiet and v == 1 then
+		nagBrokeSilence = true
+	end
+end
+-- Guard: if the sweep never heard it at all, the two checks below pass
+-- vacuously and prove nothing.
+check("the re-sent walk was audible at some point (guard)", table.find(nagAudible, 1) ~= nil)
+check("it still goes quiet while being re-sent", nagWentQuiet)
+check("and being re-sent never turns the hum back on", not nagBrokeSilence)
+
+-- The two boundary cases, each on its own, so neither is inferred from the walk.
+local closingRe = tracker()
+closingRe:sendTo("board")
+while closingRe.state == "approaching" do
+	closingRe:step(1)
+end
+check("walked it into the closing band (guard)", closingRe.state == "closing")
+closingRe:sendTo("board")
+check("re-sending it while closing leaves it closing", closingRe.state == "closing")
+check("and it stays silent", closingRe:isAudible() == false)
+
+local standing = tracker()
+standing:sendTo("board")
+for _ = 1, 40 do
+	standing:step(1)
+	if standing.state == "arrived" then
+		break
+	end
+end
+check("walked it all the way in (guard)", standing.state == "arrived")
+standing:sendTo("board")
+check("re-sending it to the room it stands in leaves it arrived", standing.state == "arrived")
+check("and does not make it audible again", standing:isAudible() == false)
+
 print("stopping")
 local st = tracker()
 st:sendTo("board")

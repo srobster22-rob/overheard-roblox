@@ -1248,3 +1248,163 @@ rule. Two lines, so it is bytes. Noted, not fixed.
   round** — this was a wiring defect with one correct answer, not a design call.
 
 **Commit.** `f65e5c3`
+
+---
+
+## R11 — talking keeps the monster's hum ON, and the silence is the whole scare
+
+**Stage 1 — shortlist.** R10's seam (what is only wrong with more than one
+player) was NOT exhausted: it swept `for ... in` sites and remote calls, i.e.
+the FAN-OUT of a single event. It did not sweep the other half — state machines
+driven REPEATEDLY by player action, where the defect is in the second call, not
+the first. That is where this round looked.
+
+1. *(picked)* **`Pursuit.sendTo` asserts `"approaching"` instead of deriving the
+   state from where it actually is, so every understood utterance re-arms the
+   hum.** `isAudible()` is `state == "approaching"`, and `onUnderstood` calls
+   `pursuit:sendTo(payload)` on EVERY utterance it understands — not just the
+   first. So while the group is doing the only thing this game asks of them
+   (talking about the jack number until somebody gets it), each understood line
+   slams the state back to `approaching` regardless of distance. Demonstrated,
+   not inferred, by driving the real module: sending it to `board` once per
+   step, it is `audible=true` at `d=0.0` for six consecutive seconds — the
+   monster standing on top of you with the hum still running — and
+   `onStateChanged("arrived")` fires **6 times**, so the server broadcasts
+   "Go ahead, caller." six times. The file's own header says "it is audible
+   while it crosses the building and goes quiet once it is close. The scare is
+   not the noise arriving; it is the noise STOPPING." On the main path that
+   silence never happens at all.
+2. **`Round.LINES.taken` is fired for two OPPOSITE events** — Pursuit's
+   `arrived` and `board:allSolved()`. Since R10 dropped `detail` from the
+   client's `onHeard`, the monster reaching your room and the round being WON
+   now render as byte-identical text. Real and player-facing, but it is a
+   writing change (a new line) rather than a defect with one correct answer,
+   and #1 removes the duplicate-arrival half of it. Filed.
+3. **`Round.pickSecrets` still dead and still loaded.** Fourth round running.
+   Still not reachable from the product, so still no player hits it.
+4. **A solved station's ProximityPrompt stays enabled.** Still the only item a
+   player can walk into, and still a `prompt.Enabled` claim — a Roblox runtime
+   property whose only headless evidence is that the source says so. Studio is
+   still device-blocked, so it is still the wrong round for it.
+5. **`Operator.credit` wipes ALL observations, not just the ones it spent.**
+   Two players, two stations: A is coining a word for the breaker while B
+   solves the board; `credit("jack_number")` throws away A's observations, so
+   the group's breaker coinage can never be learned. **Rejected on R10's
+   standard** — the cure is per-concept retention, which re-opens the exact
+   double-crediting bug R5 closed, and the wipe is documented as deliberate.
+   A real interaction, not a defect worth trading for.
+
+**Pick: 1.** It is demonstrable live, it is on the main path of every round
+rather than an edge, it negates the game's single stated scare rule, and it
+lands in a pure module the headless suite can hammer while Studio is blocked.
+Taken as a CLASS fix: the bug is that two callers each decided the state by
+hand and only one of them consulted the geometry.
+
+**Stage 2 — built.** One place decides the state; nobody asserts it.
+
+- `src/server/systems/Pursuit.luau` — new `Pursuit.classify(remaining) ->
+  State`, the only thing that maps a distance onto `arrived` / `closing` /
+  `approaching`. `step`'s inline if-chain and `sendTo`'s hardcoded
+  `setState("approaching")` both route through it. That is the class fix: the
+  defect was not that `sendTo` picked the wrong state, it was that two callers
+  each decided the state by hand and only one of them consulted the geometry,
+  so the next caller would have got it wrong too.
+- Because `setState` is already a no-op when the state is unchanged, deriving
+  the state also kills the duplicate `arrived` announcement for free: re-sending
+  it to the room it already stands in is now silent in both senses.
+- `tests/pursuit.luau` — 17 new checks (19 -> 36), in three groups: `classify`'s
+  three bands directly; the main-path simulation (`sendTo` once per step for
+  twelve steps) asserting it still arrives, still goes quiet, stays quiet, and
+  announces arrival exactly ONCE; and the two boundaries on their own — re-sent
+  while closing, re-sent while standing in the room — so neither is inferred
+  from the walk. Three guard checks (`the re-sent walk was audible at some
+  point`, `walked it into the closing band`, `walked it all the way in`) exist
+  because the silence assertions all pass vacuously if the sweep never heard it
+  or never got there.
+
+**Stage 3 — review.**
+
+`test.cmd` by ABSOLUTE path (R10's trap), real output: lexicon 14/14, operator
+all assertions, objectives 53/53, pursuit 36/36, round 38/38, config 44/44,
+wiring 59/59, `suite passed`, exit 0. **244 checks, up from R10's 229.**
+`selene src`: 0 errors, 0 warnings, 0 parse errors. `rojo build` exit 0.
+
+Four plants. The runner used an absolute path AND asserted >2000 characters of
+output, so a silent runner could not be read as four dead plants. Each reported
+whether it applied; each failed BY NAME; each was restored by byte-copy from a
+backup taken AFTER this round's edit and verified byte-identical by sha256.
+
+1. **The shipped defect** — `sendTo` declares `"approaching"` again, i.e.
+   exactly what was live before this round. 9 red, pursuit 28/36, exit 1:
+   `FAIL it is NOT audible on arrival, however much was said`, `FAIL arrived is
+   announced exactly once, not once per utterance`, `FAIL it still goes quiet
+   while being re-sent`, `FAIL and does not make it audible again`.
+2. **`classify` loses the silence band** (loud right up to the door): 4 red
+   including `FAIL closing is reported` and `FAIL classify: inside the silence
+   radius is closing`, 32/36, exit 1.
+3. **`classify` always says approaching**: 13 red, 24/36, exit 1 — the whole
+   rule at once.
+4. **The class fix binds only one caller** — `step` goes back to asserting
+   `"approaching"` while `sendTo` keeps deriving: 3 red, 33/36, exit 1. This is
+   the plant that proves the fix is a shared decision rather than a patch on
+   `sendTo`.
+
+Post-restore sha256, byte-identical to the post-edit baselines: `Pursuit.luau`
+`5FC26032...C8CEB83D`, `tests/pursuit.luau` `744C4937...2D87F67B`. Suite re-run
+green after all four. `git status` shows only the three files this round means
+to touch.
+
+**Reached the product.** `rojo build` to a uniquely-named scratch file, grepped
+with python (`Select-String` returns 0 hits on `.rbxlx` for strings that are
+certainly present). Controls known present: `OVERHEARD` x5, `PlayerRemoving`
+x2. New: `Pursuit.classify` x1, `self:classify(distance(self.position,
+target))` x2 (both callers), `Derived, never asserted` x1. Control known absent:
+`ZZ_NOT_IN_THIS_FILE_ZZ` x0. And the defect's own line, `setState("approaching")`,
+**x0** — it is gone from the shipped place file.
+
+**A correction to R3.** R3's entry claims the silence rule has "dedicated
+assertions — including that once it goes quiet it never becomes audible again
+while closing, which is the property that would quietly rot first." Read against
+the test file rather than the write-up, that assertion only ever walked the
+tracker with `step` and nothing else. It never called `sendTo` mid-flight, so it
+could not see the one thing that could break it — and the property it was
+introduced to protect had been broken since R3 shipped. R3 named the right
+property and then guarded the path it could not fail on. The nearby `retargeting`
+block looks like it covers this and does not: it re-sends the tracker to the
+room on the OPPOSITE side of the map, 120 studs away, where becoming audible
+again is correct.
+
+**Studio-blocked.** Roblox Studio is device-blocked; nothing here was seen or
+heard running and no claim in this entry is a playtest claim. Specifically
+unverified: that `Presence`'s volume fade actually follows `isAudible()` the way
+the Heartbeat wiring says it does, and whether the silence now lands as a scare
+or just reads as the audio cutting out. What the headless suite DID prove: one
+function decides the state and both callers use it; being re-sent mid-flight
+never turns the hum back on, at any distance, over a twelve-step main-path
+simulation with guards against a vacuous pass; arrival is announced exactly once
+however many times the group says the giveaway; and the built `.rbxlx` carries
+the change and no longer carries the defect.
+
+**Left open.**
+- `Round.LINES.taken` is still fired for two opposite events — the Operator
+  arriving in your room, and the round being WON. Since R10 dropped `detail`
+  from the client's `onHeard`, both render as the same sentence with nothing to
+  tell them apart. Shortlist #2; it wants a new line, so it is a writing task.
+- `Round.pickSecrets` still dead and still loaded. Fourth round on the list.
+- A solved station's ProximityPrompt stays enabled — still the only remaining
+  item a player can walk into, and still the wrong buy while Studio is blocked.
+- R7's item stands: the shared scanner is a lexer, so `if false and ...` passes
+  any wiring guard.
+- `misses`/`jammedUntil` are still not cleared on `PlayerRemoving` (R10).
+- The two overlapping remote-name guards (`tests/config.luau` and
+  `tests/wiring.luau`) are still two. No third arrived, so they stay unmerged.
+- **The multiplayer seam is NOT exhausted.** R10 swept the fan-out of single
+  events; this round swept state machines driven repeatedly. The stopping point
+  worth revisiting next is the third shape: server state that is per-player but
+  written from a shared path — `lastSubmit`, `misses`/`jammedUntil`, and the
+  client's `openStation` — where the defect is one player's action landing in
+  another player's slot, which is the family R10's own bug belonged to.
+- **Still with the owner, untouched and NOT decided here:** `CoolPerSecond`; the
+  mid-round re-deal on JOIN; the solo-player-cannot-finish question; and R9's
+  loud-vs-quiet wrong-code question. **No new owner question this round** — a
+  monster that hums while standing on top of you has one correct answer.

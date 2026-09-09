@@ -63,6 +63,27 @@ function Pursuit.setState(self: Tracker, state: State)
 	end
 end
 
+-- The ONLY place that decides what the state should be. Both `sendTo` and
+-- `step` route through it, so a caller can no longer assert a state the
+-- geometry contradicts.
+--
+-- It used to be inlined in `step` alone, while `sendTo` simply declared
+-- "approaching". `onUnderstood` calls `sendTo` on EVERY utterance it
+-- understands, not just the first, so every time the group said the giveaway
+-- again the hum was re-armed at whatever distance it had already reached:
+-- driven once per step it stayed audible at distance 0.0, standing on top of
+-- the players, and re-announced its arrival six times in six seconds. The
+-- silence rule at the top of this file never fired on the main path -- and
+-- talking is the main path.
+function Pursuit.classify(self: Tracker, remaining: number): State
+	if remaining <= self.arriveRadius then
+		return "arrived"
+	elseif remaining <= self.silenceRadius then
+		return "closing"
+	end
+	return "approaching"
+end
+
 -- Called when the Operator understands something. `payload` names a room.
 -- An unknown payload is ignored rather than guessed at: sending it to the wrong
 -- room on a misunderstanding would read as the monster cheating.
@@ -71,9 +92,13 @@ function Pursuit.sendTo(self: Tracker, payload: string): boolean
 	if not room then
 		return false
 	end
-	self.target = { x = room.x, z = room.z }
+	local target = { x = room.x, z = room.z }
+	self.target = target
 	self.targetName = payload
-	self:setState("approaching")
+	-- Derived, never asserted. Re-sending it somewhere it is already close to
+	-- must not make it loud again, and re-sending it where it already stands
+	-- must not re-fire `arrived`.
+	self:setState(self:classify(distance(self.position, target)))
 	return true
 end
 
@@ -112,14 +137,7 @@ function Pursuit.step(self: Tracker, dt: number)
 	}
 
 	-- Recompute after moving so the state matches where it actually is.
-	local now = distance(self.position, target)
-	if now <= self.arriveRadius then
-		self:setState("arrived")
-	elseif now <= self.silenceRadius then
-		self:setState("closing")
-	else
-		self:setState("approaching")
-	end
+	self:setState(self:classify(distance(self.position, target)))
 end
 
 return Pursuit
