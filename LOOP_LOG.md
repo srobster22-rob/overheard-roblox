@@ -5899,3 +5899,5 @@ log 18, silence **48**.
 *Not claimed:* how the panel LOOKS — its colours, its position on a real phone,
 whether a bar filling over 45 seconds reads as tense or as nagging. Studio is
 device-blocked. The geometry is proved at four viewport sizes; the feel is not.
+
+**Commit** `d312a1f`
