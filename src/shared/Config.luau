@@ -12,6 +12,11 @@ local Config = {
 
 	-- Comprehension. How sure the Operator must be before it acts.
 	--
+	-- NOTHING CURRENTLY REACHES THIS. R46 measured it: burning a coinage takes
+	-- four credited uses, a round supplies two, and heat is cold after 100s. The
+	-- threshold is fine; the gap is between what the game credits and what
+	-- burning costs. See LOOP_LOG R46 before retuning this dial to chase it.
+	--
 	-- Low enough that plain speech is always punished. This used to add "high
 	-- enough that a half-learned coinage is a gamble rather than a certainty",
 	-- which was never true: comprehension is a HARD threshold, so a coinage at

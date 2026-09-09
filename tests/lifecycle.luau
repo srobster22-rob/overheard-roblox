@@ -399,6 +399,101 @@ check(
 	Config.IntermissionSeconds * Config.CoolPerSecond < 1
 )
 
+print("")
+print("the learning gap, pinned")
+
+-- R46. The Operator can never learn a coinage. Measured over a simulated
+-- session — twelve sentences a minute, an objective solved every twenty seconds
+-- — nothing ever reaches ActThreshold, and by minute three the whole vocabulary
+-- has cooled to nothing. The structure behind it:
+--
+--   credits a round supplies    = one per objective = 2
+--   credited uses to burn       = 4 at best, 5-8 in practice
+--   heat fully cold after       = 100 seconds, shorter than a round
+--
+-- So the red state is unreachable and "your language decaying under you" — the
+-- mechanic on GAME.md's first page — never happens.
+--
+-- THESE CHECKS PIN THE GAP RATHER THAN ASSERT IT IS FINE. Closing it is a
+-- design decision (more credits, more heat, or slower cooling — three different
+-- games) and belongs to the owner. If one of these fails, the numbers have
+-- moved: re-read this entry rather than adjusting the check.
+
+local serverSource = fs.readFile("src/server/init.server.luau")
+local serverCode = LuauCode.stripNonCode(serverSource)
+
+local creditSites = 0
+local from = 1
+while true do
+	local first, last = string.find(serverCode, "operator:credit", from, true)
+	if not first then
+		break
+	end
+	from = last + 1
+	creditSites += 1
+end
+check(`(pinned) the Operator is credited from exactly one place ({creditSites})`, creditSites == 1)
+
+local stations = 0
+for _ in RoundModule.STATIONS do
+	stations += 1
+end
+check(`(pinned) a round offers one credit per station ({stations} stations)`, stations == 2)
+
+-- The other side of the gap, measured through the real Operator rather than
+-- divided from the dial.
+local gapSecrets = { { concept = "exit", plain = { "exit" }, payload = "archive" } }
+local gapTalker = { UserId = 1 } :: any
+local function burnCost(gap: number): number
+	local op = Operator.new(gapSecrets)
+	for use = 1, 40 do
+		op:hear({ speaker = gapTalker, text = "head for the purple lantern", at = use })
+		op:credit("exit", use + gap)
+		for _, coinage in op:snapshot() do
+			if coinage.heat >= 1 then
+				return use
+			end
+		end
+	end
+	return -1
+end
+local best = burnCost(0)
+check(`(pinned) burning a coinage takes {best} credited uses at best`, best == 4)
+check(`(pinned) which is more than a round supplies ({best} > {stations})`, best > stations)
+
+-- And the heat that IS gained does not survive to the next round's credits.
+local roundish = 100
+check(
+	`(pinned) heat is fully cold after {roundish}s, and a round is longer than that`,
+	1 / Config.CoolPerSecond <= roundish
+)
+
+-- A session's worth of ordinary talk reaches nothing. This is the finding in one
+-- line, run against the real modules.
+local session = Operator.new(gapSecrets)
+local clock = 0
+for minute = 1, 3 do
+	for i = 1, 12 do
+		clock += 5
+		session:hear({ speaker = gapTalker, text = "meet me by the purple lantern", at = clock })
+		if i % 4 == 0 then
+			session:credit("exit", clock + 1)
+		end
+	end
+	session:decay(clock)
+	local _ = minute
+end
+local hottest = 0
+for _, coinage in session:snapshot() do
+	if coinage.heat > hottest then
+		hottest = coinage.heat
+	end
+end
+check(
+	`(pinned) three minutes of ordinary talk leaves nothing understood ({string.format("%.2f", hottest)} < {Config.ActThreshold})`,
+	hottest < Config.ActThreshold
+)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

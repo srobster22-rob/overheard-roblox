@@ -46,6 +46,15 @@ while being hunted.
 
 That is the whole feel of the game: your language decaying under you.
 
+> **As built, this does not happen yet.** Measured in R46: a coinage needs four
+> credited uses to burn, a round supplies two (one per objective), and heat is
+> fully cold after 100 seconds — shorter than a round. So nothing ever reaches
+> the threshold and the red state is unreachable. The hunt, the arrival, the
+> capture and the retreat all work; it is specifically the LEARNING that does
+> not. Closing the gap is a dial choice — more credit events, more heat per
+> credit, or slower cooling — and those are three different games, so it is the
+> owner's call. `tests/lifecycle.luau` pins both sides of the gap meanwhile.
+
 ## Why the objectives force you to speak
 
 Every objective is an **information-transfer problem** — one player holds a
