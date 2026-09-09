@@ -1060,3 +1060,5 @@ and a silent brute-forcer now needs 2123 seconds instead of 33.
   a better game if it works and a worse one if it makes the keypad terrifying
   to use honestly. It is a design call, so this round shipped the mechanical
   fix and left the question open.
+
+**Commit.** `7064739`
