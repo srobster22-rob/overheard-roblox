@@ -9,6 +9,7 @@ local TextChatService = game:GetService("TextChatService")
 local Players = game:GetService("Players")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Layout = require(ReplicatedStorage.Shared.Layout)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Objectives = require(script.systems.Objectives)
 local Operator = require(script.systems.Operator)
@@ -97,7 +98,10 @@ local function livePositions(): { [number]: Connected.Point }
 end
 
 local function takeWhoeverIsHere()
-	local caught = line:reached(pursuit.position, livePositions(), Config.OperatorReach)
+	-- The ROOM it arrived in, not a circle around it. See Connected.reachedInRoom:
+	-- a circle big enough to cover the square also covers 9.94 studs of corridor
+	-- outside every wall, so running out of the door did not save you.
+	local caught = line:reachedInRoom(pursuit.position, livePositions(), Layout.halfRoom())
 	for _, userId in caught do
 		if line:connect(userId, os.clock()) then
 			local victim = Players:GetPlayerByUserId(userId)

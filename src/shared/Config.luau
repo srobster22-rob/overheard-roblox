@@ -7,8 +7,6 @@
 -- systems that do not exist yet live under `Planned` instead, where they are
 -- visibly not live. `tests/config.luau` derives that check from this file.
 
-local Layout = require(script.Parent.Layout)
-
 local Config = {
 	GameName = "OVERHEARD",
 
@@ -45,12 +43,11 @@ local Config = {
 	GuessesBeforeLockout = 3,
 	LockoutSeconds = 20,
 
-	-- How close the Operator has to be, on arrival, to put you on the line.
-	-- DERIVED from the room, not restated: it stops at the room centre, and the
-	-- promise is that being anywhere in that room is not survivable. Hand-typed,
-	-- this said 22 against a 48-stud room whose corners are 33.94 away, so 34%
-	-- of the floor -- the whole perimeter -- was a safe pocket. See Shared.Layout.
-	OperatorReach = Layout.reach(),
+	-- There is no OperatorReach dial any more. R21 made it a radius derived from
+	-- the room; R23 found that the smallest circle containing a square also
+	-- covers 9.94 studs of corridor outside every wall, so a player who got out
+	-- of the door was still taken. Capture is now the ROOM itself -- see
+	-- Connected.reachedInRoom -- and a radius nobody enforces is worse than none.
 
 	-- Rooms the Operator can be sent to. World.build must return a position for
 	-- every one of these, and every secret payload must name one of them.

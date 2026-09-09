@@ -40,54 +40,76 @@ check("half the room is half the room", Layout.halfRoom() == Layout.Room / 2)
 check("the corner is further than the wall", Layout.cornerDistance() > Layout.halfRoom())
 
 print("")
-print("the whole room is inside the Operator's reach")
--- The promise, asserted as a promise rather than as the number 33.94.
-check("reach covers the nearest wall", Config.OperatorReach >= Layout.halfRoom())
-check("reach covers the furthest corner", Config.OperatorReach >= Layout.cornerDistance())
+print("the Operator takes the room it arrived in - and only that room")
 
--- Sweep the actual floor through the REAL capture rule, not the arithmetic.
--- A grid, so a formula that happens to satisfy the two checks above but is
--- applied differently in `Connected.reached` still fails here.
+-- R21 satisfied "being anywhere in that room should not be survivable" with the
+-- smallest CIRCLE containing the square. Its tests only ever asked whether
+-- everyone INSIDE was taken, never whether anyone outside was -- so nothing saw
+-- that the circle spills 9.94 studs past every wall, covering 157% of the
+-- room's floor area. A player 29 studs from the centre was out of the room, in
+-- the corridor, and still caught. R22 had just given the rooms doors; that made
+-- using one pointless.
+--
+-- Both directions are swept here. The keep side is the half that was missing.
+
 local centre = { x = 0, z = 0 }
 local line = Connected.new()
+local half = Layout.halfRoom()
 local STEP = 2
+
 local inside, escaped = 0, 0
-local worst = 0
 local userId = 0
-for x = -Layout.halfRoom(), Layout.halfRoom(), STEP do
-	for z = -Layout.halfRoom(), Layout.halfRoom(), STEP do
+for x = -half, half, STEP do
+	for z = -half, half, STEP do
 		userId += 1
 		local point = { x = x, z = z }
-		if not Layout.inRoom(centre, point) then
+		inside += 1
+		if #line:reachedInRoom(centre, { [userId] = point }, half) == 0 then
+			escaped += 1
+		end
+	end
+end
+check(`(guard) the sweep covered the floor ({inside} points)`, inside > 400)
+check(`nobody standing in the room survives ({escaped} escaped)`, escaped == 0)
+
+-- THE HALF R21 NEVER CHECKED. Sweep a ring outside the walls: everyone there
+-- got out, and must stay out.
+local outsideTested, wronglyTaken = 0, 0
+local nearestWrong = math.huge
+for x = -half - 20, half + 20, STEP do
+	for z = -half - 20, half + 20, STEP do
+		local point = { x = x, z = z }
+		if Layout.inRoom(centre, point) then
 			continue
 		end
-		inside += 1
-		local caught = line:reached(centre, { [userId] = point }, Config.OperatorReach)
-		if #caught == 0 then
-			escaped += 1
-			local d = math.sqrt(x * x + z * z)
-			if d > worst then
-				worst = d
+		userId += 1
+		outsideTested += 1
+		if #line:reachedInRoom(centre, { [userId] = point }, half) > 0 then
+			wronglyTaken += 1
+			local d = math.max(math.abs(x), math.abs(z)) - half
+			if d < nearestWrong then
+				nearestWrong = d
 			end
 		end
 	end
 end
--- Without this the sweep could pass by testing nothing.
-check(`(guard) the sweep covered the floor ({inside} points)`, inside > 400)
-check(`nobody standing in the room survives ({escaped} escaped, worst at {string.format("%.1f", worst)})`, escaped == 0)
+check(`(guard) the sweep tested points outside the room ({outsideTested})`, outsideTested > 200)
+check(`nobody outside the room is taken ({wronglyTaken} wrongly taken)`, wronglyTaken == 0)
 
--- The keep side: reach must not be so large it takes the OTHER room too, or
--- distance stops being the mechanic.
-print("")
-print("but it does not reach the other room")
-local far = { x = Layout.Separation, z = 0 }
-local caughtFar = line:reached(centre, { [9999] = far }, Config.OperatorReach)
-check("a player in the other room is not taken", #caughtFar == 0)
-check("reach is smaller than the separation", Config.OperatorReach < Layout.Separation)
--- Even the NEAREST point of the other room must be safe, not just its centre.
-local nearEdgeOfOther = { x = Layout.Separation - Layout.halfRoom(), z = 0 }
-local caughtEdge = line:reached(centre, { [9998] = nearEdgeOfOther }, Config.OperatorReach)
-check("nor is one at the near edge of the other room", #caughtEdge == 0)
+-- The specific point that used to be caught: through the door and into the
+-- corridor, 29 studs from the centre.
+local throughTheDoor = { x = -(half + 5), z = 0 }
+check("getting through the door and out saves you", #line:reachedInRoom(centre, { [7001] = throughTheDoor }, half) == 0)
+check("(guard) and that point really is outside the room", not Layout.inRoom(centre, throughTheDoor))
+
+-- Standing in the doorway itself is still inside. Stated so a later round does
+-- not "fix" the boundary the other way by accident.
+local inTheDoorway = { x = -half, z = 0 }
+check("the doorway line itself is still inside", #line:reachedInRoom(centre, { [7002] = inTheDoorway }, half) == 1)
+
+-- The other room is untouched, which was true before and must stay true.
+local otherRoom = { x = Layout.Separation, z = 0 }
+check("a player in the other room is not taken", #line:reachedInRoom(centre, { [7003] = otherRoom }, half) == 0)
 
 print("")
 print("the two work points are genuinely far apart")
