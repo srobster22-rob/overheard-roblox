@@ -7525,3 +7525,57 @@ collide and the next one added is checked against all ten rather than whichever
 one the round adding it happened to be thinking about.
 
 **Commit** `07b205a`
+
+
+## R76 — a sixth mutation wave: routeIsClear only ever proved its first leg
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — the route-walking primitives, never mutation-tested.**
+`Layout.doorPoint`, `routeToStation` and `routeIsClear` sit under `crosses` and
+`walkIsClear` (both mutation-tested directly in R74/R69) but had never been hit
+themselves. Five targets: `doorPoint`'s side selection, `routeIsClear`'s loop
+bound, `walkIsClear`'s early-return shape, `routeToStation`'s doorway leg, and
+`cornerDistance`'s derivation (this last one only reached `SKIP` — a
+copy-paste anchor mismatch in the sweep script itself, not a finding; not
+re-attempted this round).
+
+1. *(picked)* **Run it, close what survives.**
+2. R63's queued-room drop, R59's corridor number, R62's loss-rate number, and
+   R73's group-identity question — all **still filed**, awaiting the owner.
+
+**Stage 2 — the sweep.** Four of five ran; three were caught immediately
+(`doorPoint` picking the wrong wall, `walkIsClear` stopping after one wall,
+`routeToStation` dropping the doorway leg all failed real existing checks).
+One survived: narrowing `routeIsClear`'s loop to check only the FIRST leg
+(`for i = 1, 1` instead of `for i = 1, #route - 1`) passed both existing checks
+of it.
+
+The reason is the same shape as R74's boundary mistakes, one level up: every
+real route this game builds has spawn→doorway as its first leg, and that leg
+is always clear by construction (the corridor floor is designed to reach every
+doorway). Both tests of `routeIsClear` asked "is the real route clear" and got
+the right answer for the wrong reason — nothing had ever given it a route
+whose SECOND leg was the blocked one.
+
+**Stage 3 — proof.** A synthetic 3-point route, built directly on the
+corridor's own south wall rather than a room's doorway so the crossing is
+unambiguous: a clear first leg, a second leg proven (by a `(guard)`) to cross
+the wall, and `routeIsClear` required to report the WHOLE route blocked. A
+`(control)` drops the blocking leg from the same three points and requires a
+clear result again — proving the check is not simply always false. Planted:
+the loop narrowed to `for i = 1, 1`, failed by name —
+`routeIsClear reports the whole route blocked, from the SECOND leg`. Restored
+from byte-copy backup; sha256 `7d538c3f…1070fe2b6f37` unchanged.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon 22, heuristic 49, operator ok, objectives 122,
+pursuit 104, round 59, config 63, wiring 354, connected 32, ordering 4,
+heat 20, layout **103**, lifecycle 90, hud 26, readout 29, soak 42, hum 29,
+log 18, silence 62, lexiconsave 28.
+
+*Not claimed:* `cornerDistance`'s mutation was never actually run this round —
+the sweep script's own anchor for it did not match after an earlier edit, and
+it was left rather than re-attempted with the round's budget already spent
+proving the real survivor. It is not evidence either way; a seventh wave should
+pick it up rather than assume it is fine.

@@ -638,6 +638,29 @@ check(
 	not Layout.crosses(wallZ, { x = -20, z = 10 }, { x = 20, z = 10 })
 )
 
+print("")
+print("routeIsClear checks every leg, not only the first")
+
+-- R76. A mutation sweep narrowed routeIsClear's loop to check only the FIRST
+-- leg (`for i = 1, 1` instead of `for i = 1, #route - 1`), and every existing
+-- check of it still passed -- because a real route's first leg (spawn to the
+-- doorway) is always clear, so nothing had ever proven the function looks past
+-- it. Built directly on the corridor's own south wall rather than a room's
+-- doorway, so the crossing is unambiguous.
+local corridorHalfZ = Layout.corridorClear() / 2
+local clearA = { x = 0, z = 0 }
+local clearB = { x = 0, z = corridorHalfZ - 1 }
+local acrossTheWall = { x = 0, z = corridorHalfZ + 5 }
+check("(guard) the first leg alone is clear", Layout.walkIsClear(clearA, clearB))
+check("(guard) the second leg really does cross the corridor wall", not Layout.walkIsClear(clearB, acrossTheWall))
+check(
+	"routeIsClear reports the whole route blocked, from the SECOND leg",
+	not Layout.routeIsClear({ clearA, clearB, acrossTheWall })
+)
+-- (control) the same three points, minus the crossing leg, must read clear --
+-- proving the check above is not simply always false.
+check("(control) dropping the blocked leg reads clear again", Layout.routeIsClear({ clearA, clearB }))
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)
