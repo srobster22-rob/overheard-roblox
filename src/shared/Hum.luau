@@ -42,6 +42,24 @@ function Hum.forState(state: string): Voice
 	return { volume = Hum.SILENT, pitch = Hum.APPROACH_PITCH }
 end
 
+-- The fade rate, per second. A snap to the target volume "reads as a bug
+-- instead of a decision" (see `Presence.luau`), so the smoothing has to be a
+-- REAL fade, and this is the only place that can be tested headlessly:
+-- `Presence.luau` calls `game:GetService` and `RunService.Heartbeat`, so no
+-- lune suite can exercise it directly, and the only guard on it before this was
+-- a source sweep confirming it requires this module -- which cannot tell a real
+-- fade from a snap. A mutation sweep proved that: replacing the fade with a
+-- snap (`hum.Volume = voice.volume`) passed the whole suite.
+Hum.FADE_PER_SECOND = 3
+
+-- One step of the fade, pulled out of `Presence.luau` so it can be proved here
+-- instead of only in Studio. `current` moves toward `target` by at most the
+-- whole gap in one frame (`math.min(dt * rate, 1)`), so a long frame cannot
+-- overshoot.
+function Hum.smooth(current: number, target: number, dt: number): number
+	return current + (target - current) * math.min(dt * Hum.FADE_PER_SECOND, 1)
+end
+
 -- Can a listener tell these two apart by ear alone?
 function Hum.distinguishable(a: Voice, b: Voice): boolean
 	if a.volume ~= b.volume then

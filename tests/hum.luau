@@ -106,6 +106,59 @@ check(`exactly two states make a sound ({noisy})`, noisy == 2)
 check("approaching is one of them", Hum.forState("approaching").volume > 0)
 check("leaving is the other", Hum.forState("leaving").volume > 0)
 
+print("")
+print("the fade is a real fade, not a snap")
+
+-- R65. A mutation sweep replaced Presence's smoothing with a snap
+-- (`hum.Volume = voice.volume`) and NOTHING in the whole suite noticed --
+-- because `Presence.luau` cannot be run headlessly (`game:GetService`,
+-- `RunService.Heartbeat`), and the only guard on it was a source sweep that
+-- cannot tell a fade from a snap. The math is pulled out into `Hum.smooth` so
+-- it can be proved here.
+
+check("(guard) there is a fade rate", Hum.FADE_PER_SECOND > 0)
+
+-- One small step must not jump all the way to the target.
+local afterOneFrame = Hum.smooth(0, 1, 1 / 60)
+check(`a single frame does not snap to the target ({afterOneFrame})`, afterOneFrame > 0 and afterOneFrame < 1)
+
+-- Repeated small steps must converge, monotonically, toward the target.
+local level = 0
+local steps = 0
+local wentBackwards = 0
+for _ = 1, 600 do
+	local next_ = Hum.smooth(level, 1, 1 / 60)
+	if next_ < level - 0.0001 then
+		wentBackwards += 1
+	end
+	level = next_
+	steps += 1
+	if level > 0.999 then
+		break
+	end
+end
+check(`(guard) it actually took more than one frame to arrive ({steps})`, steps > 1)
+check("it never moves away from the target", wentBackwards == 0)
+check(`it eventually reaches the target ({level})`, level > 0.999)
+
+-- A very long frame (a hitch) must still land AT the target, not overshoot past
+-- it into a negative or a volume louder than the target ever asked for.
+check("a long frame lands exactly at the target, not past it", Hum.smooth(0, 1, 10) == 1)
+check("...symmetrically, fading down", Hum.smooth(1, 0, 10) == 0)
+
+-- (control) the snap itself must fail the "takes more than one frame" guard,
+-- or this whole check is not measuring the thing it claims to.
+local snapSteps = 0
+local snapLevel = 0
+for _ = 1, 600 do
+	snapLevel = 1 -- what `hum.Volume = voice.volume` does every frame
+	snapSteps += 1
+	if snapLevel > 0.999 then
+		break
+	end
+end
+check("(control) a snap arrives in exactly one step", snapSteps == 1)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

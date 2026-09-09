@@ -231,6 +231,34 @@ if first and second then
 	local again = Heuristic.conveyed(utterance(sentence), { second, first }, {})
 	check("the reading order does not depend on the pool's order", again[1].concept == together[1].concept)
 
+	-- R65. The check above only ever compares two EQUAL confidences (both are
+	-- plain giveaways, both are 1), so it can only prove the TIE-BREAK and
+	-- cannot tell "strongest first" from "weakest first" or from no rule at
+	-- all. A mutation sweep flipped `a.confidence > b.confidence` to `<` and
+	-- nothing here noticed. This gives the two DIFFERENT confidences: one plain
+	-- (1) and one from a half-learned coinage (0.5), and asserts which comes
+	-- first by name rather than by position alone.
+	local halfLearned = {
+		phrase = "the gizmo",
+		concept = second.concept,
+		heat = 0.5,
+		sightings = 3,
+		coinedBy = 0,
+	}
+	local mixedSentence = `the {first.plain[1]} and the gizmo`
+	local mixed = Heuristic.conveyed(utterance(mixedSentence), both, { halfLearned })
+	check(`(guard) both are reported ({#mixed})`, #mixed == 2)
+	check("(guard) the plain giveaway is at full confidence", mixed[1].confidence == 1 or mixed[2].confidence == 1)
+	check(
+		"(guard) the coinage is at PARTIAL confidence, not full or zero",
+		(mixed[1].confidence > 0 and mixed[1].confidence < 1) or (mixed[2].confidence > 0 and mixed[2].confidence < 1)
+	)
+	check("the stronger (plain) giveaway sorts first", mixed[1].concept == first.concept and mixed[1].confidence == 1)
+	check(
+		"...and the weaker (half-learned) one is second",
+		mixed[2].concept == second.concept and mixed[2].confidence < 1
+	)
+
 	-- And the Operator ACTS on both: the first moves it, the second queues
 	-- behind it under R36's commitment rule.
 	local fired: { string } = {}

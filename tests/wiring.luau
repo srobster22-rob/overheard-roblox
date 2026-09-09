@@ -1161,6 +1161,13 @@ local loseBody = string.match(serverCode, "local function endTheRoundIfNobodyCan
 -- module nobody consults and coming still sounds like going.
 local presenceCode = LuauCode.stripNonCode(fs.readFile("src/server/systems/Presence.luau"))
 check("Presence requires Shared.Hum", string.find(presenceCode, "Shared.Hum", 1, true) ~= nil)
+-- R65: a source sweep cannot tell a real fade from a snap, which is exactly why
+-- this one survived a mutation sweep. Presence must call the tested function
+-- rather than restate the arithmetic inline.
+check(
+	"Presence fades volume through Hum.smooth, not inline math",
+	string.find(presenceCode, "Hum.smooth(", 1, true) ~= nil
+)
 check("...and asks it per state", string.find(presenceCode, "Hum.forState(tracker.state)", 1, true) ~= nil)
 check("...and sets the pitch it returns", string.find(presenceCode, "hum.PlaybackSpeed = voice.pitch", 1, true) ~= nil)
 check("...and no longer carries its own volume", string.find(presenceCode, "then 0.35 else 0", 1, true) == nil)

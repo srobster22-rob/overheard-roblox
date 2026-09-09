@@ -6761,3 +6761,82 @@ unmeasured, and the honest reading of "25 of 26 caught" is that the sweep was
 aimed where the tests already look.
 
 **Commit** `05fdbcd`
+
+
+## R65 — a third mutation wave, aimed at what the first two skipped
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — the honest caveat from R64, acted on.** R64 ended: *"25 of 26 caught"
+means the sweep was aimed where the tests already look; a rule nobody thought to
+break is still unmeasured.* Both waves so far picked rules already famous in
+this log — R9, R15, R18, R20, R23, R24, R25, R28, R34, R38, R39, R47, R51, R52,
+R54, R55, R58. This round deliberately picks rules that have **never** been the
+subject of a log entry: ordering guarantees, recency weighting, lockout math,
+and a few "obviously fine" one-liners nobody has ever had reason to doubt.
+
+1. *(picked)* **A third mutation wave, twelve new rules, none repeated from
+   R64.**
+2. R63's queued-room drop, R59's corridor number, R62's loss-rate number — all
+   **still filed**, awaiting the owner.
+3. The client's `BAND_COLOUR` restating band names — **still recorded**, latent.
+
+**Stage 2 — the sweep.** Twelve fresh mutations, none repeated from R64, each
+semantic, whole suite run after every one, `src/` byte-copied and tree-hashed
+before and after.
+
+**Ten of twelve were caught.** The ordering guarantee in `Objectives.anyFinishable`,
+`Connected.allTaken`'s empty-room case, the escalating lockout, `busy`/`lost`
+staying distinct sentences, the private note's adjacency, the corridor door not
+being walled shut, `GuessesBeforeLockout` never reaching zero, and both of
+`Operator.credit`'s recency terms are all genuinely pinned.
+
+**Two survived, and both are worth the round on their own.**
+
+1. **The hum's fade can be replaced by a snap and nothing notices.**
+   `src/server/systems/Presence.luau` calls `game:GetService` and
+   `RunService.Heartbeat`, so no headless suite can run it — the only guard on
+   it before this was a source sweep confirming it merely *requires*
+   `Shared.Hum`, which cannot tell a fade from a snap. R26's own comment says a
+   snap "reads as a bug instead of a decision," and nothing was checking that it
+   stayed a fade.
+
+   Fixed by extracting the smoothing into `Hum.smooth(current, target, dt)`, a
+   pure function that CAN be tested headlessly, and rewiring `Presence.luau` to
+   call it instead of restating the arithmetic inline. `tests/hum.luau` proves
+   it: a single frame does not snap to the target, repeated small steps
+   converge monotonically with zero backwards moves, and a long frame (a hitch)
+   lands exactly at the target rather than overshooting. `tests/wiring.luau`
+   requires `Presence.luau` to call `Hum.smooth(` rather than restate the
+   formula, so the next inline snap is caught even though Presence itself
+   cannot be tested.
+
+2. **`Heuristic.conveyed`'s "strongest first" sort could be reversed and
+   nothing noticed.** The existing ordering test compares two giveaways that
+   are BOTH plain language — both at confidence 1 — so it can only prove the
+   tie-break, never the sort direction itself. Flipping `>` to `<` in the
+   comparator passed the whole suite, because no test ever gave it two
+   genuinely different confidences to sort.
+
+   Fixed by adding a case with one plain giveaway (confidence 1) alongside one
+   half-learned coinage (confidence 0.5), and asserting by NAME which one comes
+   first — not merely that a fixed pair stays in a fixed order.
+
+**Stage 3 — proof.** Both plants failed by name: reversing the sort direction
+fails `the stronger (plain) giveaway sorts first`; replacing the fade with a
+snap fails `Presence fades volume through Hum.smooth, not inline math`.
+Restored; sha256 `96d0a798…8ef9dfb2` and `9136cf50…d48f81b9`. The wave re-run
+after both fixes: **0 surviving mutants of 12**.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon 22, heuristic **45**, operator ok, objectives 122,
+pursuit 103, round 57, config 63, wiring **325**, connected 32, ordering 4,
+heat 20, layout 91, lifecycle 90, hud 22, readout 29, soak 38, hum **29**,
+log 18, silence 62.
+
+*Not claimed:* that 38 mutations across three waves exhaust the game's rules.
+Each wave found what the last one's blind spot made visible — R64's caveat was
+right twice in a row. The pattern worth naming for whoever runs a fourth wave:
+look for math that can only be exercised by a real runtime (Presence was one of
+three files this project cannot test headlessly — the others are unaudited),
+and look for existing tests whose two compared values happen to be equal.

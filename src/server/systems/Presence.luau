@@ -71,7 +71,7 @@ function Presence.spawn(tracker: Pursuit.Tracker): Body
 		-- sound of it going were identical, and hearing the hum told a player
 		-- only that it was moving.
 		local voice = Hum.forState(tracker.state)
-		hum.Volume += (voice.volume - hum.Volume) * math.min(dt * 3, 1)
+		hum.Volume = Hum.smooth(hum.Volume, voice.volume, dt)
 		-- Pitch snaps rather than slides: a retreat should announce itself, not
 		-- ease into being a different sound.
 		hum.PlaybackSpeed = voice.pitch
