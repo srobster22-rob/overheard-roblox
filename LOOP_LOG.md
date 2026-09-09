@@ -1463,3 +1463,156 @@ outright, `openStation`.
    can honestly verify; it belongs to the first round that has a playtest.
 
 **Pick: 1, with 2 and 3 folded in, 4 and 5 retired.**
+
+**Stage 2 — built.**
+
+- `src/server/systems/Station.luau` (new, pure). A `Desk` mapping userId -> the
+  station that player most recently reached, with `open` / `openedBy` /
+  `accepts` / `forget`. A module rather than an `if` in `init.server` for the
+  same reason `Shared.Keypad` is one: `init.server` and `init.client` are the
+  two files no headless test can run, so the decision must not live in either.
+  ONE slot per player deliberately — walking up to the breaker gives up the
+  switchboard, so acting at a station requires having reached it more recently
+  than any other, and the corridor still costs something.
+- `src/server/init.server.luau` — `prompt.Triggered` now records
+  `desk:open(player.UserId, station.id)` BEFORE firing `OpenBoard`, and
+  `submitRemote` refuses a station the player has not reached. The refusal goes
+  down the private `Rejected` channel with the station id, exactly like a wrong
+  code, and returns BEFORE `board:submit`, so a made-up station id cannot cost
+  the honest actor a miss. `PlayerRemoving` calls `desk:forget`.
+- `Round.LINES.completed = "Your call has been completed."` and `onSolved` now
+  fires it instead of `taken` (shortlist 3).
+- `Round.pickSecrets` DELETED (shortlist 4), with a comment in its place saying
+  what it was and why a replacement must still seat every station's concept.
+- Tests: `tests/wiring.luau` 59 -> 94 (the pure Station rule, a full
+  player-by-station matrix with a seated-count guard, the three wiring points
+  read out of `init.server`'s stripped source, the gate-before-submit ORDER,
+  and the two-opposite-lines checks); `tests/objectives.luau` 53 -> 59;
+  `tests/round.luau` 38 -> 46; `tests/harness.luau` adopts `Station`.
+
+**A correction to my own build, caught before it ran.** The first version of
+this round folded R10's filed leak in literally: an `Objectives.forgetPlayer`
+clearing `misses`/`jammedUntil`, called from `PlayerRemoving`. That is a
+REGRESSION dressed as tidiness. R10's own correction to R9 established that
+UserId is stable across a rejoin and the Board lives for the life of the server,
+so a guesser cannot currently reconnect their way out of a jam — and clearing
+those two tables on departure is precisely how they would. R9's whole round,
+undone by a cleanup. The code was reverted before the suite ever saw it; the
+tables now carry a comment saying they are deliberately not cleaned, and
+`tests/objectives.luau` asserts BOTH that the jam survives (behaviourally) and
+that `PlayerRemoving` never mentions those tables (by source), so it cannot be
+"fixed" silently. The leak is two integers per departed player per line and is
+now a guarded decision instead of an oversight.
+
+**Stage 3 — review.**
+
+`test.cmd` by ABSOLUTE path, real output: lexicon 14/14, operator all
+assertions, objectives 59/59, pursuit 36/36, round 46/46, config 44/44, wiring
+94/94, `suite passed`, exit 0. **293 checks, up from R11's 244.** `selene src`:
+0 errors, 0 warnings, 0 parse errors. `rojo build default.project.json -o
+<scratchpad>/r12_overheard_check.rbxlx` exit 0.
+
+Eight plants. The runner used an absolute path to `test.cmd` and asserted more
+than 2000 characters of output before reading any tally, so a silent runner
+could not be read as eight dead plants (R10's trap). Each reported whether it
+applied; each failed BY NAME rather than as a crash; each was restored by
+byte-copy from a backup taken AFTER this round's edits and verified by sha256.
+
+1. **The shipped defect** — the station gate removed from `Submit`, i.e. exactly
+   what was live before this round: `FAIL the Submit handler checks the player
+   is at that station`, `FAIL the station gate exists before board:submit is
+   reached`, wiring 92/94, exit 1.
+2. `Station.accepts` always true: 12 red, wiring 82/94 — including `FAIL the
+   sweep accepted exactly one station per player (guard, 9)`, the check that
+   exists because a blanket `accepts` would satisfy every per-cell assertion.
+3. **The third shape itself** — `accepts` ignores WHICH player and matches any
+   seated station: 9 red led by `FAIL it does not seat a different player`. This
+   is one player's action landing in another player's slot, planted directly.
+4. `open` does not give up the previous station: `FAIL reaching a second station
+   gives up the first`, 92/94.
+5. `forget` a no-op: `FAIL forgetting a player clears their station`, 93/94.
+6. **The tidy cleanup that undoes R9** — jam tables cleared on
+   `PlayerRemoving`: `FAIL PlayerRemoving does not clear the jam tables`,
+   objectives 58/59, exit 1. Worth recording HOW it was caught: only the
+   source-reading check went red, because the module is untouched by that plant
+   and the behavioural rejoin assertions still pass. The behavioural checks
+   alone could not have seen it.
+7. Winning fires `LINES.taken` again (pre-R12): `FAIL and a won round with
+   LINES.completed`, `FAIL the won-round announcement is not LINES.taken`.
+8. The retired shuffler comes back: `FAIL the retired shuffler is gone`, round
+   45/46.
+
+Post-restore sha256, byte-identical to the post-edit baselines:
+`init.server.luau` `54DB639E...6672D071`, `Station.luau`
+`C9957AE6...D9ADC020`, `Round.luau` `F3AB1D0B...1D9B20A3`, `Objectives.luau`
+`7EDCDF6C...F93E947E`. Suite re-run green after all eight, exit 0.
+
+**Reached the product.** Built to a uniquely-named scratch file and grepped with
+python (`Select-String` returns 0 hits on `.rbxlx` for strings certainly
+present). Controls known present: `OVERHEARD` x5, `PlayerRemoving` x4. New:
+`desk:accepts` x1, `desk:open` x1, `desk:forget` x1, `Station.new` x2,
+`openedBy` x1, `Your call has been completed.` x1, `LINES.completed` x1. Control
+known absent: `ZZ_NOT_IN_THIS_FILE_ZZ` x0. And the deleted function,
+`function Round.pickSecrets`, **x0** — gone from the shipped place file.
+
+**Is the multiplayer seam closed?** All three named shapes are now swept: R10's
+fan-out of a single event, R11's state machines driven repeatedly, and this
+round's per-player state written from a shared path. Every per-player slot the
+server holds — `lastSubmit`, `misses`/`jammedUntil`, and now the desk — is
+accounted for, and the one that was on the wrong machine has been moved.
+**A fourth shape remains, and it is the one none of the three touches:
+ORDERING between players.** Nothing in this project has ever tested two players
+acting in the same tick — two submits at the same station inside one frame, a
+solve landing while another player's `redealOrphans` is mid-flight, or
+`board:deal` on a join racing a submit already in the air. All three sweeps so
+far asked "does A's action land in B's slot"; the fourth asks "what if A and B
+act at once", and Luau's single-threaded scheduler makes it plausible-but-
+unproven rather than obviously safe. Naming it rather than declaring the seam
+closed.
+
+**Studio-blocked.** Roblox Studio is device-blocked; nothing here was seen or
+heard running and no claim in this entry is a playtest claim. Specifically
+unverified: that `ProximityPrompt.Triggered` enforces its activation distance
+server-side the way the platform documents (the honest headless claim is only
+"the server has its own record", not "the player was standing there"), that an
+honest player never sees `you are not at that station` (the client only ever
+submits the id the server just sent it, so it should be unreachable without an
+exploit — but that is reasoning, not a playtest), and how the new won-round line
+lands. What the headless suite DID prove: the rule is pure and swept over a full
+player-by-station matrix with a guard against a vacuous pass; a station is
+recorded on trigger, checked on submit BEFORE the answer is compared, and given
+up on departure; one player's seat never seats another; the two opposite
+Operator lines are distinct and every line is unique; and the built `.rbxlx`
+carries all of it.
+
+**Retired this round, not deferred again.**
+- `Round.pickSecrets` — DELETED after five rounds carried. It was not inert: it
+  is the pre-R5 station-blind selection, exported and one call from re-creating
+  the 39.6% defect.
+- **A solved station's ProximityPrompt stays enabled** — retired WITHOUT
+  building it, with a reason. The claim lives entirely in `prompt.Enabled`, a
+  Roblox runtime property, so the only evidence any Studio-blocked round can
+  produce is that the source says so. It belongs to the first round that has a
+  playtest, not to a sixth deferral.
+
+**Left open.**
+- The fourth seam shape: ordering between two players acting in the same tick.
+- R7's item stands: the shared scanner is a lexer, so `if false and ...` passes
+  any wiring guard.
+- **A self-audit finding, filed not built.** `tests/wiring.luau` sweeps
+  `src/shared/` against the harness's adoption list so no shared module ships
+  unhammered. There is no equivalent sweep for `src/server/systems/`, and its
+  adoption list is hand-kept — `Station` was added to it by hand this round, and
+  a future module added without it simply cannot be required by any test. It is
+  not a copy of the shared sweep, because `World` and `Presence` are legitimately
+  unadoptable (they need real Roblox instances), so it needs an exemption list
+  with a stated reason per entry rather than a straight port.
+- The two overlapping remote-name guards are still two. No third arrived.
+- **Still with the owner, untouched and NOT decided here:** `CoolPerSecond`; the
+  mid-round re-deal on JOIN; the solo-player-cannot-finish question; and R9's
+  loud-vs-quiet wrong-code question. **No new owner question this round** — the
+  server owning state the client was deciding has one correct answer, and the
+  new written line was a lookup in the Operator's existing register, not a
+  design fork.
+
+**Commit.** `ce4e19a`

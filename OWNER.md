@@ -81,3 +81,15 @@ Write in plain English. One item per line. Top item goes first.
   still humming, and announcing itself over and over. It now works out whether
   it should be making noise from where it actually is, so it goes quiet once
   and stays quiet, and it only announces arriving once. Nothing to decide here.
+
+- R12 - the game never checked that you were actually standing at the keypad you
+  were typing into. Your computer told the server which station it was, and the
+  server believed it. The two stations sit in different rooms 120 studs apart on
+  purpose - that walk is what forces somebody to talk - but nothing stopped a
+  player from clearing the breaker without ever leaving the switchboard, so the
+  second room and the corridor were free. The server now remembers which station
+  you last walked up to and refuses a code for any other one. Walking to the
+  breaker gives up the switchboard, so you hold one at a time.
+  Also: winning a round used to make the Operator say the exact same sentence it
+  says when the monster walks into your room - "Go ahead, caller." Winning now
+  has its own line. Nothing to decide here.
