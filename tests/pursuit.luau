@@ -137,6 +137,14 @@ local band = tracker()
 check("classify: far away is approaching", band:classify(band.silenceRadius + 1) == "approaching")
 check("classify: inside the silence radius is closing", band:classify(band.silenceRadius) == "closing")
 check("classify: on top of it is arrived", band:classify(band.arriveRadius) == "arrived")
+-- R74. A mutation sweep widened the arrive boundary (`<= arriveRadius + 3`)
+-- and nothing caught it, because the only existing check sat EXACTLY on the
+-- boundary, which passes under either version. Just past it must read
+-- differently: still closing, not yet arrived.
+check(
+	"classify: just past arriveRadius is still closing, not arrived",
+	band:classify(band.arriveRadius + 1) == "closing"
+)
 
 local nagged = tracker()
 local arrivals = 0

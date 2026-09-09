@@ -7407,3 +7407,69 @@ around this format, the same shape `Hum.smooth`/`Presence.luau` split settled
 into in R65.
 
 **Commit** `c10291b`
+
+
+## R74 — a fifth mutation wave, aimed at boundaries and the newest module
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — checking my own new work, and a few boundary conditions nobody had
+picked at.** R73 shipped `LexiconSave` with its own adversarial pass, but a
+fresh module deserves a second, independent look rather than trusting the
+round that wrote it to have found everything. Alongside it: three geometric/
+comparison primitives (`Pursuit.classify`'s two radii, `Hud.overlaps`,
+`Layout.within`) that have been read by many rounds but never mutation-tested
+directly.
+
+1. *(picked)* **Five mutations: both of `classify`'s boundaries, `Hud.overlaps`'
+   strictness, `Layout.within`'s squared-distance comparison, and
+   `LexiconSave`'s tie-break.**
+2. R63's queued-room drop, R59's corridor number, R62's loss-rate number, and
+   R73's group-identity question — all **still filed**, awaiting the owner.
+
+**Stage 2 — the sweep.** `Layout.within`'s squared-vs-linear mistake and one of
+`classify`'s two boundaries were caught immediately (`standing just inside the
+reach counts`; `classify: far away is approaching`). **Two survived, plus one
+mutation the sweep script itself could not plant** (its exact-anchor matcher
+found the same line twice — `classify`'s arrive check is reused verbatim
+inside `Pursuit.step`'s movement code — so it was checked by hand instead).
+
+All three real gaps had the same shape: **an existing test sat exactly ON a
+boundary, which passes whether the boundary is where it should be or three
+studs wider.**
+
+- `classify: on top of it is arrived` proves the arrive radius fires AT the
+  radius; nothing proved it stops firing just past it. Added
+  `classify: just past arriveRadius is still closing, not arrived`.
+- Every `Hud.overlaps` check in the suite compares real panel pairs, none of
+  which sit pixel-exact edge to edge, so loosening `<` to `<=` (treating two
+  rects that only TOUCH as colliding) passed clean. `Hud.overlaps` had never
+  been unit-tested on its own at all. Added four direct checks: two touching
+  pairs (vertical edge, horizontal edge) that must NOT overlap, and two
+  `(control)`s — a real gap, and real overlap — proving the checks are not
+  vacuously permissive in the other direction.
+- `LexiconSave`'s own tie-break test (R73) used three DIFFERENT heats, so it
+  could only ever prove the heat comparator, never the tie-break itself —
+  exactly R69's sort-direction mistake, in code written one round later by the
+  same method. Added a case with two coinages at the identical heat, checked
+  both ways round.
+
+**Stage 3 — proof.** All three re-planted against the final tests; all three
+failed by name (`classify: just past arriveRadius is still closing, not
+arrived`; `rects sharing only a vertical edge do not overlap`; `a tie between
+equal-heat coinages breaks the same way regardless of input order`). Restored
+from byte-copy backups; sha256 unchanged for all three files. Wave re-run
+after every fix — see the product-level confirmation below rather than a
+repeated automated pass, since two of the three fixes were hand-verified plants
+against the exact mutation the sweep script could not itself apply cleanly.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon 22, heuristic 49, operator ok, objectives 122,
+pursuit **104**, round 59, config 63, wiring 351, connected 32, ordering 4,
+heat 20, layout 99, lifecycle 90, hud **26**, readout 29, soak 42, hum 29,
+log 18, silence 62, lexiconsave **28**.
+
+*Not claimed:* that `Hud.overlaps`, `Pursuit.classify` and `LexiconSave`'s sort
+are now exhaustively covered — only that the specific boundary each mutation
+found is pinned. A boundary nobody thought to nudge is still unmeasured, the
+same honest limit R64 and R69 both named.

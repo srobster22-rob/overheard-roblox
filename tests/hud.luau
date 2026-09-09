@@ -156,6 +156,26 @@ if supervisor then
 	end
 end
 
+print("")
+print("overlaps(): touching edges do not overlap")
+
+-- R74. A mutation sweep changed overlaps' strict < to <=, so two rects that
+-- only TOUCH at an edge -- sharing a boundary line, no shared area -- were
+-- reported as colliding. Nothing caught it: every existing check compares real
+-- panel pairs, none of which happen to sit pixel-exact edge to edge.
+local left = { left = 0, top = 0, right = 10, bottom = 10 }
+local touchingRight = { left = 10, top = 0, right = 20, bottom = 10 }
+check("rects sharing only a vertical edge do not overlap", not Hud.overlaps(left, touchingRight))
+local touchingBelow = { left = 0, top = 10, right = 10, bottom = 20 }
+check("rects sharing only a horizontal edge do not overlap", not Hud.overlaps(left, touchingBelow))
+
+-- (control) pulled apart by one unit, or overlapping by one unit: both sides
+-- of the boundary must read as their own answer.
+local gap = { left = 11, top = 0, right = 21, bottom = 10 }
+check("(control) a real gap does not overlap", not Hud.overlaps(left, gap))
+local overlapping = { left = 9, top = 0, right = 19, bottom = 10 }
+check("(control) real overlap is still caught", Hud.overlaps(left, overlapping))
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

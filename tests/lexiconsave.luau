@@ -93,6 +93,22 @@ for i, c in orderedOnce.coinages do
 end
 check("the order does not depend on the caller's table order", same)
 
+-- R74. The check above used three DIFFERENT heats, so it could only ever prove
+-- the heat comparator, never the tie-break -- a mutation sweep dropped the
+-- tie-break entirely (`return a.phrase < b.phrase` -> `return false`) and
+-- nothing noticed. This gives two coinages at the EXACT SAME heat and checks
+-- the save orders them the same way regardless of which one the caller listed
+-- first.
+local tiedA = { coinage("zephyr", "jack_number", 0.5, 1, 1), coinage("anchor", "jack_number", 0.5, 1, 1) }
+local tiedB = { coinage("anchor", "jack_number", 0.5, 1, 1), coinage("zephyr", "jack_number", 0.5, 1, 1) }
+local savedA = LexiconSave.encode(tiedA)
+local savedB = LexiconSave.encode(tiedB)
+check(
+	"a tie between equal-heat coinages breaks the same way regardless of input order",
+	savedA.coinages[1].phrase == savedB.coinages[1].phrase and savedA.coinages[2].phrase == savedB.coinages[2].phrase
+)
+check("...specifically, alphabetically -- 'anchor' before 'zephyr'", savedA.coinages[1].phrase == "anchor")
+
 print("")
 print("decode never trusts, and never errors")
 
