@@ -895,3 +895,5 @@ carries the change.
   not answer it); and the solo-player-cannot-finish question.
 - **No new owner decision was filed this round.** The leave case was fixable
   without making a design call, which is why it was pickable.
+
+**Commit.** `dc747cb`
