@@ -7141,3 +7141,59 @@ own first read of it was wrong until the comment above its definition was
 actually read. Left exactly as it was.
 
 **Commit** `f713fb9`
+
+
+## R70 — a captured player's silence clock stays on screen forever
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — following R67 to the client.** R67 fixed the SERVER side of capture
+meeting the Supervisor: `takeWhoeverIsHere` now calls `supervisor:forget`, so a
+caught player's clock stops running and `Supervisor.band` returns `nil` for
+them from that tick on.
+
+`showEveryoneTheirClock` reads that correctly — `if band == nil then continue
+end` — but "continue" means it never sends that player anything again. Nothing
+ever tells the CLIENT the clock is gone. The panel was last painted with
+whatever band they were in the moment they were caught, and R56's own comment
+says the panel is shown on push and hidden only on `onPhase` (round end). So a
+player caught while `warned` or, worse, `overdue` — the band whose words are
+literally **"SILENT LINE - TRACED"** — carries that red panel on their screen
+for the rest of the round, after the thing it was warning about can no longer
+happen to them.
+
+`CLAUDE.md`: *"The monster must be legible."* A legible monster does not leave
+a stale alarm on screen once it has been resolved.
+
+The fix does not need a new remote: `connectedRemote` already fires at the
+caught player the instant `takeWhoeverIsHere` connects them
+(`connectedRemote:FireClient(victim, true)`), and the client already listens to
+it to show `onLine` and close the keypad. Hiding the Silence panel belongs in
+that same handler.
+
+1. *(picked)* **Hide the Silence panel when `Connected` fires `true`.**
+2. R63's queued-room drop, R59's corridor number, R62's loss-rate number — all
+   **still filed**, awaiting the owner.
+
+**Stage 2 — the fix.** `connectedRemote.OnClientEvent`'s existing `caught`
+branch (which already closes the keypad) now also sets
+`silencePanel.Visible = false`. No new remote: the server already fires this
+event at the exact moment `takeWhoeverIsHere` connects the player, which is the
+same tick `Supervisor.forget` runs.
+
+**Stage 3 — proof.** A wiring check in `tests/wiring.luau` reads the client's
+`Connected` handler and requires `silencePanel.Visible = false` to appear
+**inside** the `if caught then` branch, not merely somewhere in the function.
+Planted by removing the hide: `the Silence panel is hidden on capture` failed
+by name. Restored; sha256 `9f520fc1…4bd67fb7c4721` unchanged.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon 22, heuristic 49, operator ok, objectives 122,
+pursuit 103, round 59, config 63, wiring **338**, connected 32, ordering 4,
+heat 20, layout 99, lifecycle 90, hud 22, readout 29, soak 42, hum 29, log 18,
+silence 62.
+
+*Not claimed:* how the panel disappearing actually reads to a player — whether
+it should fade rather than vanish, matching R26's rule for the hum. That is a
+feel question and Studio is device-blocked; the panel is proved gone from the
+model, not proved to look right leaving.

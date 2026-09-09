@@ -1132,6 +1132,27 @@ check(`no colour is drawn for a band that does not exist ({#stray} stray)`, #str
 -- (control) a band that does not exist must not be found to have a colour.
 check("(control) the reader does not invent bands", coloured["abandoned"] == nil)
 
+-- R70, checked in the PRODUCT's own file. The server stops watching a caught
+-- player's silence the instant Supervisor.forget runs (R67), and
+-- showEveryoneTheirClock simply stops sending them anything from then on -- it
+-- never tells the client the clock is gone. Without a corresponding client-side
+-- hide, the panel kept whatever band was last pushed, possibly the red "SILENT
+-- LINE - TRACED" state, for the rest of the round.
+print("")
+print("a captured player's silence panel is hidden, not left stale")
+
+local connectedBody = string.match(
+	clientCode,
+	"connectedRemote%.OnClientEvent:Connect%(function%(caught: boolean%).-" .. NL .. "end%)"
+) or ""
+check("(guard) found the client's Connected handler", #connectedBody > 0)
+local ifCaughtAt = string.find(connectedBody, "if caught then", 1, true)
+local hideAt = string.find(connectedBody, "silencePanel.Visible = false", 1, true)
+check("the Silence panel is hidden on capture", hideAt ~= nil)
+if ifCaughtAt and hideAt then
+	check("...inside the caught branch, not unconditionally", hideAt > ifCaughtAt)
+end
+
 -- R57, and this is the CLASS. `Hud.EXCLUSIVE` is a list of promises about what
 -- the CLIENT will do, held in a shared module the client does not have to obey.
 -- R56 added `{ "Round over", "Supervisor" }` and used it to justify placing the

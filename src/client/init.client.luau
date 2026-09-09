@@ -374,6 +374,15 @@ connectedRemote.OnClientEvent:Connect(function(caught: boolean)
 	onLine.Visible = caught == true
 	if caught then
 		closeBoard()
+		-- R70. The server stops watching a caught player's silence the instant
+		-- they are connected (Supervisor.forget, see R67), so Supervisor.band
+		-- returns nil for them from that tick on and showEveryoneTheirClock
+		-- simply stops sending them anything -- it never tells THIS client the
+		-- clock is gone. Without this the panel kept showing whatever band was
+		-- last pushed, which could be the red "SILENT LINE - TRACED" state, for
+		-- the rest of the round: a stale alarm about something that can no
+		-- longer happen to you. CLAUDE.md: the monster must be legible.
+		silencePanel.Visible = false
 	end
 end)
 
