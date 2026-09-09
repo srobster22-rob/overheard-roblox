@@ -340,6 +340,11 @@ end)
 local function beginRound()
 	board:reset()
 	line:clear()
+	-- Per-round state. Anything declared at the top of this file that carries a
+	-- round's worth of state has to be listed here; tests/wiring.luau derives
+	-- that list from the source rather than trusting this comment.
+	desk:clear()
+	operator:forgetObservations()
 
 	local userIds: { number } = {}
 	for _, p in Players:GetPlayers() do

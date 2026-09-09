@@ -100,6 +100,60 @@ line:clear()
 check("a new round takes everyone off the line", line:count() == 0)
 check("and they are not still connected", line:isConnected(1) == false)
 
+print("")
+print("per-round state does not cross the boundary")
+
+-- R31. `beginRound` reset the board, the line and the Operator's position, and
+-- nothing else. Two things crossed:
+
+local Station = rt.require(rt.systems.Station)
+local Operator = rt.require(rt.systems.Operator)
+local Config = rt.require(rt.shared.Config)
+
+-- 1. Where each player is standing. R12 added this gate so the SERVER owns it;
+--    surviving the boundary handed every player one free station.
+local desk = Station.new()
+desk:open(1, "breaker")
+check("(guard) walking up to a station opens it", desk:accepts(1, "breaker"))
+desk:clear()
+check("a new round forgets where everyone was standing", desk:accepts(1, "breaker") == false)
+check("...for every station, not just the one", desk:accepts(1, "board") == false)
+check("...and for every player", desk:accepts(2, "breaker") == false)
+
+-- 2. Novel terms waiting to be credited. CreditWindow (20s) is longer than the
+--    intermission (8s), so a phrase said just before a round ended was credited
+--    by a success in the NEXT one: 6 coinages minted across the boundary.
+check(
+	`(guard) the window really is longer than the intermission ({Config.CreditWindow} > {Config.IntermissionSeconds})`,
+	Config.CreditWindow > Config.IntermissionSeconds
+)
+
+local secrets = { { concept = "exit", plain = { "exit" }, payload = "archive" } }
+local speaker = { UserId = 1 } :: any
+
+local leaky = Operator.new(secrets)
+leaky:hear({ speaker = speaker, text = "meet me at the purple lantern", at = 100 })
+leaky:credit("exit", 112)
+check("(guard) a same-window success does credit it", #leaky:snapshot() > 0)
+
+local clean = Operator.new(secrets)
+clean:hear({ speaker = speaker, text = "meet me at the purple lantern", at = 100 })
+clean:forgetObservations()
+clean:credit("exit", 112)
+check("a phrase from last round is not credited by this round's success", #clean:snapshot() == 0)
+
+-- And the thing that must NOT be forgotten: the Lexicon itself. Carrying a
+-- group's vocabulary between rounds is the retention mechanic.
+local kept = Operator.new(secrets)
+for i = 1, 6 do
+	kept:hear({ speaker = speaker, text = "head for the purple lantern", at = i })
+	kept:credit("exit", i + 0.5)
+end
+local before = #kept:snapshot()
+check(`(guard) the group coined something ({before})`, before > 0)
+kept:forgetObservations()
+check("forgetting observations does not wipe the Lexicon", #kept:snapshot() == before)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

@@ -57,6 +57,15 @@ end
 -- Per-player state needs exactly one place that forgets it. `lastSubmit` was
 -- cleaned on PlayerRemoving and `misses`/`jammedUntil` were not; adding a third
 -- slot with no cleanup would repeat that in the round that names it.
+-- Forget where everyone is standing. Called when a new round begins: `desk` is
+-- the server's own copy of which keypad each player walked up to, and it used
+-- to survive the boundary — so a player who opened the breaker in round one
+-- could submit to it from the corridor in round two, which is exactly the gate
+-- R12 added to close.
+function Station.clear(self: Desk)
+	self.at = {}
+end
+
 function Station.forget(self: Desk, userId: number)
 	self.at[userId] = nil
 end

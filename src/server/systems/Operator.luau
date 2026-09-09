@@ -145,6 +145,19 @@ function Operator.credit(self: Operator, concept: string, now: number)
 	self.observations = {}
 end
 
+-- Drop novel terms that are still waiting to be credited. Called when a round
+-- ends: `CreditWindow` is 20 seconds against an 8-second intermission, so a
+-- phrase said just before one round finished was being credited by a success in
+-- the NEXT one -- six coinages minted across the boundary in the R31 probe.
+--
+-- The acquisition rule is "the group said it and then succeeded". Crediting
+-- across a reset turns that into "said last round, succeeded this one", which
+-- is a different claim and not a true one. The LEXICON itself is untouched:
+-- burned terms carry over on purpose, and that is the retention mechanic.
+function Operator.forgetObservations(self: Operator)
+	self.observations = {}
+end
+
 -- Terms cool off. It forgets, a little, which is what keeps a long-running
 -- group from being permanently mute. Returns whether anything actually moved,
 -- so callers can avoid replicating an unchanged lexicon.

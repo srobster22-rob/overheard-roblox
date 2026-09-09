@@ -580,6 +580,40 @@ check("(guard) found beginRound", #beginBody > 0)
 check("a new round sends the Operator home", string.find(beginBody, "pursuit:sendHome", 1, true) ~= nil)
 check("...to the post World built, not a literal", string.find(beginBody, "built.operatorStart", 1, true) ~= nil)
 
+-- R31, and this is the CLASS rather than the instances. `beginRound` reset
+-- `board`, `line` and `pursuit` and nothing else, so two pieces of per-round
+-- state crossed the boundary: `desk` (which keypad each player walked up to)
+-- let a player submit to a station from the corridor a round later, bypassing
+-- R12's gate; and the Operator's pending observations were credited by a
+-- success in the NEXT round, because CreditWindow is 20s against an 8s
+-- intermission.
+--
+-- The list of holders is DERIVED from the server source, not restated here, so
+-- the next `local x = Module.new()` added to this file has to be handled or
+-- this fails. A hand-kept list would have passed while the new one leaked.
+-- `Instance.new` is excluded: an Instance is a world object, not a round's
+-- worth of state. The first draft of this guard swept it in and failed on
+-- `spawnPad`, which is a SpawnLocation and has nothing to reset.
+local holders: { string } = {}
+for name, module in string.gmatch(serverCode, "local ([%a][%w_]*) = (%u[%w_]*)%.new%(") do
+	if module ~= "Instance" then
+		table.insert(holders, name)
+	end
+end
+check(`(guard) found the per-round holders ({table.concat(holders, ", ")})`, #holders >= 4)
+
+-- `round` is the lifecycle itself: the TICK restarts it, and beginRound runs
+-- after that, so it is handled by construction rather than reset here. It is
+-- the only exemption, and it is named with its reason.
+local EXEMPT: { [string]: boolean } = { round = true }
+
+for _, name in holders do
+	if EXEMPT[name] then
+		continue
+	end
+	check(`a new round resets '{name}'`, string.find(beginBody, name .. ":", 1, true) ~= nil)
+end
+
 -- Winning must stop the monster. Until R29 it did not, so a group finished the
 -- board and was then taken by something that had no idea the round was over.
 -- NL built with string.char, never an escape: this repo's patching has turned
