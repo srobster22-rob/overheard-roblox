@@ -498,6 +498,106 @@ check(
 check("the post is still on the corridor floor", math.abs(postAt.z) <= Layout.corridorWidth() / 2)
 check("...and clear of the spawn pad's centre", math.abs(postAt.z) > 0)
 
+print("")
+print("anywhere you can walk, you can get through the door")
+
+-- R52. R28 derived the corridor from the doorway and used that one number for
+-- both the FLOOR and the WALLS. Those are different jobs. The floor must cover
+-- the whole approach or part of it is unfloored -- that was R28's defect. The
+-- walls must keep a player inside the span a doorway can pass, and nothing was
+-- keeping them: a character is about 4 studs across against a 12-stud door, so
+-- anyone past z = 4 clipped the frame while the walls let them reach z = 6. A
+-- third of the corridor led to a door they could not fit through, and hugging a
+-- wall is exactly what a fleeing player does.
+
+local bodyHalf = Config.PlayerWidth / 2
+check(`(guard) a player has a width ({Config.PlayerWidth})`, Config.PlayerWidth > 0)
+check(`(guard) the doorway has a width ({Layout.Door})`, Layout.Door > 0)
+
+-- R28's rule, unchanged: the floor still covers the doorway.
+check(
+	`the floor is still at least as wide as the door ({Layout.corridorWidth()} >= {Layout.Door})`,
+	Layout.corridorWidth() >= Layout.Door
+)
+
+-- The walkable span is narrower than the floor, by exactly a character.
+check(
+	`the walls are inset by a character ({Layout.corridorClear()} = {Layout.Door} - {Config.PlayerWidth})`,
+	Layout.corridorClear() == Layout.Door - Config.PlayerWidth
+)
+check(`(guard) there is still a corridor to walk down ({Layout.corridorClear()})`, Layout.corridorClear() > 0)
+check(
+	`(guard) the walls really are the narrower of the two ({Layout.corridorClear()} < {Layout.corridorWidth()})`,
+	Layout.corridorClear() < Layout.corridorWidth()
+)
+
+-- The property, swept rather than asserted at one point: stand anywhere between
+-- the walls and the whole character fits through the doorway.
+local wallEdge = Layout.corridorClear() / 2
+local clipping = 0
+local sampled = 0
+for step = -40, 40 do
+	local z = wallEdge * (step / 40)
+	sampled += 1
+	if math.abs(z) + bodyHalf > Layout.Door / 2 then
+		clipping += 1
+	end
+end
+check(`(guard) the walkable width was swept ({sampled} positions)`, sampled > 50)
+check(`nowhere you can stand clips the frame ({clipping} of {sampled})`, clipping == 0)
+
+-- The wall itself is the case that matters, because that is where a fleeing
+-- player is.
+check(
+	`pressed against the wall you still fit ({wallEdge} + {bodyHalf} <= {Layout.Door / 2})`,
+	wallEdge + bodyHalf <= Layout.Door / 2
+)
+
+-- And the control: a stud further out and the sweep does see a clip, so the
+-- check above is not passing because it cannot fail.
+check("(control) a stud outside the wall DOES clip the frame", (wallEdge + 1) + bodyHalf > Layout.Door / 2)
+
+-- The walls have to be where the number says, not merely computed from it.
+local insetWalls = Layout.corridorWalls()
+local widest = 0
+for _, wall in insetWalls do
+	widest = math.max(widest, math.abs(wall.minZ), math.abs(wall.maxZ))
+end
+check(`(guard) the corridor has walls ({#insetWalls})`, #insetWalls > 0)
+check(`the built walls sit at the walkable edge ({widest} = {wallEdge})`, math.abs(widest - wallEdge) < 0.01)
+check(
+	`...which is inside the floor's edge ({widest} < {Layout.corridorWidth() / 2})`,
+	widest < Layout.corridorWidth() / 2
+)
+
+-- The Operator's post must be inside the WALLS, not merely on the floor. A post
+-- a stud outside them puts every path from it to a room across the wall line,
+-- which is the filed geometry-blind movement defect made reachable.
+local post52 = Layout.operatorPost()
+check(
+	`the post is inside the walls, not just on the floor ({math.abs(post52.z)} <= {wallEdge})`,
+	math.abs(post52.z) <= wallEdge
+)
+
+-- A straight walk from the post to either room never leaves the corridor.
+for name, centre in { board = Layout.boardCentre(), archive = Layout.archiveCentre() } do
+	local strayed = 0
+	local walked = 0
+	for step = 0, 60 do
+		local t = step / 60
+		local z = post52.z + (centre.z - post52.z) * t
+		local x = post52.x + (centre.x - post52.x) * t
+		if math.abs(x) <= Layout.corridorHalfLength() then
+			walked += 1
+			if math.abs(z) > wallEdge then
+				strayed += 1
+			end
+		end
+	end
+	check(`(guard) the walk to the {name} crosses the corridor ({walked} steps)`, walked > 5)
+	check(`the Operator's walk to the {name} stays between the walls ({strayed} outside)`, strayed == 0)
+end
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

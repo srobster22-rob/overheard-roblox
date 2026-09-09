@@ -121,6 +121,11 @@ local Config = {
 	-- smaller than `StationReach`; `tests/config.luau` holds them in that order.
 	PromptReach = 10,
 
+	-- How wide a Roblox character is, near enough. Used to keep the corridor's
+	-- WALLS inside the span its doorways can pass: a player walking the corridor
+	-- must never be somewhere the door will not let them through.
+	PlayerWidth = 4,
+
 	-- There is no OperatorReach dial any more. R21 made it a radius derived from
 	-- the room; R23 found that the smallest circle containing a square also
 	-- covers 9.94 studs of corridor outside every wall, so a player who got out

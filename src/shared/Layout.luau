@@ -21,6 +21,8 @@
 --
 -- Pure arithmetic, no Roblox APIs, so `tests/layout.luau` can sweep all of it.
 
+local Config = require(script.Parent.Config)
+
 local Layout = {}
 
 -- Room footprint, studs. Square.
@@ -140,8 +142,23 @@ end
 
 -- The corridor's own walls, so you cannot walk off the side of it. They stop at
 -- the room walls, leaving the doorways open.
+-- The width a player can actually WALK, between the corridor's walls.
+--
+-- Narrower than the floor by a whole character, because the floor's job and the
+-- walls' job are different and R28 built one from the other and used it for
+-- both. The FLOOR must be at least as wide as a doorway or part of every
+-- approach is unfloored (R28's defect). The WALLS must keep a player inside the
+-- span a doorway can pass, or the corridor walks them into the frame: a
+-- character is about 4 studs across against a 12-stud door, so anyone past
+-- z = 4 clipped it while the walls let them reach z = 6. A third of the
+-- corridor led to a door they could not fit through, and hugging a wall is what
+-- a fleeing player does.
+function Layout.corridorClear(): number
+	return Layout.Door - Config.PlayerWidth
+end
+
 function Layout.corridorWalls(): { Rect }
-	local halfW = Layout.corridorWidth() / 2
+	local halfW = Layout.corridorClear() / 2
 	local endX = Layout.corridorHalfLength()
 	return {
 		{ minX = -endX, minZ = -halfW, maxX = endX, maxZ = -halfW },
@@ -281,7 +298,12 @@ function Layout.operatorPost(): Point
 	-- The corridor midpoint is the only equidistant point on it, so the post
 	-- sits there, pushed to the edge of the corridor floor to leave the spawn
 	-- pad clear. Both rooms now hear 3.8 seconds of it.
-	return { x = 0, z = -(Layout.corridorWidth() / 2 - 1) }
+	--
+	-- Derived from the WALKABLE span, not the floor. R52 brought the walls in by
+	-- a character's width and this sat a stud outside them -- which would have
+	-- made the filed geometry-blind movement defect reachable, since every path
+	-- from here to a room crosses the wall line on its way in.
+	return { x = 0, z = -(Layout.corridorClear() / 2 - 1) }
 end
 
 return Layout
