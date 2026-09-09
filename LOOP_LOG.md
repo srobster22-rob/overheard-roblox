@@ -6842,3 +6842,55 @@ three files this project cannot test headlessly — the others are unaudited),
 and look for existing tests whose two compared values happen to be equal.
 
 **Commit** `a55f913`
+
+
+## R66 — the client's band colours were never checked against Silence's bands
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — closing a defect that has sat "recorded, not fixed" since R58.**
+`BAND_COLOUR` in `init.client.luau` restates `clear` / `warned` / `overdue` as
+string-literal keys, and the file's own comment says the client "decides
+nothing" — but nothing has ever swept those keys against `Silence`'s `Band`
+type. A fourth band added to `Silence.luau` (as R56's Supervisor itself was
+added to this game) would silently draw with no colour, or an existing name
+renamed there would silently stop matching and every push after would draw the
+`overdue` player's bar in the fallback `clear` green.
+
+Latent, never live — this is the fourth round in a row it has carried forward
+as "recorded", so it is worth closing rather than re-filing again.
+
+1. *(picked)* **Derive `BAND_COLOUR`'s required keys from `Silence`'s own `Band`
+   type, and guard it.**
+2. R63's queued-room drop, R59's corridor number, R62's loss-rate number — all
+   **still filed**, awaiting the owner.
+
+**Stage 2 — the fix.** A guard in `tests/wiring.luau`, swept in both directions
+from `Silence`'s own `Band` type rather than a list typed in the test: every
+band Silence can report must have a colour in the client's `BAND_COLOUR`, and no
+colour may be drawn for a band that does not exist (a stray entry is the same
+shape as R56's dead `stillThere` line — coverage that looks real and answers for
+nothing).
+
+No code change was needed in `src/` — the three names already agree, exactly as
+R58 recorded. What changed is that agreement is now proven rather than assumed.
+
+**Stage 3 — proof.** Two plants, each failed by name:
+
+| plant | what failed |
+|---|---|
+| a fourth band (`"traced"`) added to `Silence`'s type, no colour added | `every band has a colour (1 without one)` — `no colour for: traced` |
+| `overdue`'s colour entry renamed to `traced` (the silent-fallback-to-green case R58 warned about) | `every band has a colour (1 without one)` — `no colour for: overdue`, **and** `no colour is drawn for a band that does not exist (1 stray)` |
+
+Restored from byte-copy backups; sha256 `aee9e2a9…da58ea72` and
+`8f96c6b9…801b4ff3` (unchanged, since no fix was needed — only the check).
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon 22, heuristic 45, operator ok, objectives 122,
+pursuit 103, round 57, config 63, wiring **331**, connected 32, ordering 4,
+heat 20, layout 91, lifecycle 90, hud 22, readout 29, soak 38, hum 29, log 18,
+silence 62.
+
+*Not claimed:* anything new about the game. This round closed a defect that has
+sat "recorded" for four rounds running (R58-R65) rather than finding a new one —
+worth doing before it aged into something nobody remembered the reason for.

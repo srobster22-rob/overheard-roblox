@@ -1055,6 +1055,64 @@ check(
 -- (control) a member no server path reaches for must not be reported as covered.
 check("(control) the reader does not invent coverage", string.find(soakCode, ".neverWrittenMember", 1, true) == nil)
 
+-- R66, and this is the CLASS. R58's own log entry recorded that `BAND_COLOUR`
+-- in `init.client.luau` restates `Silence`'s band names as string-literal keys,
+-- and carried it forward as "latent, not fixed" through R59-R65 without ever
+-- being checked. A fourth band added to `Silence.luau` (the way R56 added the
+-- whole Supervisor system to this game) would silently draw with no colour; a
+-- renamed band would silently fall back to the `clear` colour for an OVERDUE
+-- player, which is the one situation this bar exists to make legible.
+--
+-- Swept from `Silence`'s own `Band` type, never from a list typed here.
+print("")
+print("every band Silence can report has a colour in the client")
+
+local silenceSource = fs.readFile("src/shared/Silence.luau")
+local bandType = string.match(silenceSource, "export type Band = ([^" .. NL .. "]+)") or ""
+check(`(guard) found the Band type ({bandType})`, #bandType > 0)
+
+local bands: { string } = {}
+for name in string.gmatch(bandType, '"([%a]+)"') do
+	table.insert(bands, name)
+end
+check(`(guard) it names some bands ({table.concat(bands, ", ")})`, #bands >= 2)
+
+local colourBlock = string.match(clientSource, "local BAND_COLOUR: { %[string%]: Color3 } = {(.-)}") or ""
+check("(guard) found the client's BAND_COLOUR table", #colourBlock > 0)
+
+local coloured: { [string]: boolean } = {}
+for name in string.gmatch(colourBlock, "([%a][%w_]*) = Color3%.fromRGB") do
+	coloured[name] = true
+end
+
+local mute: { string } = {}
+for _, band in bands do
+	if not coloured[band] then
+		table.insert(mute, band)
+	end
+end
+check(`every band has a colour ({#mute} without one)`, #mute == 0)
+if #mute > 0 then
+	print(`        no colour for: {table.concat(mute, ", ")}`)
+end
+
+-- And the reverse: a colour for a band Silence does not have is dead code that
+-- looks like coverage, the same shape as R56's dead `stillThere` line.
+local stray: { string } = {}
+local bandSet: { [string]: boolean } = {}
+for _, band in bands do
+	bandSet[band] = true
+end
+for name in coloured do
+	if not bandSet[name] then
+		table.insert(stray, name)
+	end
+end
+check(`no colour is drawn for a band that does not exist ({#stray} stray)`, #stray == 0)
+
+-- (control) a band that does not exist must not be found to have a colour.
+check("(control) the reader does not invent bands", coloured["abandoned"] == nil)
+
 -- R57, and this is the CLASS. `Hud.EXCLUSIVE` is a list of promises about what
 -- the CLIENT will do, held in a shared module the client does not have to obey.
 -- R56 added `{ "Round over", "Supervisor" }` and used it to justify placing the
