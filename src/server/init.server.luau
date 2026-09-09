@@ -348,7 +348,10 @@ local function beginRound()
 	end
 	board:deal(userIds)
 
-	pursuit:stop()
+	-- Back to its post, not merely stopped. `stop()` leaves it standing wherever
+	-- the last round ended, so round two began with it inside a room and the
+	-- next understanding of that room arrived instantly and silently.
+	pursuit:sendHome(built.operatorStart)
 	heardRemote:FireAllClients(Round.LINES.greeting, "", 0)
 	pushObjectives(nil)
 	broadcastLexicon()

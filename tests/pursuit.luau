@@ -351,6 +351,70 @@ recalled:sendTo("board")
 check("hearing something again pulls it back", recalled.state ~= "leaving")
 check("and it is hunting, not retreating", recalled.targetName == "board")
 
+print("")
+print("arriving always lands ON the room centre")
+
+-- R30, correcting R26. `step` snapped only on its early-exit branch; the path at
+-- the bottom set `arrived` through `classify` WITHOUT moving the position, so an
+-- ordinary arrival stopped up to ArriveRadius short. R23's capture box is
+-- centred on `pursuit.position`, so it hung that far outside one wall and fell
+-- that far short of the opposite one. R26 recorded this as unreachable. It was
+-- the normal path.
+
+local landings = 0
+local offset = 0
+for _, dt in { 0.1, 0.25, 0.5, 1, 2, 3, 7 } do
+	local lander = tracker()
+	lander:sendTo("board")
+	for _ = 1, 2000 do
+		lander:step(dt)
+		if lander.state == "arrived" then
+			break
+		end
+	end
+	if lander.state == "arrived" then
+		landings += 1
+		local d = math.sqrt((lander.position.x - ROOMS.board.x) ^ 2 + (lander.position.z - ROOMS.board.z) ^ 2)
+		if d > 0.0001 then
+			offset += 1
+			print(`    dt={dt} stopped {string.format("%.2f", d)} studs short`)
+		end
+	end
+end
+check(`(guard) every step size reached the room ({landings}/7)`, landings == 7)
+check(`arrival is exactly on the centre at every step size ({offset} offset)`, offset == 0)
+
+print("")
+print("a new round puts it back at its post")
+
+-- R29 began the next round with `stop()`, which clears the target and goes idle
+-- but leaves the POSITION where it stood. So round two started with the Operator
+-- inside the room it had hunted, and the next understanding of that room made it
+-- `arrived` on the spot: no approach, no hum, instant capture.
+
+local post = { x = -40, z = 0 }
+local across = tracker()
+across:sendTo("board")
+for _ = 1, 200 do
+	across:step(0.5)
+	if across.state == "arrived" then
+		break
+	end
+end
+check("(guard) it ended the round inside the room", across.state == "arrived")
+
+across:sendHome(post)
+check("a new round puts it at the post", across.position.x == post.x and across.position.z == post.z)
+check("idle, not arrived", across.state == "idle")
+check("silent", across:isAudible() == false)
+check("with nothing to chase", across.target == nil and across.targetName == nil)
+check("and no dwell carried over", across:shouldLeave(0) == false)
+
+-- The point of it: the next round's approach is a real approach again.
+across:sendTo("board")
+check("being sent again does NOT arrive instantly", across.state ~= "arrived")
+check("and you hear it coming", across:isAudible())
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

@@ -168,6 +168,16 @@ function Pursuit.step(self: Tracker, dt: number)
 	end
 
 	-- Recompute after moving so the state matches where it actually is.
+	local now = distance(self.position, target)
+	if now <= self.arriveRadius then
+		-- SNAP. This branch used to set `arrived` through `classify` without
+		-- moving the position, so an ordinary arrival left the Operator up to
+		-- `ArriveRadius` short of the centre -- and R23's room-shaped capture is
+		-- centred on `pursuit.position`, so the box hung that far outside one
+		-- wall and fell that far short of the opposite one. R26 recorded this
+		-- case as unreachable; it is the normal path.
+		self.position = { x = target.x, z = target.z }
+	end
 	self:setState(self:classify(distance(self.position, target)))
 end
 
@@ -178,6 +188,22 @@ function Pursuit.withdrawTo(self: Tracker, point: Point)
 	self.target = { x = point.x, z = point.z }
 	self.targetName = nil
 	self:setState("leaving")
+end
+
+-- Put it back at its post between rounds. A PLACEMENT, not a walk: nobody is
+-- watching during an intermission, and walking it home would leave the room
+-- lethal until it got there.
+--
+-- `stop()` alone was not enough. It clears the target and goes idle but leaves
+-- the POSITION where it stood, so round two began with the Operator inside the
+-- room it had hunted -- and the next understanding of that room made it
+-- `arrived` on the spot, with no approach and no sound at all.
+function Pursuit.sendHome(self: Tracker, point: Point)
+	self.position = { x = point.x, z = point.z }
+	self.target = nil
+	self.targetName = nil
+	self.dwell = 0
+	self:setState("idle")
 end
 
 -- Has it stood in this room long enough to lose interest?

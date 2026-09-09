@@ -571,6 +571,15 @@ check("capture is gated on the round still being played", string.find(tickBody, 
 check("the tick waits out an intermission", string.find(tickBody, "Config.IntermissionSeconds", 1, true) ~= nil)
 check("and starts the next round", string.find(tickBody, "beginRound()", 1, true) ~= nil)
 
+-- R30. A new round must PLACE the Operator back at its post, not merely stop it:
+-- `stop()` leaves the position where the last round ended, so round two began
+-- with it standing inside a room and the next understanding arrived instantly
+-- and silently.
+local beginBody = string.match(serverCode, "local function beginRound%(%).-" .. NL .. "end") or ""
+check("(guard) found beginRound", #beginBody > 0)
+check("a new round sends the Operator home", string.find(beginBody, "pursuit:sendHome", 1, true) ~= nil)
+check("...to the post World built, not a literal", string.find(beginBody, "built.operatorStart", 1, true) ~= nil)
+
 -- Winning must stop the monster. Until R29 it did not, so a group finished the
 -- board and was then taken by something that had no idea the round was over.
 -- NL built with string.char, never an escape: this repo's patching has turned
