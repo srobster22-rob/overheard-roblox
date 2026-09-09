@@ -577,3 +577,5 @@ all of it.
   (`CoolPerSecond = 0.01`) is an untuned guess needing a playtest, and the
   mid-round re-deal question from R5 (does a joining player reshuffle who
   knows what?).
+
+**Commit.** `55a7d9f`
