@@ -687,6 +687,31 @@ check("winning stops the Operator", string.find(solvedBlock, "pursuit:stop()", 1
 -- R33. And the client has to be TOLD. Every place the phase changes must push it, or
 -- the panel is stale exactly when it matters.
 check("the phase is pushed when the round is won", string.find(solvedBlock, "pushPhase", 1, true) ~= nil)
+
+-- R48. Everyone taken is one way to lose; nobody LEFT being able to finish
+-- anything is the other. Three of four caught in one arrival strands a line with
+-- its reader, and the survivor could then neither win nor be forced to lose, so
+-- the round ran forever with no timer to rescue it.
+local captureBody = string.match(serverCode, "local function takeWhoeverIsHere%(%).-" .. NL .. "end") or ""
+check("(guard) found the capture path", #captureBody > 0)
+check("...and it is the one that ends a lost round (control)", string.find(captureBody, "LINES.lost", 1, true) ~= nil)
+check("a round nobody can finish is computed", string.find(captureBody, "anyFinishable", 1, true) ~= nil)
+-- ...and USED. The first version of this check looked only for the call, and
+-- deleting `or stranded` from the loss condition left the computation sitting
+-- there unused while the guard reported safety. Same shape as R43, where a
+-- sweep passed against the very wording it was written to catch.
+check(
+	"a round nobody can finish is also LOST",
+	string.find(captureBody, "line:allTaken(present) or stranded", 1, true) ~= nil
+)
+check(
+	"...and a WON board is excluded from that, locally",
+	string.find(captureBody, "board:allSolved()", 1, true) ~= nil
+)
+check(
+	"...measured against the players who can still act",
+	string.find(captureBody, "line:isConnected(userId)", 1, true) ~= nil
+)
 check("the phase is pushed when a new round begins", string.find(beginBody, "pushPhase", 1, true) ~= nil)
 -- RAW source: the remote name is a string body and the lexer strips those, so
 -- against `clientCode` this reads `Remotes.get()` and never matches. Fifth time

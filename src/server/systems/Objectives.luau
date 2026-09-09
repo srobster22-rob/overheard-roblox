@@ -298,6 +298,35 @@ function Objectives.reset(self: Board)
 	end
 end
 
+-- Can anybody still finish an unsolved line? `able` is the players who can act:
+-- present, and not on the line.
+--
+-- The round's loss condition used to ask whether everyone had been TAKEN, and
+-- that is not the same question. R23 made the Operator take everyone in a room
+-- at once; three of four players caught in one arrival leaves a survivor who is
+-- always the reader of one of the two lines, so that line can be patched by
+-- nobody -- `allSolved` unreachable -- while `allTaken` needs the survivor
+-- caught too, which they can simply avoid. The round then ended neither way and
+-- ran forever, with no timer to rescue it.
+--
+-- Re-dealing the stranded line does not help: handing it to the survivor marks
+-- them as having seen it, so they can patch neither. With one player able to
+-- act the round is unwinnable however the cards fall, which is the owner's solo
+-- question. What is fixable here is that it should END.
+function Objectives.anyFinishable(self: Board, able: { number }): boolean
+	for _, objective in self.list do
+		if objective.solved then
+			continue
+		end
+		for _, userId in able do
+			if not objective.seenBy[userId] then
+				return true
+			end
+		end
+	end
+	return false
+end
+
 function Objectives.allSolved(self: Board): boolean
 	for _, o in self.list do
 		if not o.solved then

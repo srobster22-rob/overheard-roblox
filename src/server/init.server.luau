@@ -146,7 +146,22 @@ local function takeWhoeverIsHere()
 	for _, p in Players:GetPlayers() do
 		table.insert(present, p.UserId)
 	end
-	if line:allTaken(present) and round:finish("lost", os.clock()) then
+	-- Everyone taken is one way to lose. The other is that nobody LEFT can finish
+	-- anything: three of four caught in one arrival strands a line with its
+	-- reader, and the survivor could then neither win nor be forced to lose, so
+	-- the round ran forever. Both mean the group cannot win, so both end it.
+	local able: { number } = {}
+	for _, userId in present do
+		if not line:isConnected(userId) then
+			table.insert(able, userId)
+		end
+	end
+	-- `allSolved` also reports nothing finishable -- there is nothing left. The
+	-- phase gate already stops capture running after a win, but stating it here
+	-- means this branch does not depend on a check three hundred lines away.
+	local stranded = #present > 0 and not board:allSolved() and not board:anyFinishable(able)
+
+	if (line:allTaken(present) or stranded) and round:finish("lost", os.clock()) then
 		heardRemote:FireAllClients(Round.LINES.lost, "", 1)
 		pushPhase(nil)
 		-- It stops hunting once there is nobody left to hunt. Leaving it

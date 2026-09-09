@@ -628,6 +628,61 @@ check(
 	unpatchable(growing, present) == 0
 )
 
+print("")
+print("a round nobody can finish is recognised as lost")
+
+-- R48. R23 made the Operator take everyone in a room at once and R16 made being
+-- connected cost you the ability to act. Three of four caught in one arrival
+-- leaves a survivor who is ALWAYS the reader of one of the two lines, so that
+-- line can be patched by nobody: `allSolved` unreachable. And `allTaken` needs
+-- the survivor caught too, which they can avoid. The round ended neither way
+-- and ran forever -- there is no timer, `RoundLength` is still unread.
+
+local stranding = Objectives.new()
+for _, station in Round.STATIONS do
+	stranding:add(station.id, station.concept, station.prompt)
+end
+local four = { 1, 2, 3, 4 }
+stranding:deal(four)
+check(`(guard) the board dealt its lines ({#stranding.list})`, #stranding.list >= 2)
+check("with everybody able, something is finishable", stranding:anyFinishable(four) == true)
+
+-- Everyone except one reader is taken.
+local strandedReader = stranding.list[1].holder :: number
+local onlyReaderLeft = { strandedReader }
+check(
+	"a survivor who has read the only unsolved line can finish nothing",
+	stranding:anyFinishable(onlyReaderLeft)
+		== (function()
+			-- True only if some OTHER line exists that they have not read.
+			for _, objective in stranding.list do
+				if not objective.solved and not objective.seenBy[strandedReader] then
+					return true
+				end
+			end
+			return false
+		end)()
+)
+
+-- The exact shape the probe found: one line, its reader the only one able.
+local single = Objectives.new()
+local onlyLine = single:add("board", "jack_number", "jack %s")
+single:deal({ 7 })
+check(`(guard) player 7 read it`, onlyLine.seenBy[7] == true)
+check("nobody able means nothing finishable", single:anyFinishable({ 7 }) == false)
+check("...but somebody who never read it can", single:anyFinishable({ 7, 8 }) == true)
+check("an empty room finishes nothing", single:anyFinishable({}) == false)
+
+-- A solved board is not "unfinishable" in the sense that should lose the round:
+-- there is nothing left to finish because it is WON.
+local won = Objectives.new()
+local wonLine = won:add("board", "jack_number", "jack %s")
+won:deal({ 1 })
+won:submit("board", 2, wonLine.answer, 1)
+check("(guard) the board is finished", won:allSolved())
+check("a finished board reports nothing finishable", won:anyFinishable({ 1, 2 }) == false)
+check("...which is why the win is checked first", won:allSolved() == true)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)
