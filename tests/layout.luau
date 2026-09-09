@@ -278,6 +278,99 @@ local post = Layout.operatorPost()
 check("the Operator's post is on the corridor floor", math.abs(post.z) <= corridorHalf)
 check("...and within its length", math.abs(post.x) <= Layout.corridorHalfLength())
 
+print("")
+print("standing at a station is a place, not a memory")
+
+-- R39. The submit gate was `Station.accepts` — `self.at[userId] == stationId`,
+-- a record of the last prompt TRIGGERED. The prompt's own activation distance
+-- gates the trigger and nothing gated the submit, so a player could prime the
+-- Switchboard, walk the 104 studs to the other room, stand beside the holder
+-- reading the number out, and patch from there. This file's own comment says
+-- the read point and the patch point must never be reachable in one glance.
+
+local Config = rt.require(rt.shared.Config)
+
+-- The real station positions, from the same arithmetic World builds with.
+local boardStation = { x = Layout.boardCentre().x, z = Layout.boardCentre().z - 18 }
+local breakerStation = { x = Layout.archiveCentre().x + 18, z = Layout.archiveCentre().z }
+
+local stationGap = math.sqrt((boardStation.x - breakerStation.x) ^ 2 + (boardStation.z - breakerStation.z) ^ 2)
+check(`(guard) the two act-stations really are far apart ({math.floor(stationGap)} studs)`, stationGap > 50)
+check(
+	`(guard) reach is far smaller than that gap ({Config.StationReach})`,
+	Config.StationReach > 0 and Config.StationReach < stationGap
+)
+
+check("standing on the station counts", Layout.within(boardStation, boardStation, Config.StationReach))
+check(
+	"standing just inside the reach counts",
+	Layout.within(
+		boardStation,
+		{ x = boardStation.x + Config.StationReach - 0.5, z = boardStation.z },
+		Config.StationReach
+	)
+)
+check(
+	"standing exactly at the reach counts",
+	Layout.within(boardStation, { x = boardStation.x + Config.StationReach, z = boardStation.z }, Config.StationReach)
+)
+check(
+	"a step beyond it does not",
+	not Layout.within(
+		boardStation,
+		{ x = boardStation.x + Config.StationReach + 0.5, z = boardStation.z },
+		Config.StationReach
+	)
+)
+
+-- The defect, stated as the situation it allowed.
+check(
+	"you cannot patch the Switchboard from the other act-station",
+	not Layout.within(boardStation, breakerStation, Config.StationReach)
+)
+check(
+	"nor from beside the player reading at the Directory",
+	not Layout.within(
+		boardStation,
+		{ x = Layout.archiveCentre().x, z = Layout.archiveCentre().z - 18 },
+		Config.StationReach
+	)
+)
+check("nor from the corridor between the rooms", not Layout.within(boardStation, Layout.spawn(), Config.StationReach))
+
+-- Reach must not be so wide it swallows the room, or "be at the station" quietly
+-- becomes "be somewhere in the building".
+check(
+	"reach does not cover the whole room it stands in",
+	not Layout.within(
+		boardStation,
+		{ x = Layout.boardCentre().x, z = Layout.boardCentre().z + Layout.halfRoom() },
+		Config.StationReach
+	)
+)
+
+-- Sweep a ring rather than trusting the four samples above.
+local inside, outside = 0, 0
+for step = 0, 35 do
+	local angle = (step / 36) * math.pi * 2
+	local near = {
+		x = boardStation.x + math.cos(angle) * (Config.StationReach - 1),
+		z = boardStation.z + math.sin(angle) * (Config.StationReach - 1),
+	}
+	local far = {
+		x = boardStation.x + math.cos(angle) * (Config.StationReach + 1),
+		z = boardStation.z + math.sin(angle) * (Config.StationReach + 1),
+	}
+	if Layout.within(boardStation, near, Config.StationReach) then
+		inside += 1
+	end
+	if not Layout.within(boardStation, far, Config.StationReach) then
+		outside += 1
+	end
+end
+check(`every point just inside the reach is accepted ({inside}/36)`, inside == 36)
+check(`every point just outside it is refused ({outside}/36)`, outside == 36)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

@@ -75,6 +75,11 @@ local Config = {
 	GuessesBeforeLockout = 3,
 	LockoutSeconds = 20,
 
+	-- How close you must be to a station to submit at it, checked at SUBMIT
+	-- time. Slightly wider than the prompt's own activation distance so a player
+	-- standing where they triggered it is never refused by a stud of drift.
+	StationReach = 14,
+
 	-- There is no OperatorReach dial any more. R21 made it a radius derived from
 	-- the room; R23 found that the smallest circle containing a square also
 	-- covers 9.94 studs of corridor outside every wall, so a player who got out

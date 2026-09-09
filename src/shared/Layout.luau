@@ -149,6 +149,23 @@ function Layout.corridorWalls(): { Rect }
 	}
 end
 
+-- Is `point` within `radius` of `centre`? Used to answer "are you standing at
+-- that station" at the moment a player submits, rather than trusting a memory
+-- of which prompt they last triggered.
+--
+-- Until R39 the submit gate was `Station.accepts`, which is
+-- `self.at[userId] == stationId` — a record of the last prompt TRIGGERED. The
+-- prompt's own activation distance gates the trigger and nothing gated the
+-- submit, so a player could prime the Switchboard, walk the 104 studs to the
+-- other room, stand beside the holder reading the number, and patch from there.
+-- This file's own comment says the read point and the patch point must never be
+-- reachable in one glance, and that distance IS the mechanic.
+function Layout.within(centre: Point, point: Point, radius: number): boolean
+	local dx = point.x - centre.x
+	local dz = point.z - centre.z
+	return math.sqrt(dx * dx + dz * dz) <= radius
+end
+
 -- Every wall in the building.
 function Layout.allWalls(): { Rect }
 	local out: { Rect } = {}

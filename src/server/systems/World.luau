@@ -115,6 +115,10 @@ export type Built = {
 	-- MUST appear here or its objective can never be solved; tests/round.luau
 	-- reads this file and fails if one is missing.
 	stations: { [string]: ProximityPrompt },
+	-- Where each station stands, so the server can check that a player is
+	-- actually at one when they submit rather than trusting a remembered
+	-- trigger. See Config.StationReach.
+	stationAt: { [string]: { x: number, z: number } },
 	spawn: Vector3,
 	-- Payload name -> room centre, for Pursuit. Payloads with no room here are
 	-- refused rather than guessed at; see Pursuit.sendTo.
@@ -166,12 +170,15 @@ function World.build(): Built
 		)
 	end
 
-	local readerPrompt = station("Directory", "Read", recordsOrigin + Vector3.new(0, 4, -18), folder)
-	local boardPrompt = station("Switchboard", "Patch", boardOrigin + Vector3.new(0, 4, -18), folder)
+	local readerAt = recordsOrigin + Vector3.new(0, 4, -18)
+	local boardAt = boardOrigin + Vector3.new(0, 4, -18)
+	local readerPrompt = station("Directory", "Read", readerAt, folder)
+	local boardPrompt = station("Switchboard", "Patch", boardAt, folder)
 	-- The breaker sits in the RECORDS room, deliberately opposite the board.
 	-- With both act-stations in one room the whole group just camps there and
 	-- the corridor stops being a cost; one at each end forces the walk.
-	local breakerPrompt = station("Breaker", "Throw", recordsOrigin + Vector3.new(18, 4, 0), folder)
+	local breakerAt = recordsOrigin + Vector3.new(18, 4, 0)
+	local breakerPrompt = station("Breaker", "Throw", breakerAt, folder)
 
 	-- The exchange is dark. Players get just enough to move.
 	Lighting.Ambient = Color3.fromRGB(18, 16, 14)
@@ -214,6 +221,10 @@ function World.build(): Built
 		stations = {
 			board = boardPrompt,
 			breaker = breakerPrompt,
+		},
+		stationAt = {
+			board = { x = boardAt.X, z = boardAt.Z },
+			breaker = { x = breakerAt.X, z = breakerAt.Z },
 		},
 		spawn = Vector3.new(0, FLOOR_Y + 4, 0),
 		rooms = rooms,

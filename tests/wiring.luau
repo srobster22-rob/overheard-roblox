@@ -602,6 +602,14 @@ check(
 )
 check("a finished round takes no more answers", string.find(submitPhaseBody, "round:isPlaying()", 1, true) ~= nil)
 
+-- R39. Being AT a station is a place, not a memory of a trigger. Without a
+-- position check here a player primes the Switchboard, walks 104 studs to the
+-- room where the number is being read out, and patches from beside the reader.
+check("submit reads where the player actually is", string.find(submitPhaseBody, "livePositions()", 1, true) ~= nil)
+check("...and measures it against the station", string.find(submitPhaseBody, "Layout.within", 1, true) ~= nil)
+check("...using the dial, not a literal", string.find(submitPhaseBody, "Config.StationReach", 1, true) ~= nil)
+check("...against the position World built", string.find(submitPhaseBody, "built.stationAt", 1, true) ~= nil)
+
 check("the tick waits out an intermission", string.find(tickBody, "Config.IntermissionSeconds", 1, true) ~= nil)
 check("and starts the next round", string.find(tickBody, "beginRound()", 1, true) ~= nil)
 

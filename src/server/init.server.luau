@@ -293,6 +293,18 @@ submitRemote.OnServerEvent:Connect(function(player: Player, id: unknown, value: 
 		return
 	end
 
+	-- AND you have to still be there. `desk:accepts` answers "which prompt did
+	-- you last trigger", which is a memory: a player could prime the Switchboard,
+	-- walk the 104 studs to the other room, stand beside the holder reading the
+	-- number out, and patch from there. Layout says distance IS the mechanic;
+	-- this is where that gets enforced rather than assumed.
+	local standing = livePositions()[player.UserId]
+	local stationAt = built.stationAt[id :: string]
+	if stationAt and not (standing and Layout.within(stationAt, standing, Config.StationReach)) then
+		rejectedRemote:FireClient(player, id :: string, "you are not at that station")
+		return
+	end
+
 	if not desk:accepts(player.UserId, id :: string) then
 		heardRemote:FireClient(player, Round.LINES.busy, "", 0)
 		rejectedRemote:FireClient(player, id :: string, "you are not at that station")
