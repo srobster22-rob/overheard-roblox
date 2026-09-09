@@ -106,6 +106,80 @@ local otherRows = Readout.lineRows(board:viewFor(2))
 check("a player holding nothing sees the empty message", otherRows[#otherRows].text == Readout.NOTHING_HELD)
 check("...and no answers leak into their rows", string.find(otherRows[1].text, "restored", 1, true) == 1)
 
+print("")
+print("the panel's own words are not giveaways")
+
+-- R42. `NOTHING_HELD` was "nothing on your line - someone else has a NUMBER for
+-- you", and `number` is plain language for `jack_number`. It is shown to exactly
+-- the players who hold nothing: the ones most likely to be talking, with no
+-- connection to that concept and no way to link cause to effect when the
+-- Operator turned up. Same defect as R41's station prompt, on the client.
+--
+-- These strings are the game's own vocabulary. Every word in them is a word it
+-- is teaching players to say.
+
+local Round = rt.require(rt.systems.Round)
+local Heuristic = rt.require(rt.systems.Heuristic)
+
+local pool = Round.dealSecrets(99)
+check(`(guard) the whole pool is in play ({#pool} concepts)`, #pool >= 3)
+
+local function givesAway(text: string): { string }
+	local out: { string } = {}
+	for _, reading in Heuristic.conveyed({ speaker = { UserId = 1 } :: any, text = text, at = 1 }, pool, {}) do
+		table.insert(out, reading.concept :: string)
+	end
+	return out
+end
+
+-- Swept from the module's exported strings, so a new one added later is covered
+-- without anybody remembering to list it here.
+local strings: { [string]: string } = {}
+for key, value in Readout :: any do
+	if type(value) == "string" then
+		strings[key] = value
+	end
+end
+local count = 0
+for _ in strings do
+	count += 1
+end
+check(`(guard) found the panel's fixed strings ({count})`, count >= 2)
+
+for key, text in strings do
+	local leaked = givesAway(text)
+	check(`'{key}' gives nothing away ({if #leaked == 0 then "clean" else table.concat(leaked, ", ")})`, #leaked == 0)
+end
+
+-- The control: the word that WAS in there really is dangerous, so these checks
+-- are not passing because the reader stopped understanding anything.
+check("(control) 'number' on its own does give away the jack", #givesAway("give me the number") > 0)
+
+-- And the rows the panel actually builds, not just the constants: a row's text
+-- is assembled at runtime and could reintroduce a giveaway that way.
+local rows = Readout.lineRows({
+	{ id = "board", solved = false, holding = false },
+	{ id = "breaker", solved = true, holding = false },
+})
+local leakyRows = 0
+for _, row in rows do
+	if row.kind ~= "line" and #givesAway(row.text) > 0 then
+		leakyRows += 1
+		print(`    row '{row.text}' gives away {table.concat(givesAway(row.text), ", ")}`)
+	end
+end
+check(`(guard) rows were built to check ({#rows})`, #rows >= 2)
+check(`no assembled row gives anything away ({leakyRows})`, leakyRows == 0)
+
+-- A HELD line is exempt and must stay so: its text is the station's prompt,
+-- which R41 already guards, and it is the one thing that SHOULD name its own
+-- concept.
+local heldRows = Readout.lineRows({
+	{ id = "board", solved = false, holding = true, prompt = "Patch it to jack %s.", answer = "47" },
+})
+check("(guard) a held line was rendered", heldRows[1].kind == "line")
+check("...and it is allowed to name its own concept", #givesAway(heldRows[1].text) > 0)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

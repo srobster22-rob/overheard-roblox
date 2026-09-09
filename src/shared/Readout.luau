@@ -27,7 +27,12 @@ export type Row = {
 }
 
 Readout.PRIVATE_NOTE = "only you can see this"
-Readout.NOTHING_HELD = "nothing on your line - someone else has a number for you"
+-- No word here may be plain language for a concept the Operator listens for.
+-- This said "someone else has a NUMBER for you" and was shown to exactly the
+-- players who hold nothing -- the ones most likely to be talking, with no
+-- connection to that concept and no way to link cause to effect when the
+-- monster arrived. `tests/readout.luau` checks it against the live pool.
+Readout.NOTHING_HELD = "nothing on your line - listen for somebody else's"
 
 -- `entries` is the payload from `Objectives.viewFor`: one row per objective,
 -- with `prompt` and `answer` present only on the ones this player holds.

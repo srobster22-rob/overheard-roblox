@@ -586,6 +586,25 @@ check("(guard) found the chat handler", #chatBody > 0)
 check("...and it is the one that feeds the Operator (control)", string.find(chatBody, "operator:hear", 1, true) ~= nil)
 check("the Operator only listens while a round is live", string.find(chatBody, "round:isPlaying()", 1, true) ~= nil)
 
+-- R42. The Operator's OWN lines contain plain giveaways -- "Number, please." is
+-- its greeting, and `number` is plain language for `jack_number`. That is not a
+-- defect ONLY because its speech is delivered by RemoteEvent and never routed
+-- back through `hear`, so it cannot summon itself. That exemption has to earn
+-- itself rather than be believed, so: chat is the only thing that feeds it.
+local fedFrom = 0
+local at = 1
+while true do
+	local first, last = string.find(serverCode, "operator:hear", at, true)
+	if not first then
+		break
+	end
+	at = last + 1
+	fedFrom += 1
+end
+check(`(guard) the Operator is fed at all ({fedFrom})`, fedFrom >= 1)
+check("nothing but the chat handler feeds the Operator", fedFrom == 1)
+check("...and that one call is inside the chat handler", string.find(chatBody, "operator:hear", 1, true) ~= nil)
+
 -- R33, applying R32's lesson: enumerate EVERY behaviour the phase suppresses,
 -- not the one that motivated the gate. Submit is the last place that takes
 -- player input, and it checked isConnected, the station gate and the jam --
