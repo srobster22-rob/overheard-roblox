@@ -12,6 +12,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Heat = require(ReplicatedStorage.Shared.Heat)
 local Keypad = require(ReplicatedStorage.Shared.Keypad)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
@@ -100,11 +101,19 @@ lexLayout.Padding = UDim.new(0, 2)
 lexLayout.SortOrder = Enum.SortOrder.LayoutOrder
 lexLayout.Parent = lexList
 
+-- The breakpoint is DERIVED from the threshold the Operator actually uses, not
+-- restated here. It used to be a hard-coded 0.5 reaching red at 1.0, so a
+-- coinage at 60% — already being understood — looked mid-amber with headroom
+-- left. See Shared.Heat.
+local AMBER = Color3.fromRGB(226, 176, 82)
+local RED = Color3.fromRGB(206, 62, 52)
+
 local function heatColor(heat: number): Color3
-	if heat < 0.5 then
-		return INK:Lerp(Color3.fromRGB(226, 176, 82), heat / 0.5)
+	if Heat.isUnderstood(heat) then
+		-- No gradient above the threshold: there is no "partly understood".
+		return RED
 	end
-	return Color3.fromRGB(226, 176, 82):Lerp(Color3.fromRGB(206, 62, 52), (heat - 0.5) / 0.5)
+	return INK:Lerp(AMBER, Heat.safeProgress(heat))
 end
 
 local function renderLexicon(entries: { any })
@@ -123,7 +132,14 @@ local function renderLexicon(entries: { any })
 	for i, entry in entries do
 		local row = label(
 			lexList,
-			string.format('"%s"  %d%%', entry.phrase, math.floor(entry.heat * 100 + 0.5)),
+			-- Said in words as well as colour: the crossing is the single fact
+			-- this panel exists to convey, and colour alone cannot carry it.
+			string.format(
+				'"%s"  %d%%%s',
+				entry.phrase,
+				math.floor(entry.heat * 100 + 0.5),
+				if Heat.isUnderstood(entry.heat) then "  understood" else ""
+			),
 			12,
 			heatColor(entry.heat)
 		)
