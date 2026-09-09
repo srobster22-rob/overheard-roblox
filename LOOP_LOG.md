@@ -7139,3 +7139,5 @@ log 18, silence 62.
 documented, deliberately-kept primitive for a future entity, and this round's
 own first read of it was wrong until the comment above its definition was
 actually read. Left exactly as it was.
+
+**Commit** `f713fb9`
