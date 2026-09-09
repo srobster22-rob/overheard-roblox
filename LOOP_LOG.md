@@ -6982,3 +6982,5 @@ log 18, silence 62.
 *Not claimed:* whether the "traced" announcement, now spent entirely on
 genuinely silent players, changes how often it fires in a real session overall
 — only that it is no longer split with a player it could never help.
+
+**Commit** `705fd24`
