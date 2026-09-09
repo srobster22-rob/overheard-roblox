@@ -7197,3 +7197,5 @@ silence 62.
 it should fade rather than vanish, matching R26's rule for the hum. That is a
 feel question and Studio is device-blocked; the panel is proved gone from the
 model, not proved to look right leaving.
+
+**Commit** `d283555`
