@@ -598,6 +598,46 @@ for name, centre in { board = Layout.boardCentre(), archive = Layout.archiveCent
 	check(`the Operator's walk to the {name} stays between the walls ({strayed} outside)`, strayed == 0)
 end
 
+print("")
+print("crosses(): the primitive itself, never unit-tested before")
+
+-- R69. Layout.crosses feeds walkIsClear/routeIsClear, which R41 and R42 use to
+-- decide what a station's prompt may reveal. It has a "parallel to the wall"
+-- branch with no test of its own -- a mutation sweep made it return TRUE for a
+-- parallel segment (the wrong answer) and nothing in the whole suite noticed,
+-- because nothing exercises the primitive directly; only through paths this
+-- game's two rooms happen never to run exactly parallel to a wall.
+local wallX = { minX = 10, minZ = -5, maxX = 10, maxZ = 5 }
+
+-- A segment that actually crosses the wall's span.
+check("a segment crossing the wall's x is caught", Layout.crosses(wallX, { x = 5, z = 0 }, { x = 15, z = 0 }))
+-- Both ends on the same side: never crosses.
+check("both ends on the near side do not cross", not Layout.crosses(wallX, { x = 5, z = 0 }, { x = 8, z = 0 }))
+check("both ends on the far side do not cross", not Layout.crosses(wallX, { x = 15, z = 0 }, { x = 20, z = 0 }))
+-- Crossing at x but outside the wall's z-span: does not cross.
+check(
+	"crossing the line but missing the wall's span does not cross",
+	not Layout.crosses(wallX, { x = 5, z = 20 }, { x = 15, z = 20 })
+)
+-- PARALLEL to the wall: never crosses, whatever x it runs along.
+check(
+	"a segment running parallel to the wall does not cross it",
+	not Layout.crosses(wallX, { x = 10, z = -20 }, { x = 10, z = 20 })
+)
+check(
+	"...even lined up exactly on the wall's own x",
+	not Layout.crosses({ minX = 10, minZ = -5, maxX = 10, maxZ = 5 }, { x = 10, z = -100 }, { x = 10, z = 100 })
+)
+
+-- The Z-facing wall gets the same sweep, since crosses branches on which
+-- dimension is constant.
+local wallZ = { minX = -5, minZ = 10, maxX = 5, maxZ = 10 }
+check("a segment crossing the wall's z is caught", Layout.crosses(wallZ, { x = 0, z = 5 }, { x = 0, z = 15 }))
+check(
+	"parallel to a Z-facing wall does not cross it either",
+	not Layout.crosses(wallZ, { x = -20, z = 10 }, { x = 20, z = 10 })
+)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

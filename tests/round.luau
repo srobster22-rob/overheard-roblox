@@ -216,6 +216,62 @@ for _, reading in outLoud do
 end
 check("(control) 'out' on its own really does give away the exit", heardExit)
 
+print("")
+print("the ambient-secret shuffle actually mixes the whole pool")
+
+-- R69. A mutation sweep narrowed the deal's Fisher-Yates loop to touch only the
+-- last two entries of `rest` (`for i = 2, 2, -1` instead of `for i = #rest, 2,
+-- -1`), and nothing in the whole suite noticed -- every existing check asks
+-- about the SET dealSecrets returns, never whether the shuffle actually mixes
+-- more than a fixed pair of positions.
+--
+-- Swept across many seeds: the ambient secret(s) chosen must vary, or every
+-- server would teach the same "safe" vocabulary regardless of the shuffle.
+-- Not merely "more than one": a shuffle narrowed to swap only the last TWO
+-- positions of a five-candidate pool would still produce 2 distinct outcomes
+-- across enough seeds, which is > 1 and would slip past a weaker check.
+--
+-- The REQUIRED set (one secret per station) is deterministic and does not
+-- depend on the shuffle at all, so it is computed once, unseeded, outside the
+-- loop -- calling dealSecrets inside the loop just to re-derive it would burn
+-- an extra shuffle every iteration for no reason.
+local requiredConcepts: { [string]: boolean } = {}
+for _, secret in Round.dealSecrets(0) do
+	requiredConcepts[secret.concept] = true
+end
+local ambientPoolSize = #Round.dealSecrets(99) - #Round.dealSecrets(0)
+check(`(guard) there is an ambient pool worth shuffling ({ambientPoolSize})`, ambientPoolSize >= 3)
+
+local askFor = #Round.dealSecrets(0) + 1
+local seenAmbient: { [string]: boolean } = {}
+for seed = 1, 200 do
+	math.randomseed(seed * 97)
+	local dealt = Round.dealSecrets(askFor)
+	-- The one concept not required by any station is the ambient pick.
+	for _, secret in dealt do
+		if not requiredConcepts[secret.concept] then
+			seenAmbient[secret.concept] = true
+		end
+	end
+end
+local reached = 0
+for _ in seenAmbient do
+	reached += 1
+end
+check(
+	`the shuffle reaches EVERY member of the ambient pool over many seeds ({reached} of {ambientPoolSize})`,
+	reached == ambientPoolSize
+)
+if reached < ambientPoolSize then
+	local missing: { string } = {}
+	for _, secret in Round.dealSecrets(99) do
+		if not requiredConcepts[secret.concept] and not seenAmbient[secret.concept] then
+			table.insert(missing, secret.concept)
+		end
+	end
+	print(`        never dealt as ambient: {table.concat(missing, ", ")}`)
+end
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

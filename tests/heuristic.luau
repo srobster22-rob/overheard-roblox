@@ -277,6 +277,62 @@ if first and second then
 	check("novel terms are recorded once per utterance, not once per concept", #counting.observations == 1)
 end
 
+print("")
+print("a repeated word is offered once, not once per repetition")
+
+-- R69. A mutation sweep removed novelTerms' de-dup (`if not seen[term] then`)
+-- and NOTHING in the whole suite noticed, even though it changes real game
+-- balance: `Operator.credit` iterates `obs.terms` and adds
+-- `Config.HeatPerCredit` for EVERY entry, so a duplicate term in the returned
+-- list burns that coinage twice as fast for one utterance that merely repeats
+-- a word -- silently doubling the learning rate R4's own dial is tuned around.
+local repeatedWord = Heuristic.novelTerms(utterance("the gizmo and the gizmo again"), {})
+local gizmoCount = 0
+for _, term in repeatedWord do
+	if term == "gizmo" then
+		gizmoCount += 1
+	end
+end
+check(`(guard) the repeated word was offered at all ({gizmoCount})`, gizmoCount > 0)
+check("...but only once, however many times it was said", gizmoCount == 1)
+
+local repeatedPhrase = Heuristic.novelTerms(utterance("the blue one the blue one"), {})
+local phraseCount = 0
+for _, term in repeatedPhrase do
+	if term == "blue one" then
+		phraseCount += 1
+	end
+end
+check("a repeated TWO-WORD phrase is also offered once", phraseCount == 1)
+
+-- The property that actually matters: crediting a repeated word must not
+-- out-burn a word said once, for the same eventual solve.
+local pool = Round.dealSecrets(5)
+local secret = pool[1]
+local opOnce = Operator.new({ secret })
+opOnce:hear({ speaker = { UserId = 1 } :: any, text = "the gizmo", at = 0 })
+opOnce:credit(secret.concept, 1)
+
+local opTwice = Operator.new({ secret })
+opTwice:hear({ speaker = { UserId = 1 } :: any, text = "the gizmo and the gizmo", at = 0 })
+opTwice:credit(secret.concept, 1)
+
+local function heatFor(op: any, phrase: string): number
+	for _, c in op:snapshot() do
+		if c.phrase == phrase then
+			return c.heat
+		end
+	end
+	return 0
+end
+check(
+	`saying "gizmo" twice in one sentence heats it no faster than saying it once ({heatFor(opOnce, "gizmo")} vs {heatFor(
+		opTwice,
+		"gizmo"
+	)})`,
+	heatFor(opOnce, "gizmo") == heatFor(opTwice, "gizmo")
+)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

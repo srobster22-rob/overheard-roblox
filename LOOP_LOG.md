@@ -7033,3 +7033,109 @@ concepts this build has never built, worth the owner's eye if the axis is
 picked up again rather than something this round should guess at and rewrite.
 
 **Commit** `a5b64b3`
+
+
+## R69 — a whole capture path has had no caller since R23
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — a dead mechanism with a passing test.** `Connected.reached` — catch
+everyone within a circle of a point — has zero callers anywhere in `src/`.
+Searched exhaustively: `init.server.luau` calls `reachedInRoom` exclusively, and
+has done since R23 replaced circle-capture with room-capture (*"a circle big
+enough to cover the square also covers 9.94 studs of corridor outside every
+wall, so running out of the door did not save you"*). `Connected.reached` was
+simply never deleted, and `tests/connected.luau` still drives it directly —
+five checks, all passing, proving a rule the shipped game does not run.
+
+This is the R56 `stillThere` shape from the other side: that was a line with no
+caller left where the SUITE could not see it was dead (it was in `Round.LINES`,
+swept only by string search); this is a whole FUNCTION with no caller, proven
+"working" by tests that call it directly rather than through anything the
+server does. A test suite that is green can still be testing a path nobody
+reaches — which is exactly R59's, R60's and R63's lesson, aimed here at
+production code instead of at the harness.
+
+1. *(picked)* **Delete `Connected.reached` and the tests that exist only to
+   drive it, and add a guard: every function `Connected` exports must be called
+   somewhere in `src/` outside its own file, not merely somewhere in `tests/`.**
+2. R63's queued-room drop, R59's corridor number, R62's loss-rate number — all
+   **still filed**, awaiting the owner.
+
+**Stage 1, corrected — the pick was wrong.** The paragraph above was written from
+a `grep` of the function signature, without reading the comment immediately
+above it in `Connected.luau`:
+
+> "Radius form. Kept because it is the honest primitive for anything that is
+> genuinely round; the ROOM capture above is what the server uses."
+
+That is a deliberate decision by a prior round, not an oversight: `reached` is
+a general-purpose primitive kept on purpose for whatever future entity needs a
+circle rather than a room (`GAME.md`'s roster has several still unbuilt), tested
+directly because it is a pure utility, exactly the way `Heat.band` or
+`Layout.crosses` are. Testing a primitive by calling it directly is the correct
+strategy for a primitive; it is not the R56 shape, which was a broadcast LINE
+with no reader and no stated reason to keep it. Deleting `reached` now would
+reverse a documented design decision on no new evidence. Not done.
+
+**Stage 1, actually.** No replacement pick this round beyond the correction
+itself — continuing to a fresh target rather than force a second idea into a
+round already spent on reading this one carefully. R63's queued-room drop,
+R59's corridor number, R62's loss-rate number remain **filed**, awaiting the
+owner; nothing else is ready to ship this round.
+
+**Stage 1, a fourth wave instead.** Having corrected the pick above, the round
+continued into a fourth mutation wave (eight fresh targets: fault flags,
+lockout math, the ambient-secret shuffle, `Layout.crosses`, `Hud.rect`'s anchor
+term, novel-term de-duplication, `Station.accepts`, and misses-reset). `src/`
+byte-copied and tree-hashed before and after — identical.
+
+**Five of eight were caught. Three survived, all real:**
+
+1. **A repeated word in one utterance could be credited twice.**
+   `Heuristic.novelTerms` de-dups its `offer()` calls, and mutating that away
+   passed the whole suite — because `Operator.credit` iterates every entry in
+   `obs.terms` and adds `Config.HeatPerCredit` for each, so a duplicate entry
+   silently doubles the learning rate for any phrase said twice in one
+   sentence. Fixed with a direct test in `tests/heuristic.luau` proving the
+   deduplication (single words and two-word phrases), plus an end-to-end check:
+   saying "gizmo" twice in one sentence must heat that coinage no faster than
+   saying it once. The plant showed the real size of the effect — **0.2375 vs
+   0.475, exactly double**.
+
+2. **`Layout.crosses` had never been unit-tested at all**, despite having a
+   named "parallel to the wall" branch. A mutation making it treat a parallel
+   segment as crossing passed, because nothing exercises it directly — only
+   through this game's two rooms, whose walk-checks happen never to run a route
+   exactly parallel to a wall. Fixed with a direct sweep in `tests/layout.luau`:
+   crossing, both-sides-safe, missing-the-span, and parallel, on both a wall
+   that varies by x and one that varies by z.
+
+3. **The ambient-secret shuffle could be narrowed to swap only two positions**
+   and still pass every existing check, because those checks only ever asked
+   about the SET `dealSecrets` returns, never whether the shuffle mixes the
+   whole pool. *The first version of this round's own fix was also too weak*:
+   asserting "more than one combination across 40 seeds" still passed the
+   narrowed mutant, because swapping just two positions still yields two
+   outcomes. Tightened twice — first to "reaches more than half the ambient
+   pool," which STILL passed (2 of 3 clears "more than half"), then to "reaches
+   every member of the ambient pool over 200 seeds," which finally catches it
+   and names the concept that never got dealt.
+
+**Stage 3 — proof.** All three re-planted against the final tests; all three
+failed by name (`...but only once, however many times it was said`; `a segment
+running parallel to the wall does not cross it`; `the shuffle reaches EVERY
+member of the ambient pool over many seeds (2 of 3)` — `never dealt as ambient:
+hiding`). Restored from byte-copy backups; sha256 unchanged for all three files.
+Wave re-run after every fix: **0 surviving mutants of 8**.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon 22, heuristic **49**, operator ok, objectives 122,
+pursuit 103, round **59**, config 63, wiring 335, connected 32, ordering 4,
+heat 20, layout **99**, lifecycle 90, hud 22, readout 29, soak 42, hum 29,
+log 18, silence 62.
+
+*Not claimed:* that `Connected.reached` is dead code — it is not; it is a
+documented, deliberately-kept primitive for a future entity, and this round's
+own first read of it was wrong until the comment above its definition was
+actually read. Left exactly as it was.
