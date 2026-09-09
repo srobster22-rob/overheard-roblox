@@ -5544,3 +5544,129 @@ hum 21, log **18**.
 process, and it had eaten thirty-three rounds of it.
 
 **Commit** `edb7fbb`
+
+
+## R54 — the winning strategy was to not play
+
+**Stage 0.** `OWNER.md` `## Next` still empty. And for the first time in
+thirty-four rounds, Stage 0 could read the whole log — including **THE EXPANSION
+AXIS**, which R19 destroyed and R53 recovered. It names the game's growth rule
+("new ways of understanding"), a backlog, and the roster item this round used.
+Rounds R20–R53 were all defect hunts. None of them advanced the axis, because
+none of them could see it.
+
+**Stage 1 — the measurement.** The axis says entity #4, the Supervisor,
+"punishes **silence** — you must keep talking." That is a claim about the game
+as it stands, so I measured it. Four players, 2,400 ticks (600 simulated
+seconds), the same rig as `tests/soak.luau`:
+
+| | rounds won | captures | Operator not idle |
+|---|---|---|---|
+| a group that talks in-game | 16 | 96 | 2,120 / 2,400 ticks |
+| **a group that says nothing** | **20** | **0** | **0 / 2,400 — it never left its post** |
+
+Silence was not merely safer. It **won more rounds than talking did**, took zero
+captures, and the monster was never switched on at all. Two people on a voice
+call outside Roblox could pass every answer and play an unopposed fetch quest
+against a statue.
+
+No rule-level test could see this. Every rule was right on its own; the defect
+was in what they left out — R46/R47/R48's shape exactly.
+
+1. *(picked)* **Build the Supervisor.** `GAME.md` already commits to it, so
+   this is executing the bible, not deciding for the owner.
+2. Remotes and per-player cleanup vs `CLAUDE.md`'s hard rules — **no defect**
+   (swept in R53).
+3. The `%` in a server prompt, geometry-blind movement, no player light, the
+   stemming pair, R46's learning gap, `anyFinishable`'s margin, R21's corner
+   fairness, R36's patience — **all still filed.**
+
+**Stage 2 — the build.**
+
+- `Shared/Silence.luau` — the rule, pure. `pressure`, `isOverdue`, `band`
+  (`clear`/`warned`/`overdue`), `warningLeadSeconds`. The band above the
+  deadline is flat, not a gradient, for the reason `Heat` gives: above it there
+  is no "partly".
+- `systems/Supervisor.luau` — the clocks. It decides **who**, never what; the
+  server dispatches. Same split as `Pursuit`/`Presence`.
+- `Config`: `SpeakEvery = 45`, `SpeakWarning = 30`, `SupervisorCooldown = 25`.
+- Wired: chat feeds **both** listeners, `PlayerAdded` watches from *now*,
+  `PlayerRemoving` forgets, `beginRound` resets every clock (R31), and the tick
+  warns then dispatches.
+
+The dispatch is the design's own joke and the reason this needs no second
+monster: a supervisor in an exchange does not come for you, **it puts your line
+through to an operator**. So everything the group says to keep its clocks down
+is still heard by the thing that hunts meaning. `GAME.md`: *babble continuously,
+convey nothing.*
+
+**Stage 3 — proof.** `tests/silence.luau`, 40 checks: the rule tied to the dials
+rather than to numbers; the warning lands with lead time; bands are ordered and
+total across a 200-point sweep and silence never makes a player *safer*; a
+late-joining player starts clear, **with a control showing a zero-start clock
+would call them instantly**; chat from an unwatched player does not enroll them;
+`overdue` is ordered longest-quiet-first and ties break by id, checked 20 times
+for stability; one call per cooldown, not one per tick (R11/R24); and the round
+boundary clears both halves (R31).
+
+`tests/soak.luau` keeps the measurement permanently — a silent group must now be
+called out, the Operator must move, and the call rate must clear a floor derived
+from the dials.
+
+*Three of my own mistakes this round, all caught by the rig:*
+
+1. The silent-group model solved a round every **30s** against a 45s deadline,
+   so it recorded **zero calls** — a dead dial of exactly the kind R6 exists to
+   catch. Retuning the model to suit the feature would have been the wrong
+   repair; the block now uses the cadence the rest of the file already models a
+   round with, and asserts the real constraint: *the deadline must be reachable
+   inside a round.*
+2. The first version of that check compared the deadline to the **mean** round
+   length, which is circular — the Supervisor ends rounds sooner by dispatching,
+   so the better it works the lower the mean goes and the harder the check
+   fails. It measures the **longest** round now, which is the right statistic
+   for "can this ever fire".
+3. Adding an eleventh shared module pushed the harness's list past the line
+   width; stylua wrapped it, and `tests/wiring.luau`'s parser required it on one
+   line — so it reported **all eleven** modules unadopted when every one was
+   fine. The pattern is whitespace-tolerant now. A guard that reads code must
+   not depend on how the code is laid out (R7's own rule, broken by R7's own
+   sweep).
+
+Planted three defects, each failed by name:
+
+| plant | what failed |
+|---|---|
+| the cooldown removed | `a called player is left alone for the whole cooldown (25s, 21 calls)` |
+| a joining player's clock starts at 0 | `a player who joins late starts clear, not overdue` |
+| `SpeakEvery = 300` — a deadline longer than a round | 5 of 19 in the soak, including `the deadline is reachable inside a round (300s < 65s)` and `silence is called out (0 calls in 2400 ticks)` |
+
+Restored from byte-copy backups; sha256 `a8e9e3fb…34cd9e89` and
+`d41eb6cb…5c42194c` after each.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon 22, heuristic 40, operator ok, objectives 122,
+pursuit 90, round 58, config 61, wiring **247**, connected 32, ordering 4,
+heat 20, layout 91, lifecycle 75, hud 16, readout 29, soak **19**, hum 21,
+log 18, silence **40**.
+
+**FOR THE OWNER — three this round, none decided:**
+
+1. **The corridor is a place to hide from the Supervisor.** It dispatches the
+   Operator to the *room* a silent player is standing in. A player in the
+   corridor is in no room, so their silence goes unpunished. Options: send it
+   to the nearer room anyway, treat the corridor as its own destination, or
+   leave the corridor as a deliberate refuge that costs you distance from both
+   keypads. I filed it rather than inventing a rule.
+2. **`SpeakEvery = 45` is tight.** The soak's longest silent round ran 51s, so
+   the deadline fits with six seconds to spare. If real rounds are shorter than
+   the model's, the Supervisor rarely fires; if much longer, one call per round
+   is not pressure. This is the dial most likely to be wrong.
+3. **Does the Supervisor need a body?** Dispatching the Operator is what the
+   fiction wants and needs no second monster, but it means the two entities are
+   never distinguishable by sight or sound — and R51 was spent making one
+   monster's two behaviours audibly different.
+
+*Not claimed:* whether being called for silence *feels* fair, or whether a
+45-second talking deadline is exhausting rather than tense. Both need Studio,
+which is device-blocked.

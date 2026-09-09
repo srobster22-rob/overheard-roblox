@@ -121,6 +121,29 @@ local Config = {
 	-- smaller than `StationReach`; `tests/config.luau` holds them in that order.
 	PromptReach = 10,
 
+	-- THE SUPERVISOR (GAME.md entity #4): how long a player may go without
+	-- saying anything before a call is put through to them.
+	--
+	-- Until this existed, silence was the winning strategy and the monster was
+	-- opt-in: four silent players won 20 rounds in 600 simulated seconds with
+	-- zero captures and the Operator never once leaving its post, against 16
+	-- rounds and 96 captures for a group that talked.
+	--
+	-- 45s is long enough that you are not typing constantly and short enough
+	-- that you cannot sit out an objective. It is the dial most likely to be
+	-- wrong; it is here, alone, so it can be moved.
+	SpeakEvery = 45,
+	-- When the Supervisor starts warning that player. The gap between the two
+	-- is the time they have to react, and a warning without that gap is not a
+	-- warning -- `Silence.warningLeadSeconds` exists so a test can say so.
+	SpeakWarning = 30,
+	-- After a call goes through, that player is not called again for this long,
+	-- however quiet they stay. Without it the Supervisor fires every tick at
+	-- somebody who has already been punished -- the mistake R11 and R24 each
+	-- had to unpick, an event that should announce itself once announcing
+	-- itself continuously.
+	SupervisorCooldown = 25,
+
 	-- How wide a Roblox character is, near enough. Used to keep the corridor's
 	-- WALLS inside the span its doorways can pass: a player walking the corridor
 	-- must never be somewhere the door will not let them through.

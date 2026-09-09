@@ -219,7 +219,12 @@ print("")
 print("every shared module is reachable from tests")
 local adopted: { [string]: boolean } = {}
 local adoptedCount = 0
-local sharedList = string.match(harnessSource, "for _, name in {(.-)} do\n\t\tadopt%(shared") or ""
+-- Whitespace-tolerant on purpose. This pattern used to require the list on
+-- ONE line, and adding an eleventh shared module pushed it past the line
+-- width, so stylua wrapped it and the sweep stopped finding the list at all
+-- -- reporting all eleven modules as unadopted when every one of them was.
+-- A guard that reads code must not depend on how the code is laid out (R7).
+local sharedList = string.match(harnessSource, "for _, name in%s*{(.-)}%s*do%s*adopt%(shared") or ""
 for name in string.gmatch(sharedList, '"([%a][%w_]*)"') do
 	adopted[name] = true
 	adoptedCount += 1

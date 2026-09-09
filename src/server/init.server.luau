@@ -19,6 +19,7 @@ local Round = require(script.systems.Round)
 local Connected = require(script.systems.Connected)
 local Lifecycle = require(script.systems.Lifecycle)
 local Station = require(script.systems.Station)
+local Supervisor = require(script.systems.Supervisor)
 local World = require(script.systems.World)
 
 local heardRemote = Remotes.get("Heard")
@@ -46,6 +47,13 @@ local board = Objectives.new()
 -- in the CLIENT and the server took its word for the station id on every
 -- submit. See systems/Station.
 local desk = Station.new()
+-- THE SUPERVISOR (GAME.md #4). Watches who has NOT spoken, which is the one
+-- thing the Operator cannot see. Until this existed, four silent players won
+-- 20 rounds in 600 simulated seconds with zero captures and the Operator
+-- never leaving its post: saying nothing was not merely safe, it won more
+-- than talking did, and a group on a voice call outside Roblox played an
+-- unopposed fetch quest. It decides WHO; the dispatch below decides what.
+local supervisor = Supervisor.new()
 -- Who the Operator has taken. Being connected costs you the ability to ACT;
 -- it does not cost you your voice. See systems/Connected.
 local line = Connected.new()
@@ -196,6 +204,70 @@ pursuit.onStateChanged = function(state: string, targetName: string?)
 	end
 end
 
+-- THE SUPERVISOR'S CALL. Runs on the tick, like capture and the loss check.
+--
+-- The Supervisor names who has gone quiet; this is what happens to them. It
+-- does not build a second monster: in the fiction the supervisor of an exchange
+-- does not come for you, it puts your line through to an operator, and that is
+-- exactly the mechanic. Everything the group says to keep its clocks down still
+-- feeds the thing that hunts meaning.
+--
+-- ONE call at a time, to the player who has been quiet longest, because
+-- `Pursuit` is committed to one room at a time anyway -- dispatching all four
+-- overdue players would queue three rooms behind each other and the last would
+-- arrive a minute after the silence that caused it.
+local function putThroughTheSilentLine()
+	local due = supervisor:overdue(os.clock())
+	if #due == 0 then
+		return
+	end
+
+	local positions = livePositions()
+	for _, userId in due do
+		local standing = positions[userId]
+		if not standing then
+			-- No body yet (still loading, or dead). Not a silence we can act on,
+			-- and marking them called would forgive it.
+			continue
+		end
+		for _, room in Config.Rooms do
+			local centre = built.rooms[room]
+			if centre and Layout.inRoom(centre, standing) then
+				supervisor:called(userId, os.clock())
+				pursuit:sendTo(room)
+				heardRemote:FireAllClients(Round.LINES.traced, "", 1)
+				return
+			end
+		end
+		-- Standing in the corridor. The Supervisor has nowhere to send anybody,
+		-- so the silence goes unpunished -- which makes the corridor a place to
+		-- hide from it. Filed for the owner rather than fixed by inventing a
+		-- rule: see LOOP_LOG R54.
+	end
+end
+
+-- Nearly out of time, privately, so the player can still do something about it.
+-- Separate from the call itself for the reason R10 and R13 each had to unpick:
+-- two different events must not arrive as one sentence.
+local warned: { [number]: boolean } = {}
+local function warnWhoeverIsNearlyOut()
+	local now = os.clock()
+	for _, player in Players:GetPlayers() do
+		local band = supervisor:band(player.UserId, now)
+		if band == "warned" then
+			if not warned[player.UserId] then
+				warned[player.UserId] = true
+				heardRemote:FireClient(player, Round.LINES.stillThere, "", 0)
+			end
+		elseif band ~= nil then
+			-- Cleared or already called: armed again for next time. Without this
+			-- the warning fires once per player per server, which is the same
+			-- announce-once bug R11 fixed in the other direction.
+			warned[player.UserId] = nil
+		end
+	end
+end
+
 -- Rate limiting. Every remote the client can fire needs one, or an exploiter
 -- brute-forces two-digit answers instantly.
 local lastSubmit: { [number]: number } = {}
@@ -257,6 +329,11 @@ TextChatService.OnIncomingMessage = function(message: TextChatMessage)
 		return nil
 	end
 
+	-- Both listeners, from the one utterance. The Supervisor does not care
+	-- WHAT was said -- its demand is that you speak, and the trap is that
+	-- everything you say to satisfy it is still heard by the Operator.
+	-- `GAME.md`: babble continuously, convey nothing.
+	supervisor:hear(player.UserId, os.clock())
 	operator:hear({
 		speaker = player,
 		text = message.Text,
@@ -371,6 +448,10 @@ end)
 
 Players.PlayerAdded:Connect(function(player: Player)
 	print(`[server] {player.Name} connected to the exchange`)
+	-- From NOW, not from the start of the round: somebody who has just loaded
+	-- in has not been silent, and a clock starting at zero would call them
+	-- before they could type.
+	supervisor:watch(player.UserId, os.clock())
 	-- Re-deal across everyone present, so holders stay spread as people join.
 	local userIds: { number } = {}
 	for _, p in Players:GetPlayers() do
@@ -389,6 +470,7 @@ Players.PlayerRemoving:Connect(function(player: Player)
 	-- `misses`/`jammedUntil` deliberately DO NOT (see Objectives), because a jam
 	-- a player can shed by reconnecting is not a jam.
 	lastSubmit[player.UserId] = nil
+	supervisor:forget(player.UserId)
 	line:forget(player.UserId)
 	desk:forget(player.UserId)
 	-- The leaver may have been holding a line. Nobody else was ever shown that
@@ -430,10 +512,14 @@ local function beginRound()
 	-- that list from the source rather than trusting this comment.
 	desk:clear()
 	operator:forgetObservations()
+	-- Every clock starts again. R31: a player quiet through the eight-second
+	-- intermission must not be called in the first seconds of the round.
+	supervisor:reset(os.clock())
 
 	local userIds: { number } = {}
 	for _, p in Players:GetPlayers() do
 		table.insert(userIds, p.UserId)
+		supervisor:watch(p.UserId, os.clock())
 		connectedRemote:FireClient(p, false)
 	end
 	board:deal(userIds)
@@ -484,6 +570,14 @@ task.spawn(function()
 				pushPhase(nil)
 				pursuit:stop()
 			end
+		end
+
+		-- Silence, which is the one thing the Operator cannot hear. Asked every
+		-- beat for the same reason capture is: it is a continuous fact, not an
+		-- event, and R24 is the round that learned what asking once costs.
+		if round:isPlaying() then
+			warnWhoeverIsNearlyOut()
+			putThroughTheSilentLine()
 		end
 
 		-- A room it heard about while it was busy. Taken up only once it is idle

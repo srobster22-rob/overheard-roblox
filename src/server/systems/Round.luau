@@ -158,6 +158,15 @@ Round.LINES = {
 	-- were split -- three different events must not share one sentence.
 	lost = "I'm sorry, your call cannot be completed as dialled.",
 	understood = "I have that party for you.",
+	-- THE SUPERVISOR, entity #4. Private, to one player who has gone quiet:
+	-- your clock is nearly out. It is a WARNING and must not read like the
+	-- call itself, or the lead time it exists to give is wasted.
+	stillThere = "Are you still on the line, caller?",
+	-- And the call going through, said to everyone: the Operator has been
+	-- given a name and a room. Distinct from `connecting`, which is what it
+	-- says when it understood something SAID -- the whole point of the
+	-- Supervisor is that this one is for saying nothing.
+	traced = "I have a silent line. Putting you through.",
 	connecting = "I'm connecting you now.",
 	busy = "That line is busy.",
 	-- It reached the room it understood. Said to everyone, because everyone

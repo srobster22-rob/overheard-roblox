@@ -29,6 +29,8 @@ local Lifecycle = rt.require(rt.systems.Lifecycle)
 local Operator = rt.require(rt.systems.Operator)
 local Pursuit = rt.require(rt.systems.Pursuit)
 local Round = rt.require(rt.systems.Round)
+local Supervisor = rt.require(rt.systems.Supervisor)
+local Silence = rt.require(rt.shared.Silence)
 local Layout = rt.require(rt.shared.Layout)
 local Config = rt.require(rt.shared.Config)
 
@@ -244,6 +246,150 @@ check(`the seen set stays bounded ({long.worstSeen} readers per line)`, long.wor
 -- R46 is a FILED gap, not a fixed one, so it is recorded rather than asserted
 -- as correct: nothing burns, and the Lexicon stays small because of it.
 check(`(recorded, see R46) the Lexicon never runs away ({long.worstLexicon})`, long.worstLexicon < 200)
+
+print("")
+print("a group that never says a word in-game")
+
+-- R54's finding, kept as an invariant rather than as a number in a log entry.
+--
+-- Before the Supervisor existed, four silent players won 20 rounds in 600
+-- simulated seconds, took ZERO captures, and the Operator never left its post.
+-- Silence was not merely safe, it won MORE than talking did (20 to 16), and a
+-- group on a voice call outside Roblox could pass every answer and play an
+-- unopposed fetch quest against a statue.
+--
+-- No rule-level test could see it: every rule was right on its own. The defect
+-- was in what they left out.
+local function silentGroup(ticks: number): (number, number, boolean)
+	local rooms = { board = Layout.boardCentre(), archive = Layout.archiveCentre() }
+	local secrets = Round.dealSecrets(3)
+	local board = Objectives.new()
+	for _, station in Round.STATIONS do
+		board:add(station.id, station.concept, station.prompt)
+	end
+	local line = Connected.new()
+	local round = Lifecycle.new()
+	local operator = Operator.new(secrets)
+	local pursuit = Pursuit.new(rooms, Layout.operatorPost())
+	local supervisor = Supervisor.new()
+	operator.onUnderstood = function(_concept: string, payload: string)
+		pursuit:sendTo(payload)
+	end
+
+	local present = { 1, 2, 3, 4 }
+	local now = 0
+	for _, userId in present do
+		supervisor:watch(userId, now)
+	end
+	board:deal(present)
+
+	local won, calls = 0, 0
+	local everMoved = false
+	local roundsPlayed, playingTicks, thisRound, longestRound = 0, 0, 0, 0
+
+	for tick = 1, ticks do
+		now += Config.TickSeconds
+
+		-- Nobody says anything, ever. `operator:hear` is never called.
+		--
+		-- The dispatch is the server's, in miniature: everyone stands in a room,
+		-- so the longest-quiet player's room is where it is sent.
+		if round:isPlaying() then
+			local due = supervisor:overdue(now)
+			if #due > 0 then
+				supervisor:called(due[1], now)
+				calls += 1
+				pursuit:sendTo(Config.Rooms[(due[1] % #Config.Rooms) + 1])
+			end
+		end
+
+		if round:isPlaying() then
+			playingTicks += 1
+			thisRound += Config.TickSeconds
+			longestRound = math.max(longestRound, thisRound)
+		else
+			thisRound = 0
+		end
+
+		pursuit:step(Config.TickSeconds)
+		pursuit:takePending()
+		if pursuit.state ~= "idle" then
+			everMoved = true
+		end
+
+		if round:isPlaying() and pursuit.state == "arrived" then
+			for _, userId in present do
+				line:connect(userId, now)
+			end
+			if line:allTaken(present) then
+				round:finish("lost", now)
+			end
+		end
+		if pursuit:shouldLeave(Config.LingerSeconds) then
+			pursuit:withdrawTo(Layout.operatorPost())
+		end
+
+		if round:isPlaying() and tick % 260 == 0 then
+			for _, objective in board.list do
+				if objective.solved then
+					continue
+				end
+				for _, userId in present do
+					if not line:isConnected(userId) and not objective.seenBy[userId] then
+						if board:submit(objective.id, userId, objective.answer, now).ok then
+							operator:credit(objective.concept, now)
+						end
+						break
+					end
+				end
+			end
+			if board:allSolved() and round:finish("won", now) then
+				won += 1
+			end
+		end
+
+		if round:readyToRestart(now, Config.IntermissionSeconds) and round:restart() then
+			board:reset()
+			line:clear()
+			pursuit:sendHome(Layout.operatorPost())
+			supervisor:reset(now)
+			roundsPlayed += 1
+			board:deal(present)
+		end
+	end
+
+	return won, calls, everMoved, longestRound, roundsPlayed
+end
+
+local TICKS = 2400 -- 600 simulated seconds, the length that was measured
+local _silentWins, calls, moved, longestRound, roundsPlayed = silentGroup(TICKS)
+check(`(guard) the silent run was long enough to matter ({TICKS} ticks)`, TICKS >= 2400)
+check(`silence is called out ({calls} calls in {TICKS} ticks)`, calls > 0)
+check("the Operator no longer stands still through a silent session", moved)
+
+-- The rate matters as much as the fact. A call every few minutes is not
+-- pressure; the deadline says roughly one per player per `SpeakEvery`.
+-- A DEADLINE LONGER THAN A ROUND NEVER FIRES. The first version of this block
+-- modelled a 30-second round against a 45-second `SpeakEvery` and recorded zero
+-- calls -- a dead dial of exactly the kind R6 built its guard for, and invisible
+-- to every rule-level test because the rule itself is right.
+check(`(guard) rounds were played to measure ({roundsPlayed})`, roundsPlayed >= 3)
+check(
+	`the deadline is reachable inside a round ({Config.SpeakEvery}s < {string.format("%.0f", longestRound)}s)`,
+	Config.SpeakEvery < longestRound
+)
+-- ...and the warning lands with its lead time still inside the round, or the
+-- player is told to speak up at the same moment they are called.
+check(
+	`...and the warning lands before it, in time ({Config.SpeakWarning}s + {Silence.warningLeadSeconds()}s lead)`,
+	Config.SpeakWarning + Silence.warningLeadSeconds() <= longestRound
+)
+
+-- The rate matters as much as the fact: one call in ten minutes is not pressure.
+-- The floor is what the deadline and the cooldown together imply for a single
+-- player, which four players should clear several times over.
+local floorCalls = math.floor((TICKS * Config.TickSeconds) / (Config.SpeakEvery + Config.SupervisorCooldown))
+check(`...and often enough to be pressure ({calls} >= {floorCalls})`, calls >= floorCalls)
 
 print("")
 print("one player with a bad connection")
