@@ -7579,3 +7579,5 @@ the sweep script's own anchor for it did not match after an earlier edit, and
 it was left rather than re-attempted with the round's budget already spent
 proving the real survivor. It is not evidence either way; a seventh wave should
 pick it up rather than assume it is fine.
+
+**Commit** `f8eab22`
