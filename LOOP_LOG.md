@@ -1616,3 +1616,151 @@ carries all of it.
   design fork.
 
 **Commit.** `ce4e19a`
+
+## R13 — two players finish the same line at once, and the Operator tells one of them off
+
+**Stage 1 — shortlist.** R12 named the fourth seam shape and declined to close
+the seam without it: ORDERING between two players acting in the same tick. Two
+of its three named examples turn out to be the owner's filed design questions
+wearing a race's clothes, so the shortlist had to separate them first. I probed
+all of them headlessly against a real `Board` before writing this list rather
+than reasoning from the source.
+
+1. **Two players enter the correct number for the same line at almost the same
+   moment, and the second one is accused of being wrong.** Probed: first submit
+   `ok=true`; the second, with the identical correct value, comes back
+   `ok=false, reason="already restored"`, and `init.server` routes ANY
+   `not ok and reason` to two places at once — `heardRemote:FireClient(player,
+   Round.LINES.busy)`, the Operator saying *"That line is busy."* into your ear,
+   and `rejectedRemote`, the red status line under the keypad. So at the moment
+   the group WINS and the Operator says "Your call has been completed." to
+   everyone, it simultaneously tells the second player the line is busy, for
+   typing the right number. It is invisible solo by construction and it needs
+   two players at one station, which is exactly what the fourth shape is. It is
+   also a CLASS: `SubmitResult` has no way to say "nothing was wrong, you were
+   just late", so every refusal reaches the Operator's mouth as an accusation.
+   **TAKEN.**
+2. **A re-deal on JOIN flips the actor into the holder.** Probed: B is told the
+   number, `deal` runs on a join, B becomes the holder, B's correct answer is
+   refused with "someone else has to patch this". Real and ordering-shaped —
+   but it exists ONLY because joining reshuffles, which is the owner's filed
+   question. Fixing it decides that question. **Not taken, filed as-is.**
+3. **`redealOrphans` hands the orphan to the last player standing.** Probed:
+   A holds, A leaves, one player remains, the line moves to them and is
+   unsolvable. That is the owner's filed solo-player-cannot-finish question
+   arriving by a different road, not a new defect. **Not taken.**
+4. **The harness's `src/server/systems/` adoption list is hand-kept** (R12's own
+   filed self-audit). Real, and the exact defect class this project has caught
+   five times — but it is test infrastructure, not the seam and not player-
+   visible, and R12 correctly noted it needs a per-entry exemption list rather
+   than a port of the shared sweep. **Deferred, not retired.**
+5. **R7's scanner is a lexer, so `if false and ...` passes any wiring guard.**
+   Carried since R7. No evidence any live guard is currently fooled, and it is
+   the third pass at "the suite can be fooled" rather than at the game.
+   **Deferred.**
+
+**Pick: 1.** Fixing it needs `SubmitResult` to carry whose fault a refusal is,
+so the Operator can only accuse a player the module says is at fault.
+
+**Stage 2 — built.**
+
+- `Objectives.SubmitResult` gains `fault: boolean`. Not derived from `ok` —
+  `already restored` is the one refusal nobody caused, and it is the ONLY exit
+  where `not ok` and blamelessness coincide, so deriving it would have encoded
+  the coincidence instead of the rule. Set explicitly at all seven exits of
+  `submit`.
+- `init.server` fires `heardRemote(LINES.busy)` only `if result.fault`. The
+  station-tagged `Rejected` note still goes unconditionally: "already restored"
+  is information, and gating it too would leave the blameless player looking at
+  a keypad that said nothing while the round ended around them.
+- Tests: `tests/objectives.luau` 59 -> 84 (a seven-branch `fault` sweep with a
+  hand-stated expectation per branch, both no-vacuous-pass guards, a
+  source-read completeness count, the two-player race in both orders, and the
+  late-wrong-answer case); `tests/wiring.luau` 94 -> 99 (the gate exists, the
+  voice is inside it, the keypad note is NOT, and a count guard that the submit
+  path speaks in exactly two places so a second unguarded `busy` cannot hide).
+
+**Stage 3 — review.**
+
+`test.cmd` by ABSOLUTE path, 17,078 chars of output, exit 0: lexicon 14/14,
+operator all assertions, objectives 84/84, pursuit 36/36, round 46/46, config
+44/44, wiring 99/99, `suite passed`. **323 checks, up from R12's 293.**
+`selene src`: 0 errors, 0 warnings, 0 parse errors. `rojo build` exit 0.
+
+Built to `r13_overheard_check.rbxlx` and grepped with python. Controls known
+present: `OVERHEARD` x5, `PlayerRemoving` x4. New: `if result.fault then` x1,
+`fault: boolean` x1, `fault = true` x5, `fault = false` x2. Control known
+absent: `ZZ_NOT_IN_THIS_FILE_ZZ` x0; `function Round.pickSecrets` still x0.
+
+Six plants, each byte-restored from a post-edit backup and sha256-verified
+(`Objectives.luau` `CDA2FD9A...B61BC3BB`, `init.server.luau`
+`D9B6190B...C938D56`). Every one applied, exited 1, and failed BY NAME with no
+crash:
+
+1. **The shipped defect** — the `fault` gate removed so the Operator accuses
+   everyone again: `FAIL the Submit handler gates on result.fault`, wiring
+   96/99.
+2. `already restored` marked as the actor's fault: 5 red including `FAIL but
+   the second player is NOT at fault`, objectives 79/84.
+3. `fault` hardwired true: 7 red, and critically `FAIL the sweep saw an outcome
+   that was NOT (guard)` — the check that exists so a constant cannot pass a
+   sweep. 77/84.
+4. The keypad note gated too: `FAIL but the station-tagged keypad note is NOT`,
+   98/99. The half-fix a careless reader would ship.
+5. An eighth `fault` exit added to `submit` that no test enumerates: `FAIL
+   submit sets fault on exactly as many exits as this file enumerates (8)`,
+   83/84 — the hand-kept-list defect caught by reading source.
+6. The late player charged a miss for a line somebody else solved: 4 red led by
+   `FAIL and takes no miss for it`, 80/84.
+
+Suite re-run green after all six, exit 0, 84/84 objectives.
+
+**Is the multiplayer seam closed?** The fourth shape is now swept, and sweeping
+it changed the answer to the shape itself. Luau is single-threaded and no
+handler in `init.server` yields between reading and writing shared state, so
+there is no interleaving INSIDE an event — the "same tick" race is at the
+granularity of whole events, and the only thing two players can actually race
+for is which of them a state transition happens to. That produced exactly one
+real defect and it was not a corruption, it was an ATTRIBUTION: the loser of the
+frame was blamed for it. **I am not declaring the seam closed, and the fifth
+shape is one I can name from the probe rather than guess at: a re-deal landing
+between a player being TOLD a number and that player entering it.** Probed live
+— B is told the number, `deal` runs on a join, B becomes the holder, and B's
+correct answer is refused "someone else has to patch this". It is real, it is
+ordering, and it is player-visible. **I did not build it, because it exists only
+because joining reshuffles, and whether joining should reshuffle is the owner's
+filed question. Building the fix decides it.** That is a boundary, not a
+deferral: the shape is identified and the reason it is untouched is the owner's,
+not mine.
+
+**Studio-blocked.** Roblox Studio is device-blocked; nothing here was seen or
+heard running. Specifically unverified: how the two Operator lines land in time
+against each other on a real client, and whether the objectives push closes the
+loser's keypad before or after their `Rejected` arrives (both orders are safe by
+construction — `Keypad.accepts` drops a note for a closed keypad — but that is
+reasoning, not a playtest). What the headless suite DID prove: every exit from
+`submit` declares whose doing it was, both values occur, the count of exits is
+read out of source rather than hand-kept, two correct answers in either order
+leave neither player blamed and neither charged a miss, and the built `.rbxlx`
+carries the gate.
+
+**Retired this round.** Nothing — R12 retired the last two carried items, and
+this round opened no new carry. The `fault` field is the retirement of a
+*pattern* rather than an item: `not ok` can no longer be read as "the player did
+something wrong" anywhere in this codebase.
+
+**Left open.**
+- The FIFTH seam shape: a re-deal landing between being told a number and
+  entering it. Blocked on the owner's join-reshuffle question, not on effort.
+- R7's item stands: the shared scanner is a lexer, so `if false and ...` passes
+  any wiring guard. Untouched for a sixth round; it is the oldest thing here.
+- R12's filed self-audit: the harness's `src/server/systems/` adoption list is
+  hand-kept with no sweep, and needs a per-entry exemption list (`World` and
+  `Presence` are legitimately unadoptable) rather than a port of the shared one.
+- The two overlapping remote-name guards are still two.
+- **Still with the owner, untouched and NOT decided here:** `CoolPerSecond`; the
+  mid-round re-deal on JOIN; the solo-player-cannot-finish question; and R9's
+  loud-vs-quiet wrong-code question. **No new owner question this round** — an
+  Operator that accuses a player for typing the right number has one correct
+  answer, and the fifth shape is a consequence of a question already filed, not
+  a new fork.

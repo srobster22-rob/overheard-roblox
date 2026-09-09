@@ -93,3 +93,15 @@ Write in plain English. One item per line. Top item goes first.
   Also: winning a round used to make the Operator say the exact same sentence it
   says when the monster walks into your room - "Go ahead, caller." Winning now
   has its own line. Nothing to decide here.
+
+- R13 - when two of you enter the same number at the same keypad within a
+  moment of each other, the second one was told off for it. The Operator said
+  "That line is busy." straight into their ear - the same sentence it uses for a
+  jammed line - for typing the number they had been told correctly, at the exact
+  moment everyone else heard the round was won. You can only ever see this with
+  two people, and it happens on a GOOD round, because two people both knowing
+  the number and both reaching for the keypad is what a group that is talking
+  properly looks like. The refusal itself was right - the line was already
+  fixed - but the blame was not. The game now knows the difference between "you
+  did something wrong" and "somebody beat you to it", and the Operator is only
+  allowed to say the busy line to the first kind. Nothing to decide here.

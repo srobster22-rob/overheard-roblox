@@ -36,6 +36,15 @@ export type SubmitResult = {
 	-- Why it failed, for the client to display. Never leaks the answer.
 	reason: string?,
 	solved: boolean,
+	-- Did the ACTOR do something wrong? Not the same as `not ok`, and that is
+	-- the whole point of the field. Two players at one keypad both enter the
+	-- number they were told; the first solves the line and the second arrives
+	-- a frame later against `already restored`. Nothing about that is the
+	-- second player's doing, but `init.server` used to route every `not ok` to
+	-- the Operator's mouth, so at the exact moment the group WON it also said
+	-- "That line is busy." to somebody for typing the right answer. The
+	-- Operator may only accuse a player this module marks at fault.
+	fault: boolean,
 }
 
 local Objectives = {}
@@ -173,15 +182,16 @@ function Objectives.submit(
 ): SubmitResult
 	local objective = self:get(id)
 	if not objective then
-		return { ok = false, reason = "no such objective", solved = false }
+		return { ok = false, reason = "no such objective", solved = false, fault = true }
 	end
 	if objective.solved then
-		return { ok = false, reason = "already restored", solved = true }
+		-- Somebody else got there first. NOT this player's fault; see `fault`.
+		return { ok = false, reason = "already restored", solved = true, fault = false }
 	end
 
 	-- The invariant. The holder cannot solve their own objective.
 	if objective.holder == actorUserId then
-		return { ok = false, reason = "someone else has to patch this", solved = false }
+		return { ok = false, reason = "someone else has to patch this", solved = false, fault = true }
 	end
 
 	-- Jammed. Checked AFTER the holder rule and BEFORE the answer is compared,
@@ -192,6 +202,7 @@ function Objectives.submit(
 			ok = false,
 			reason = `that line is jammed - wait {math.ceil(jammedUntil - now)}s`,
 			solved = false,
+			fault = true,
 		}
 	end
 
@@ -205,9 +216,9 @@ function Objectives.submit(
 		if misses % Config.GuessesBeforeLockout == 0 then
 			local seconds = Config.LockoutSeconds * (misses // Config.GuessesBeforeLockout)
 			objective.jammedUntil[actorUserId] = now + seconds
-			return { ok = false, reason = `that line is jammed - wait {seconds}s`, solved = false }
+			return { ok = false, reason = `that line is jammed - wait {seconds}s`, solved = false, fault = true }
 		end
-		return { ok = false, reason = "that line is dead", solved = false }
+		return { ok = false, reason = "that line is dead", solved = false, fault = true }
 	end
 
 	-- Right answer: this player was told the number, so forgive the fumbling.
@@ -218,7 +229,7 @@ function Objectives.submit(
 	if self.onSolved then
 		(self.onSolved :: any)(objective, actorUserId)
 	end
-	return { ok = true, solved = true }
+	return { ok = true, solved = true, fault = false }
 end
 
 -- NOT CLEANED ON PlayerRemoving, ON PURPOSE. R10 filed `misses`/`jammedUntil`

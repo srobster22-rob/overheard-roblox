@@ -14,6 +14,9 @@ local stripNonCode = require("./luaucode").stripNonCode
 
 local rt = Harness.build()
 local Objectives = rt.require(rt.systems.Objectives)
+-- The jam sweep steps the miss counter to the lockout boundary; reading the
+-- dial rather than hardcoding 3 keeps it honest if the tuning changes.
+local Config = rt.require(rt.shared.Config)
 
 local failures = 0
 local checks = 0
@@ -315,6 +318,139 @@ check(
 	string.find(removingCode, "misses", 1, true) == nil
 		and string.find(removingCode, "jammedUntil", 1, true) == nil
 )
+
+
+-- FAULT, AND TWO PLAYERS ACTING AT ONCE ------------------------------------
+--
+-- The fourth shape of the multiplayer seam: ordering. Everything above asks
+-- "does A's action land in B's slot"; this asks "what if A and B act at once".
+-- Luau is single-threaded and none of these handlers yield, so the interleaving
+-- is at the granularity of whole events -- which is exactly enough to lose a
+-- race, because two players standing at one keypad who were both told the same
+-- number will both press Enter.
+--
+-- `not ok` is not the same as "you did something wrong", and until R13 the
+-- server had no way to tell them apart, so it fired the Operator's "That line
+-- is busy." at whichever of the two lost the frame.
+print("")
+print("fault: whose doing was the refusal")
+
+-- Stated here, deliberately NOT derived from the module, so this table and the
+-- code have to agree rather than the test reading its own answer off the thing
+-- it is checking.
+local FAULT_BRANCHES: { { name: string, fault: boolean, run: () -> any } } = {}
+local function branch(name: string, fault: boolean, run: () -> any)
+	table.insert(FAULT_BRANCHES, { name = name, fault = fault, run = run })
+end
+
+local function freshBoard(): (any, any)
+	local b = Objectives.new()
+	local line = b:add("board", "jack_number", "Patch line to jack %s")
+	line.holder = HOLDER
+	line.answer = "47"
+	return b, line
+end
+
+branch("no such objective", true, function()
+	local b = freshBoard()
+	return b:submit("nowhere", ACTOR, "47", T0)
+end)
+branch("already restored", false, function()
+	local b, line = freshBoard()
+	line.solved = true
+	return b:submit("board", ACTOR, "47", T0)
+end)
+branch("the holder tries their own line", true, function()
+	local b = freshBoard()
+	return b:submit("board", HOLDER, "47", T0)
+end)
+branch("a wrong answer", true, function()
+	local b = freshBoard()
+	return b:submit("board", ACTOR, "11", T0)
+end)
+branch("the miss that trips the jam", true, function()
+	local b = freshBoard()
+	for _ = 1, Config.GuessesBeforeLockout - 1 do
+		b:submit("board", ACTOR, "11", T0)
+	end
+	return b:submit("board", ACTOR, "11", T0)
+end)
+branch("a submit while jammed", true, function()
+	local b = freshBoard()
+	for _ = 1, Config.GuessesBeforeLockout do
+		b:submit("board", ACTOR, "11", T0)
+	end
+	return b:submit("board", ACTOR, "11", T0)
+end)
+branch("the right answer", false, function()
+	local b = freshBoard()
+	return b:submit("board", ACTOR, "47", T0)
+end)
+
+local sawFault, sawBlameless = false, false
+for _, case in FAULT_BRANCHES do
+	local result = case.run()
+	check(`{case.name}: fault is {tostring(case.fault)}`, result.fault == case.fault)
+	if result.fault then
+		sawFault = true
+	else
+		sawBlameless = true
+	end
+end
+-- Guards. A `fault` hardwired to either constant satisfies half the sweep, and
+-- a sweep that never reaches a branch proves nothing about it.
+check("the sweep saw a refusal that WAS the actor's fault (guard)", sawFault)
+check("the sweep saw an outcome that was NOT (guard)", sawBlameless)
+check(`the sweep covered every branch it claims (guard, {#FAULT_BRANCHES})`, #FAULT_BRANCHES == 7)
+
+-- Completeness, read out of the module rather than trusted. If a future round
+-- adds an eighth exit from `submit` and gives it a `fault` but no test, this
+-- count disagrees with the table above and says so.
+local objectivesCode = stripNonCode(fs.readFile("src/server/systems/Objectives.luau"))
+local faultSites = select(2, string.gsub(objectivesCode, "fault = ", ""))
+check(
+	`submit sets fault on exactly as many exits as this file enumerates ({faultSites})`,
+	faultSites == #FAULT_BRANCHES
+)
+
+-- The race itself ----------------------------------------------------------
+print("")
+print("two players entering the same number in the same tick")
+
+local raceBoard, raceLine = freshBoard()
+local first = raceBoard:submit("board", ACTOR, "47", T0)
+local second = raceBoard:submit("board", THIRD, "47", T0)
+check("the first correct answer solves the line", first.ok == true)
+check("the second correct answer does not", second.ok == false)
+check("but the second player is NOT at fault", second.fault == false)
+check("and takes no miss for it", raceLine.misses[THIRD] == nil)
+check("and is not jammed for it", raceLine.jammedUntil[THIRD] == nil)
+check("the line stays solved", raceLine.solved == true)
+
+-- Order-independence. Whichever of the two lands first, neither player who
+-- entered the RIGHT number is ever told it was their doing. Swept over both
+-- orders rather than asserted once, because the whole defect was that only one
+-- of the two orders was ever exercised.
+local racers = { ACTOR, THIRD }
+for i = 1, 2 do
+	local a, b = racers[i], racers[3 - i]
+	local rb, rl = freshBoard()
+	local ra = rb:submit("board", a, "47", T0)
+	local rbres = rb:submit("board", b, "47", T0)
+	check(`order {i}: exactly one of the two solved it`, (ra.ok and not rbres.ok) == true)
+	check(`order {i}: neither correct answer is blamed`, ra.fault == false and rbres.fault == false)
+	check(`order {i}: no misses recorded against either`, rl.misses[a] == nil and rl.misses[b] == nil)
+end
+
+-- A wrong answer arriving after somebody else has solved the line is still not
+-- a miss, because the line is gone. The refusal is blameless for the same
+-- reason, and must not be counted against a player who was simply mid-typo when
+-- their friend finished.
+local lateBoard, lateLine = freshBoard()
+lateBoard:submit("board", ACTOR, "47", T0)
+local late = lateBoard:submit("board", THIRD, "11", T0)
+check("a wrong answer arriving after the solve is blameless too", late.fault == false)
+check("and costs the late player no miss", lateLine.misses[THIRD] == nil)
 
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then

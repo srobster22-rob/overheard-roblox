@@ -336,6 +336,47 @@ check(
 	solvedBody ~= nil and string.find(solvedBody :: string, "LINES.taken", 1, true) == nil
 )
 
+
+-- WHO THE OPERATOR IS ALLOWED TO ACCUSE ------------------------------------
+--
+-- Same family as the keypad channels above, one layer up. `Rejected` is
+-- private and station-tagged, so R10's fan-out cannot happen -- but the
+-- Operator's `busy` line was still fired for EVERY `not ok`, and one of those
+-- refusals ("already restored") is nobody's doing. Two players at one keypad
+-- both enter the number they were told; the loser of the frame was told the
+-- line was busy for typing the right answer, in the same tick as the win line.
+-- The voice is now gated on `result.fault`; the keypad note is not.
+print("")
+print("the Operator only accuses a player at fault")
+
+local faultGate = submitBody and string.match(submitBody :: string, "if result%.fault then.-\n\t\tend")
+check("the Submit handler gates on result.fault", faultGate ~= nil)
+check(
+	"the Operator's line is inside that gate",
+	faultGate ~= nil and string.find(faultGate :: string, "heardRemote:FireClient", 1, true) ~= nil
+)
+-- The other half, and the one a careless fix would break: the keypad note is
+-- information, not an accusation, so gating it too would leave a blameless
+-- player staring at a keypad that said nothing at all.
+check(
+	"but the station-tagged keypad note is NOT",
+	faultGate ~= nil and string.find(faultGate :: string, "rejectedRemote:FireClient", 1, true) == nil
+)
+check(
+	"and the Submit handler still sends one",
+	submitBody ~= nil and string.find(submitBody :: string, "rejectedRemote:FireClient", 1, true) ~= nil
+)
+-- Guard: the gate must be the only `heardRemote` in the submit path, or a
+-- second unguarded call would say `busy` anyway and every check above would
+-- still pass. The station refusal earlier in the handler is the actor's fault
+-- by construction (they submitted an id for a keypad they never reached), so it
+-- keeps its voice line -- that is one, and the gated one is two.
+local heardInSubmit = submitBody and select(2, string.gsub(submitBody :: string, "heardRemote:FireClient", ""))
+check(
+	`the submit path speaks in exactly two places, both deliberate ({tostring(heardInSubmit)})`,
+	heardInSubmit == 2
+)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

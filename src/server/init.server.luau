@@ -183,7 +183,19 @@ submitRemote.OnServerEvent:Connect(function(player: Player, id: unknown, value: 
 		-- and says nothing that identifies the station; the REASON goes down
 		-- the private keypad channel tagged with the station it is about, so it
 		-- cannot paint the other keypad and cannot be confused with narration.
-		heardRemote:FireClient(player, Round.LINES.busy, "", 0)
+		--
+		-- THE VOICE IS GATED ON `fault`, the keypad note is not. Two players at
+		-- one keypad both enter the number they were told and the loser of the
+		-- frame lands on `already restored` -- a refusal that is nobody's doing.
+		-- Firing `busy` for it meant the Operator said "That line is busy." to a
+		-- player for typing the RIGHT answer, in the same breath as it told
+		-- everyone the call had been completed. Two contradictory lines, one
+		-- tick apart, and only ever with two players. The station-tagged note
+		-- still goes, because "already restored" is information; the accusation
+		-- does not.
+		if result.fault then
+			heardRemote:FireClient(player, Round.LINES.busy, "", 0)
+		end
 		rejectedRemote:FireClient(player, id :: string, result.reason)
 	end
 end)
