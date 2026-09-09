@@ -6324,3 +6324,5 @@ guarded; the loss check on the tick, the restart and `beginRound` are still
 mirrored by hand. The guard takes a list, so adding them is a line each — but
 each one may move the numbers again, the way this one did, and that is a round's
 work rather than a line's.
+
+**Commit** `2500051`
