@@ -7768,3 +7768,69 @@ told immediately if that stops being true, rather than finding out by luck the
 way R52 did.
 
 **Commit** `5129a27`
+
+
+## R80 — a stray `%` in a station's prompt crashes the reader's own line
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — tracing the last unclear item from the old filed list.** Following
+R79's method on the other name R78 could not confidently describe: "the `%` in
+a server prompt." Each station's `prompt` field (`Round.STATIONS`) is a format
+string consumed by `Readout.lineRows` — `string.format(entry.prompt,
+entry.answer)` — with `%s` standing in for the two-digit answer. Confirmed by
+running it directly: `string.format("Breaker 90% tripped %s.", "42")` **errors
+outright** — `invalid option '%t' to 'format'` — because Lua's `string.format`
+treats every `%` as the start of a directive, and a literal percent has to be
+escaped as `%%` or the call throws.
+
+Both of the game's two current prompts are fine — no stray `%` in either. But
+nothing stops a future round from adding a station whose prompt reads, say,
+"Static at 60% strength. Patch jack %s." — ordinary, plausible flavour text —
+and `Readout.lineRows` has no `pcall` around the format call at all. The first
+time that objective is dealt to a player, rendering their own held line
+crashes outright.
+
+Like R79, this needed no owner call: it is a pure input-validation gap on data
+this project already owns and writes by hand, checkable today.
+
+1. *(picked)* **Guard every station's prompt against `string.format` at test
+   time, derived from `Round.STATIONS` rather than a list typed in the test.**
+2. R78's still-open list is otherwise unchanged.
+
+**Stage 2 — the fix.** One check added beside R21/R41's existing per-station
+sweep in `tests/round.luau`: `pcall(string.format, station.prompt, "42")` for
+every station, using the SAME function `Readout.lineRows` actually calls —
+not `string.gsub`, which the suite's existing text-leakage check (R41) already
+used for a different purpose and does not share this failure mode.
+
+**Stage 3 — proof.** Planted ordinary, plausible flavour text — *"Static at
+60% strength. Breaker %s tripped. Someone has to throw it."* — into the
+breaker's prompt. Failed by name:
+`station 'breaker' prompt survives the real render call, string.format`.
+Restored from byte-copy backup; sha256 `c8a80a7e…5c33e5cfaf9f034e0137e5cab5e7b0109508f6b977` unchanged.
+
+**Verified in the product, not merely the source.** Called `Readout.lineRows`
+itself — the actual client-facing function, not a stand-in — with that exact
+planted prompt: `ok=false, err=... missing argument #3` (the stray `%s` in
+"60%" demanded a second argument nothing supplies). The same call with the
+real, current prompt renders cleanly: `"Breaker 42 tripped. Someone has to
+throw it."`
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon 22, heuristic 49, operator ok, objectives 122,
+pursuit 104, round **61**, config 63, wiring 354, connected 32, ordering 4,
+heat 20, layout 110, lifecycle 90, hud 26, readout 29, soak 42, hum 29,
+log 18, silence 62, lexiconsave 28.
+
+**Filed item closed, not re-filed.** "The `%` in a server prompt" drops out of
+the carried-forward list — R78's consolidation had already left it out of
+`OWNER.md`, unable to confidently describe it. Like R79, it needed no owner
+decision, only a round willing to trace it.
+
+*Not claimed:* that `Readout.lineRows` is now defensive against a bad prompt at
+runtime — it still has no `pcall`, and still crashes if one gets past this
+guard some other way (a translation, a typo in a future round that skips the
+gate). What is proven is that both current prompts are safe and the next one
+added will be told immediately if it is not, the same shape as R79's fix one
+round earlier.

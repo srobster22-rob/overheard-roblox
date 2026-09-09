@@ -101,6 +101,15 @@ for _, station in Round.STATIONS do
 	seenIds[station.id] = true
 	check(`station '{station.id}' wants a concept the secret pool carries`, pool[station.concept] == true)
 	check(`station '{station.id}' prompt has a slot for the answer`, string.find(station.prompt, "%%s") ~= nil)
+	-- R80. Readout.lineRows renders a held line with `string.format(entry.prompt,
+	-- entry.answer)`, and string.format treats every `%` as the start of a
+	-- directive -- a literal percent anywhere else in the prompt ("Static at 60%
+	-- strength...") throws "invalid option" outright, and Readout has no pcall
+	-- around it. The suite's OWN existing check of this text uses string.gsub
+	-- (R41, checking what the sentence conveys), which does not share this
+	-- failure mode -- so nothing before this actually reproduced the render path.
+	local formatted = pcall(string.format, station.prompt, "42")
+	check(`station '{station.id}' prompt survives the real render call, string.format`, formatted)
 	check(`station '{station.id}' has an action verb`, #station.actionText > 0)
 	-- No physical prompt means the objective can never be solved, so
 	-- `allSolved` can never be reached and the round cannot end.
