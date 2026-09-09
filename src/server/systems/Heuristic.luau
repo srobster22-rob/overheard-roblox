@@ -35,9 +35,31 @@ local function containsWords(joined: string, phrase: string): boolean
 	return string.find(` {joined} `, ` {phrase} `, 1, true) ~= nil
 end
 
-local function matchesAny(stems: { string }, joined: string, candidates: { string }): boolean
+-- `alreadyStemmed` exists because the two call sites pass different things.
+-- `secret.plain` holds RAW words an author typed, which must be stemmed here.
+-- `coinage.phrase` is ALREADY a stem — it came out of this file's own
+-- novel-term extraction, which stores stems.
+--
+-- Stemming the second one a second time is a real defect, not a redundancy,
+-- because `Lexicon.stem` is not idempotent: `gathering -> gather -> gath`, and
+-- any `-ing` word whose stem then ends in `-er` does the same. "everyone to the
+-- gathering spot", said six times and credited, mints `the gather` and
+-- `gather spot` at heat 1.00 — and both then scored 0.00 against the exact
+-- sentence that minted them.
+--
+-- That is the worst possible failure for this game specifically. The Lexicon
+-- panel is the instrument players read to decide what is still safe to say, and
+-- it was showing those two at 100% burned. A group abandons a codeword that
+-- still works because the panel says the Operator learned it.
+--
+-- Fixed here rather than in `Lexicon.stem`: `gather -> gath` is the `er` rule
+-- working as written, and telling "gather" from "gath"+"er" needs real
+-- morphology. The bug is the DOUBLE stemming, not the stemmer.
+local function matchesAny(stems: { string }, joined: string, candidates: { string }, alreadyStemmed: boolean?): boolean
 	for _, candidate in candidates do
-		local candidateStems = Lexicon.stemAll(Lexicon.tokenize(candidate))
+		local candidateStems = if alreadyStemmed
+			then Lexicon.tokenize(candidate)
+			else Lexicon.stemAll(Lexicon.tokenize(candidate))
 		if #candidateStems == 0 then
 			continue
 		end
@@ -82,7 +104,8 @@ function Heuristic.understand(utterance: Utterance, secrets: { Secret }, lexicon
 			if coinage.concept ~= secret.concept then
 				continue
 			end
-			if matchesAny(stems, joined, { coinage.phrase }) then
+			-- Already a stem; see `alreadyStemmed` above.
+			if matchesAny(stems, joined, { coinage.phrase }, true) then
 				local learned = math.clamp(coinage.heat / BURNED_AT, 0, 1)
 				confidence = math.max(confidence, learned)
 			end

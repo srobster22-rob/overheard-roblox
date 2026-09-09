@@ -111,6 +111,70 @@ check("a plain giveaway is understood", plain.confidence == 1 and plain.concept 
 local nearPlain = Heuristic.understand(utterance("bring the jackhammer"), secrets, {})
 check("a longer word containing a plain term is not", nearPlain.confidence == 0)
 
+-- A BURNED COINAGE MUST MATCH THE SENTENCE THAT MINTED IT -------------------
+--
+-- Coinages are stored ALREADY STEMMED, and `matchesAny` used to stem every
+-- candidate again. `Lexicon.stem` is not idempotent — `gathering -> gather ->
+-- gath` — so a coinage minted from any `-ing` word whose stem ends in `-er`
+-- could never match anything, while the Lexicon panel showed it at 100% burned.
+-- Players read that panel to decide what is still safe to say, so it was
+-- telling them to abandon codewords that still worked.
+--
+-- The round trip is the assertion: mint through the real Operator, then feed
+-- the SAME sentence back. Anything a coinage was born from, it must recognise.
+
+print("")
+print("a burned coinage matches the sentence that minted it")
+
+local Operator = rt.require(rt.systems.Operator)
+
+local MINTED = "everyone to the gathering spot"
+local roundTripSecrets = { { concept = "exit", plain = { "exit", "stair" }, payload = "archive" } }
+local op = Operator.new(roundTripSecrets)
+local speaker = { UserId = 1 } :: any
+for i = 1, 6 do
+	op:hear({ speaker = speaker, text = MINTED, at = i })
+	op:credit("exit", i + 0.5)
+end
+
+local burned = {}
+for _, coinage in op:snapshot() do
+	if coinage.heat >= 1 and string.find(coinage.phrase, " ", 1, true) then
+		table.insert(burned, coinage)
+	end
+end
+-- Without this the loop below can pass by iterating nothing.
+check(`(guard) the sentence minted burned multi-word coinages ({#burned})`, #burned >= 2)
+
+local dead = {}
+for _, coinage in burned do
+	-- Each one ALONE, so a unigram from the same sentence cannot carry it.
+	local seen = Heuristic.understand({ speaker = speaker, text = MINTED, at = 99 }, roundTripSecrets, { coinage })
+	if seen.confidence < 1 then
+		table.insert(dead, coinage.phrase)
+	end
+end
+check(`every burned coinage recognises its own sentence ({table.concat(dead, ", ")})`, #dead == 0)
+
+-- The two that were actually dead, named, so a regression says which.
+local function aloneMatches(phrase: string): number
+	local coinage = { phrase = phrase, concept = "exit", heat = 1, sightings = 9 }
+	return Heuristic.understand({ speaker = speaker, text = MINTED, at = 99 }, roundTripSecrets, { coinage }).confidence
+end
+check("'gather spot' matches 'the gathering spot'", aloneMatches("gather spot") == 1)
+check("'the gather' matches it too", aloneMatches("the gather") == 1)
+
+-- And the fix must not have made coinages match everything: a stored stem is
+-- still compared on word boundaries, not as a substring (R15's defect).
+check("a burned coinage still does not match an unrelated sentence", aloneMatches("purple lantern") == 0)
+local wide = { phrase = "gather spot", concept = "exit", heat = 1, sightings = 9 }
+local unrelated = Heuristic.understand(
+	{ speaker = speaker, text = "the gathering place", at = 99 },
+	roundTripSecrets,
+	{ wide }
+)
+check("...nor a sentence missing half the phrase", unrelated.confidence == 0)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

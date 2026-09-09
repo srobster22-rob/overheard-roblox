@@ -2425,3 +2425,85 @@ takes a whole team too easily now that being taken actually ends the round.
 timer (`RoundLength` is still read by nothing) and what happens after either
 ending. That is a feature with a design opinion in it, so if `OWNER.md` gains a
 `## Next` item before then, that outranks it.
+
+
+## R19 — a burned coinage that can never match
+
+**Stage 0.** `OWNER.md` still has nothing under `## Next`. The owner questions
+(`CoolPerSecond`, mid-round re-deal on join, solo-player-cannot-finish,
+loud-vs-quiet wrong keypad code) stay filed and were NOT decided here.
+
+**Stage 1 — shortlist.** Probed as a CLASS property rather than as the single
+example inherited from the peer's note: `Lexicon.stem` must be IDEMPOTENT,
+because coinages are stored already-stemmed and re-stemmed at match time.
+
+1. *(picked)* **Double-stemming makes burned coinages unmatchable.** Swept 20
+   plausible coinage words for `stem(stem(w)) ~= stem(w)`: one breaks, and it is
+   a whole grammatical class — `gathering -> gather -> gath`, any `-ing` word
+   whose `-ing` stem then ends in `-er`.
+   End to end through a real `Operator`: six utterances of "everyone to the
+   gathering spot" plus credits mint six coinages, all at **heat 1.00**. Two of
+   them — `the gather` and `gather spot` — return **conf 0.00 against the exact
+   sentence that minted them**. Isolated in the probe by matching each burned
+   bigram alone, so the unigram `spot` could not mask it: `everyone to` -> 1.00
+   (no `-ing` word in it), `the gather` -> 0.00, `gather spot` -> 0.00.
+   This is player-facing in the worst way for THIS game: the Lexicon panel is
+   the instrument players read to decide what is still safe to say, and it
+   shows these at 100% burned. A group abandons a working codeword because the
+   panel says the Operator learned it, when in fact it never could.
+2. **Make `stem` idempotent instead.** Rejected: `gather -> gath` is the `er`
+   rule doing exactly what it was written to do, and telling "gather" from
+   "gath"+"er" needs real morphology. Same shape as R17's filed `es` problem —
+   a decision about which way to be wrong. **Not the fix.**
+3. The `es` over-strip cluster (R17 items 2-3). **Still filed**, still needs an
+   owner decision.
+4. `Config.RoundLength` still read by nothing (R9 round flow). **Still filed** —
+   a feature, not a defect.
+
+The fix is that the bug is the DOUBLE stemming, not the stemmer. `matchesAny`
+stems every candidate it is given, but its two call sites pass different things:
+`secret.plain` holds raw words that must be stemmed, while `coinage.phrase` is
+already a stem produced by `Heuristic`'s own novel-term extraction. Stemming the
+second one twice is the defect.
+
+**Stage 2 — built.** `matchesAny` takes an `alreadyStemmed` flag, and the
+coinage call site passes it. `secret.plain` still gets stemmed — those are raw
+words an author typed — while `coinage.phrase` is compared as the stem it
+already is. Smallest edit that fully does the job, and the reasoning lives in a
+comment at the function rather than in this log, where the next person will
+actually read it.
+
+**Stage 3 — review.**
+- Full suite green: lexicon 22, heuristic 29, objectives 84, pursuit 36,
+  round 48, config 47, wiring 139, connected 21, ordering 4, plus the operator
+  assertions. `suite passed`.
+- **Proved the change is observable, not a no-op.** Before: `the gather` and
+  `gather spot` scored **0.00** against the sentence that minted them. After:
+  both **1.00**.
+- **Proved the new checks can fail.** Backup after the fix
+  (sha256 `c37f07f4...b3e`), `alreadyStemmed` argument removed at the call site,
+  suite re-run: three failures by name —
+  `every burned coinage recognises its own sentence (the gather, gather spot)`,
+  `'gather spot' matches 'the gathering spot'`, `'the gather' matches it too` —
+  26/29. Restored from that backup, sha256 byte-identical.
+- **Checked the fix did not open the hole R15 closed.** Word-boundary matching
+  is still asserted for stored stems: an unrelated sentence stays 0.00, and so
+  does a sentence carrying only half the phrase ("the gathering place" against
+  `gather spot`). Without those, "stop stemming the candidate" could have been
+  implemented as "match more loosely" and looked green.
+- The round-trip assertion is written as a property — mint through the real
+  `Operator`, feed the same sentence back, every burned coinage must recognise
+  it — with a `(guard)` on the minted count so it cannot pass by iterating
+  nothing.
+
+**Stage 4 — shipped.** `selene src` 0/0, `rojo build` clean, `alreadyStemmed`
+present in the built place file (4 occurrences), full suite green with output
+pasted above. Studio remains DEVICE-BLOCKED; no visual or playtest claim is made.
+
+**Commit** `%%HASH%%`.
+
+**Next round.** The two stemming defects still filed (`es` over-strip, and
+`stem` not being idempotent) are now the only known correctness holes in the
+listener, and BOTH need the same owner decision about which way to be wrong.
+Absent direction, the next honest pick is R9 round flow — `Config.RoundLength`
+is still read by nothing, so neither ending has a clock.
