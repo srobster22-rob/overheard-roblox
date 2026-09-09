@@ -28,6 +28,7 @@ local openBoardRemote = Remotes.get("OpenBoard")
 local rejectedRemote = Remotes.get("Rejected")
 local phaseRemote = Remotes.get("Phase")
 local connectedRemote = Remotes.get("Connected")
+local silenceRemote = Remotes.get("Silence")
 
 local player = Players.LocalPlayer
 local gui = Instance.new("ScreenGui")
@@ -158,6 +159,69 @@ local function renderLexicon(entries: { any })
 		row.LayoutOrder = i
 	end
 end
+
+-- THE SUPERVISOR'S CLOCK ------------------------------------------------------
+--
+-- R54 built a monster that takes you on a timer. R55 measured its real
+-- dispatches going from 20 to 74 once it stopped announcing calls it never
+-- placed. Nothing on screen said the timer existed: the only signal was one
+-- sentence 15 seconds before, sent down the OPERATOR's voice channel, so the
+-- Supervisor's warning arrived as the thing that hunts meaning talking to you.
+--
+-- `CLAUDE.md`: the monster must be legible, or the scare reads as unfair. A
+-- monster on a clock you cannot see is what that rule is about.
+--
+-- The server sends the BAND, the PRESSURE and the WORDS. This file draws them
+-- and decides nothing: the thresholds live in `Shared.Silence` beside the dials
+-- they are derived from, for the reason the Lexicon's breakpoint does.
+
+local silencePanel = panel("Supervisor")
+silencePanel.Visible = false
+
+local silenceNote = Instance.new("TextLabel")
+silenceNote.Name = "Note"
+silenceNote.Position = UDim2.fromOffset(8, 26)
+silenceNote.Size = UDim2.new(1, -16, 0, 16)
+silenceNote.BackgroundTransparency = 1
+silenceNote.Font = Enum.Font.Code
+silenceNote.TextSize = 12
+silenceNote.TextXAlignment = Enum.TextXAlignment.Left
+silenceNote.TextColor3 = Color3.fromRGB(196, 196, 200)
+silenceNote.Text = ""
+silenceNote.Parent = silencePanel
+
+local silenceTrack = Instance.new("Frame")
+silenceTrack.Name = "Track"
+silenceTrack.Position = UDim2.fromOffset(8, 44)
+silenceTrack.Size = UDim2.new(1, -16, 0, 4)
+silenceTrack.BackgroundColor3 = Color3.fromRGB(40, 40, 44)
+silenceTrack.BorderSizePixel = 0
+silenceTrack.Parent = silencePanel
+
+local silenceBar = Instance.new("Frame")
+silenceBar.Name = "Bar"
+silenceBar.Size = UDim2.fromScale(0, 1)
+silenceBar.BackgroundColor3 = Color3.fromRGB(120, 200, 140)
+silenceBar.BorderSizePixel = 0
+silenceBar.Parent = silenceTrack
+
+-- Colour is per BAND, not a gradient across the whole bar, because `Silence`
+-- says the band above the deadline is flat: above it there is no "partly", and
+-- a ramp there implies headroom that does not exist. Same reason the Lexicon
+-- draws two bands rather than lerping across its threshold.
+local BAND_COLOUR: { [string]: Color3 } = {
+	clear = Color3.fromRGB(120, 200, 140),
+	warned = Color3.fromRGB(220, 180, 90),
+	overdue = Color3.fromRGB(220, 90, 90),
+}
+
+silenceRemote.OnClientEvent:Connect(function(band: string, pressure: number, note: string)
+	silencePanel.Visible = true
+	silenceNote.Text = note
+	silenceBar.Size = UDim2.fromScale(math.clamp(pressure, 0, 1), 1)
+	silenceBar.BackgroundColor3 = BAND_COLOUR[band] or BAND_COLOUR.clear
+	silenceNote.TextColor3 = BAND_COLOUR[band] or silenceNote.TextColor3
+end)
 
 -- YOUR LINE ----------------------------------------------------------------
 

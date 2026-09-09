@@ -124,6 +124,38 @@ if over then
 	check("...and is inset by the margin", 360 - short.bottom == Hud.Margin)
 end
 
+print("")
+print("the Supervisor's clock has somewhere to live")
+
+-- R56. It is the panel a player reads WHILE typing at a keypad, so it must
+-- coexist with the keypad; R34's sweep caught the first attempt at 220 wide
+-- reaching into the centre column.
+local supervisor = Hud.get("Supervisor")
+check("the panel exists", supervisor ~= nil)
+if supervisor then
+	check(
+		`(guard) it has a size ({supervisor.width}x{supervisor.height})`,
+		supervisor.width > 0 and supervisor.height > 0
+	)
+	-- It is a state you glance at, not an event, so it is pinned to a corner
+	-- rather than to the centre column.
+	check("it is pinned to the bottom", supervisor.scaleY == 1 and supervisor.anchorY == 1)
+	check("...on the left", supervisor.scaleX == 0 and supervisor.anchorX == 0)
+
+	-- The one that matters: you must be able to see your clock while typing.
+	check("it may be on screen with the keypad", Hud.canCoexist("Supervisor", "The board"))
+	local board = Hud.get("The board")
+	if board then
+		local clash = 0
+		for _, size in { { 640, 360 }, { 800, 480 }, { 1280, 720 }, { 1920, 1080 } } do
+			if Hud.overlaps(Hud.rect(supervisor, size[1], size[2]), Hud.rect(board, size[1], size[2])) then
+				clash += 1
+			end
+		end
+		check(`...and does not overlap it at any supported size ({clash})`, clash == 0)
+	end
+end
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

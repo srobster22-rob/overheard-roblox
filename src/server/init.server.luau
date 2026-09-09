@@ -11,6 +11,7 @@ local Players = game:GetService("Players")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Layout = require(ReplicatedStorage.Shared.Layout)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Silence = require(ReplicatedStorage.Shared.Silence)
 local Objectives = require(script.systems.Objectives)
 local Operator = require(script.systems.Operator)
 local Presence = require(script.systems.Presence)
@@ -27,6 +28,13 @@ local lexiconRemote = Remotes.get("LexiconUpdated")
 local objectivesRemote = Remotes.get("Objectives")
 local submitRemote = Remotes.get("Submit")
 local openBoardRemote = Remotes.get("OpenBoard")
+-- The SUPERVISOR's own channel. Its warning used to go out on `heardRemote`,
+-- which is the Operator's voice, so the only signal it gave arrived as the
+-- thing that hunts meaning talking to you. R10, R13 and R51 were each spent
+-- proving two events must not arrive as one signal; this is the fourth.
+-- Fired at one client only: how long everybody else has been quiet is not
+-- yours to see.
+local silenceRemote = Remotes.get("Silence")
 -- Keypad feedback. Separate from `heardRemote` on purpose: `Heard` is the
 -- Operator's voice and goes to everyone, and while the keypad read its detail
 -- field, a broadcast about one player's speech landed in another player's
@@ -263,21 +271,26 @@ end
 -- Nearly out of time, privately, so the player can still do something about it.
 -- Separate from the call itself for the reason R10 and R13 each had to unpick:
 -- two different events must not arrive as one sentence.
-local warned: { [number]: boolean } = {}
-local function warnWhoeverIsNearlyOut()
+-- The last band each player was TOLD, so the push happens on change rather than
+-- four times a second. R11's lesson: an event that should announce itself once
+-- announcing itself continuously is its own bug, and this one would also
+-- replicate to every client on every tick.
+local shown: { [number]: string } = {}
+local function showEveryoneTheirClock()
 	local now = os.clock()
 	for _, player in Players:GetPlayers() do
 		local band = supervisor:band(player.UserId, now)
-		if band == "warned" then
-			if not warned[player.UserId] then
-				warned[player.UserId] = true
-				heardRemote:FireClient(player, Round.LINES.stillThere, "", 0)
-			end
-		elseif band ~= nil then
-			-- Cleared or already called: armed again for next time. Without this
-			-- the warning fires once per player per server, which is the same
-			-- announce-once bug R11 fixed in the other direction.
-			warned[player.UserId] = nil
+		if band == nil then
+			continue
+		end
+		local quiet = supervisor:quietFor(player.UserId, now) or 0
+		if shown[player.UserId] ~= band then
+			shown[player.UserId] = band
+			-- Band, how full the bar is, and the words. The client is told the
+			-- PRESSURE rather than the seconds, so the dial can move without the
+			-- client knowing it exists -- `Silence.pressure` was written for
+			-- exactly this and had no reader until now.
+			silenceRemote:FireClient(player, band, Silence.pressure(quiet), Silence.note(band))
 		end
 	end
 end
@@ -484,7 +497,7 @@ Players.PlayerRemoving:Connect(function(player: Player)
 	-- `misses`/`jammedUntil` deliberately DO NOT (see Objectives), because a jam
 	-- a player can shed by reconnecting is not a jam.
 	lastSubmit[player.UserId] = nil
-	warned[player.UserId] = nil
+	shown[player.UserId] = nil
 	supervisor:forget(player.UserId)
 	line:forget(player.UserId)
 	desk:forget(player.UserId)
@@ -530,6 +543,10 @@ local function beginRound()
 	-- Every clock starts again. R31: a player quiet through the eight-second
 	-- intermission must not be called in the first seconds of the round.
 	supervisor:reset(os.clock())
+	-- ...and every panel with it. Without this the band a player was last told
+	-- sits on their screen through the intermission, and `shown` still holds it
+	-- so the push on change never fires to correct it.
+	table.clear(shown)
 
 	local userIds: { number } = {}
 	for _, p in Players:GetPlayers() do
@@ -591,7 +608,7 @@ task.spawn(function()
 		-- beat for the same reason capture is: it is a continuous fact, not an
 		-- event, and R24 is the round that learned what asking once costs.
 		if round:isPlaying() then
-			warnWhoeverIsNearlyOut()
+			showEveryoneTheirClock()
 			putThroughTheSilentLine()
 		end
 

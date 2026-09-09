@@ -90,6 +90,26 @@ local PANELS: { Panel } = {
 		anchorX = 0.5,
 		anchorY = 0,
 	},
+	-- The Supervisor's clock. Bottom-LEFT rather than the centre column, because
+	-- it is the only panel that is true continuously: the centre column is
+	-- events (a keypad, a capture, a result) and this is a state you glance at
+	-- while doing something else. It is also the panel a player looks at while
+	-- typing at a keypad, and the keypad owns the centre.
+	{
+		name = "Supervisor",
+		-- 150, not the 220 this started at. At MinWidth the centre column runs
+		-- 180..460, so a bottom-left panel has 164 of gutter and 220 reached
+		-- into the keypad. R34's sweep caught it; the number is derived from the
+		-- gutter, not chosen.
+		width = 150,
+		height = 52,
+		scaleX = 0,
+		offsetX = Hud.Margin,
+		scaleY = 1,
+		offsetY = -Hud.Margin,
+		anchorX = 0,
+		anchorY = 1,
+	},
 	-- Pinned to the BOTTOM, so it cannot walk up into the centre column as the
 	-- window shrinks.
 	{
@@ -135,6 +155,13 @@ end
 local EXCLUSIVE: { { string } } = {
 	{ "The board", "On the line" },
 	{ "The board", "Round over" },
+	-- The Supervisor only runs while the round is being played, so its clock and
+	-- the result of the round are never on screen together. Both want the bottom
+	-- of the window and at MinWidth the centre panel leaves only 144 there.
+	-- This is an exclusion with a reason, not a way around the sweep: the KEYPAD
+	-- is not excluded, because seeing your clock while typing is the moment the
+	-- panel exists for.
+	{ "Round over", "Supervisor" },
 }
 
 function Hud.canCoexist(a: string, b: string): boolean

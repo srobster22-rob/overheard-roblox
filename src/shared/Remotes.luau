@@ -9,13 +9,22 @@ local RunService = game:GetService("RunService")
 -- error. `tests/wiring.luau` sweeps every `Remotes.get("...")` in the source
 -- against this table in both directions.
 --
+-- `Silence` is the SUPERVISOR's channel, and separate for the same reason.
+-- Its warning used to go out on `Heard`, which is the Operator's voice, so
+-- the only signal the Supervisor gave arrived as the thing that hunts meaning
+-- talking to you. R10 split the keypad off `Heard`, R13 split two refusals
+-- that meant opposite things, R51 split the hum coming from the hum going --
+-- three rounds proving two events must not arrive as one signal. It carries
+-- the player's own clock, so it is fired at ONE client, never broadcast: how
+-- long everyone else has been quiet is not yours to see.
+--
 -- `Rejected` is deliberately separate from `Heard`. `Heard` is the Operator's
 -- voice and is broadcast; `Rejected` is why YOUR submit at THAT station failed
 -- and is only ever fired at one client. They were the same remote until R10,
 -- which meant one player speaking painted another player's keypad with a red
 -- concept id. See `Shared.Keypad`.
 local REMOTE_NAMES =
-	{ "Heard", "LexiconUpdated", "Objectives", "Submit", "OpenBoard", "Rejected", "Connected", "Phase" }
+	{ "Heard", "LexiconUpdated", "Objectives", "Submit", "OpenBoard", "Rejected", "Connected", "Phase", "Silence" }
 
 local Remotes = {}
 

@@ -53,6 +53,28 @@ function Silence.band(quietFor: number): Band
 	return "clear"
 end
 
+-- What the player is shown, per band. The panel draws `pressure` as a bar and
+-- this beside it, so the rule is legible before it fires rather than after.
+--
+-- `CLAUDE.md`: the monster must be legible, or the scare reads as unfair. A
+-- monster that takes you on a timer you cannot see is the exact case that rule
+-- is about.
+--
+-- The three notes are deliberately different lengths and different in kind --
+-- a state, a prod, and a verdict -- so a player catching the panel out of the
+-- corner of an eye can tell them apart without reading.
+local NOTES: { [Band]: string } = {
+	clear = "your line is open",
+	warned = "say something",
+	overdue = "SILENT LINE - TRACED",
+}
+
+Silence.NOTES = NOTES
+
+function Silence.note(band: Band): string
+	return NOTES[band]
+end
+
 -- The warning has to arrive with time left to do something about it, or it is
 -- not a warning. Read by tests against the real dials rather than trusted.
 function Silence.warningLeadSeconds(): number

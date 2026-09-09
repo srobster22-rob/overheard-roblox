@@ -779,6 +779,79 @@ check(
 	string.find(dispatchBody, "if not neverWritten then", 1, true) == nil
 )
 
+-- R56, and this is the CLASS. `Round.LINES` is the Operator's script; a line in
+-- it that nothing ever says is a dead string, the same shape as the dead config
+-- dials R6 built its guard for. This round moved the Supervisor's warning off
+-- the Operator's channel and left `stillThere` behind, and the suite passed at
+-- 264/264 with it sitting there unsaid.
+--
+-- Swept from the source in both directions, never from a list here.
+print("")
+print("every line the Operator has is a line it can say")
+
+-- The KEYS are read from the raw source, because `stripNonCode` drops string
+-- bodies by design -- a line's text is a string, so the table is invisible in
+-- the stripped copy. Comment lines are skipped explicitly instead, which is the
+-- part stripping was buying.
+local roundSource = fs.readFile("src/server/systems/Round.luau")
+local inLines = false
+local named, unsaid = 0, {}
+local everything = serverCode .. LuauCode.stripNonCode(fs.readFile("src/client/init.client.luau"))
+for line in string.gmatch(roundSource, "[^" .. NL .. "]+") do
+	if string.find(line, "Round.LINES = {", 1, true) then
+		inLines = true
+	elseif inLines and string.match(line, "^}") then
+		inLines = false
+	elseif inLines and not string.match(line, "^%s*%-%-") then
+		local key = string.match(line, '^%s*([%a][%w_]*) = "')
+		if key then
+			named += 1
+			-- Whether it is SAID is asked of the stripped code, where a comment
+			-- naming a line cannot answer for it. R4, R6 and R8 each shipped a
+			-- guard a mention could satisfy.
+			if not string.find(everything, "LINES." .. key, 1, true) then
+				table.insert(unsaid, key)
+			end
+		end
+	end
+end
+check(`(guard) the Operator has a script ({named} lines)`, named >= 6)
+check(`every line is said somewhere ({#unsaid} unsaid)`, #unsaid == 0)
+if #unsaid > 0 then
+	print(`        never said: {table.concat(unsaid, ", ")}`)
+end
+check("(control) a line that does not exist is not found", not string.find(everything, "LINES.neverWritten", 1, true))
+
+-- And the Supervisor's channel is consumed by the client, not merely declared.
+-- A remote nobody listens to is the same dead wire in a different costume.
+print("")
+print("the Supervisor's clock reaches the screen")
+local clientSource = fs.readFile("src/client/init.client.luau")
+local clientCode = LuauCode.stripNonCode(clientSource)
+check(
+	"the client takes a Silence remote",
+	string.find(clientCode, "local silenceRemote = Remotes.get(", 1, true) ~= nil
+)
+check("...and listens on it", string.find(clientCode, "silenceRemote.OnClientEvent", 1, true) ~= nil)
+-- The NAME has to be compared, and a name is a string, so this one reads the
+-- raw source. A wrong name is not silent anyway -- `panel()` asserts on it --
+-- but the panel Hud reserves and the panel the client builds must be the same
+-- one, and that is worth stating rather than leaving to a runtime assert.
+check("...and draws the panel Hud names", string.find(clientSource, 'panel("Supervisor")', 1, true) ~= nil)
+check("(guard) ...which Hud really reserves", rt.require(rt.shared.Hud).get("Supervisor") ~= nil)
+check(
+	"the server fires it at ONE client, never everyone",
+	string.find(serverCode, "silenceRemote:FireClient", 1, true) ~= nil
+)
+check(
+	"...and never broadcasts a player's own clock",
+	string.find(serverCode, "silenceRemote:FireAllClients", 1, true) == nil
+)
+-- The words and the fill come from Shared.Silence, so the client cannot restate
+-- a threshold the server does not use -- R20's defect, in a new panel.
+check("the client is sent the words from Shared.Silence", string.find(serverCode, "Silence.note(", 1, true) ~= nil)
+check("...and the fill from Shared.Silence", string.find(serverCode, "Silence.pressure(", 1, true) ~= nil)
+
 -- Winning must stop the monster. Until R29 it did not, so a group finished the
 -- board and was then taken by something that had no idea the round was over.
 -- NL built with string.char, never an escape: this repo's patching has turned

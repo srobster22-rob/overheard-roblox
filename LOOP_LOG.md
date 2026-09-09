@@ -5785,3 +5785,117 @@ from 20 to 74 in the same window, which is the fix working, but whether that is
 three filed questions rather than being answered here.
 
 **Commit** `2c74b0a`
+
+
+## R56 — the Supervisor is invisible and speaks with the wrong voice
+
+**Stage 0.** `OWNER.md` `## Next` still empty. R54's and R55's filed questions
+untouched.
+
+**Stage 1 — the shortlist.** R54 built a monster that punishes you on a timer.
+R55 made it fire honestly, and measured real dispatches going from 20 to 74 in
+the same window. So the game now takes players on a clock — and `CLAUDE.md`'s
+hard rule says *"The monster must be legible. Players need to learn a rule, or
+the scare reads as unfair."*
+
+Read against that rule, the Supervisor breaks it twice:
+
+- **No remote carries silence at all.** `Remotes.REMOTE_NAMES` is `Heard,
+  LexiconUpdated, Objectives, Submit, OpenBoard, Rejected, Connected, Phase`.
+  Nothing about a clock, so the client cannot draw one even if it wanted to.
+  `Silence.pressure` was written in R54 with the comment *"so a panel drawing it
+  never has to know the dial"* — and there is no panel.
+- **Its one warning speaks with the Operator's voice.** `stillThere` goes out on
+  `heardRemote`, which is the Operator's channel. So the only signal the
+  Supervisor gives arrives as the thing that hunts meaning talking to you.
+
+That second one is this project's most-repeated defect: R10 split the keypad's
+errors off the Operator's broadcast, R13 split "you did something wrong" from
+"somebody beat you to it", R51 split the hum coming from the hum going. Three
+rounds spent proving that two events must not arrive as one signal — and R54
+put a fourth event on an existing channel.
+
+1. *(picked)* **Give the Supervisor its own channel and a visible clock.** A
+   player being taken on a timer must be able to see the timer.
+2. R21's corner fairness and R36's patience — **still filed**, no measurable
+   half.
+3. The `%` in a server prompt, geometry-blind movement, no player light, the
+   stemming pair, R46's learning gap, `anyFinishable`'s margin, and R54's three
+   (the corridor as a refuge, `SpeakEvery`'s margin, whether the Supervisor
+   needs a body) — **all still filed.**
+
+**Stage 2 — the fix.**
+
+- **`Silence` remote**, its own channel, fired at ONE client. How long everybody
+  else has been quiet is not yours to see.
+- **`Silence.NOTES` / `Silence.note(band)`** — the words, beside the dials they
+  come from. Three notes deliberately different in kind (a state, a prod, a
+  verdict) so a player catching the panel out of the corner of an eye can tell
+  them apart without reading.
+- **`Hud` panel "Supervisor"** — bottom-left, because it is the only panel that
+  is true *continuously*; the centre column is events. It coexists with the
+  keypad on purpose: seeing your clock while typing is the moment it exists for.
+- **The server pushes on CHANGE**, sending the band, the pressure and the words.
+  `beginRound` clears what was drawn, or the last band sits on screen through
+  the intermission saying something no longer true.
+- **`Round.LINES.stillThere` deleted.** The Supervisor no longer speaks with the
+  Operator's voice, so its old sentence had nothing left to say it.
+
+*R34's sweep did its job on my first attempt.* The panel started at 220 wide and
+collided with the keypad and the round-over panel. At `MinWidth` the centre
+column runs 180..460, so a bottom-left panel has 164 studs of gutter — the width
+is **150, derived from that gutter rather than chosen**. `Round over` is
+excluded from coexisting (the Supervisor only runs while the round is played);
+the keypad deliberately is **not**.
+
+**Stage 3 — proof.** 8 new checks in `tests/silence.luau`, 6 in `tests/hud.luau`,
+11 in `tests/wiring.luau` across two new sweeps — 275 in wiring now.
+
+The notes are swept from the band function against real durations rather than
+from a list typed in the test, so a fourth band cannot arrive mute; no two bands
+may read the same; and the bar is asserted to be full **exactly** when the rule
+fires, across 200 samples, or the meter would teach the wrong rule.
+
+*A gap this round created and then closed.* Deleting `stillThere` left a dead
+line in `Round.LINES` and the suite passed at **264/264** with it sitting there
+unsaid — the same shape as the dead config dials R6 built its guard for. There
+is now a sweep requiring every line the Operator has to be said somewhere in
+`src/`, read in both directions from the source. It reads the KEYS from the raw
+file, because `stripNonCode` drops string bodies by design and a line's text is
+a string; comment lines are skipped explicitly instead, and whether a line is
+SAID is still asked of the stripped code, where a comment naming it cannot
+answer for it.
+
+Three plants, each failed by name:
+
+| plant | what failed |
+|---|---|
+| the warning put back on the Operator's voice, leaving `stillThere` unsaid | `every line is said somewhere (1 unsaid)` — `never said: stillThere` |
+| the panel back to 220 wide | `nothing collides at any supported size (1 collisions)` and `...does not overlap it at any supported size (1)` |
+| the clock broadcast to everyone | `the server fires it at ONE client, never everyone` |
+
+Restored from byte-copy backups; sha256 `79540b6e…8fba2b44`,
+`c8a80a7e…08f6b977`, `7821334b…839c0656` after each.
+
+**Verified in the product, not the source.** Two players, 600 ticks, the server's
+own push logic:
+
+| | |
+|---|---|
+| pushes sent | **4** |
+| pushes if it fired every tick | 1,200 |
+| the player who talks every 20s | `clear` only — never warned |
+| the player who never talks | `clear` → `warned` → `overdue` |
+
+The rule is visible before it fires, and it costs four replications in two and a
+half minutes.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon 22, heuristic 40, operator ok, objectives 122,
+pursuit 103, round 57, config 63, wiring **275**, connected 32, ordering 4,
+heat 20, layout 91, lifecycle 75, hud **22**, readout 29, soak 19, hum 21,
+log 18, silence **48**.
+
+*Not claimed:* how the panel LOOKS — its colours, its position on a real phone,
+whether a bar filling over 45 seconds reads as tense or as nagging. Studio is
+device-blocked. The geometry is proved at four viewport sizes; the feel is not.

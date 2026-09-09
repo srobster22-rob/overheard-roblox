@@ -215,6 +215,62 @@ check("...and the cooldown does not carry over either", across.lastCalled[5] == 
 across:forget(5)
 check("a player who leaves is forgotten", across:quietFor(5, 999) == nil)
 
+print("")
+print("the clock is legible before it fires, not after")
+
+-- R56. R54 built a monster that takes you on a timer and R55 measured its real
+-- dispatches tripling. Nothing on screen said the timer existed: no remote
+-- carried it, so the client could not have drawn it if it wanted to, and the
+-- one warning went down the OPERATOR's voice channel -- the fourth time in this
+-- project two events shared one signal (R10, R13, R51).
+--
+-- `CLAUDE.md`: the monster must be legible, or the scare reads as unfair.
+
+-- Every band a player can be in has words. Swept from the band function against
+-- real durations rather than from a list typed here, so a fourth band added
+-- later cannot arrive mute.
+local bandsSeen: { [string]: boolean } = {}
+for step = 0, 300 do
+	bandsSeen[Silence.band((Config.SpeakEvery * 2) * (step / 300))] = true
+end
+local spoken = 0
+for band in bandsSeen do
+	spoken += 1
+	local note = Silence.note(band :: any)
+	check(`'{band}' has words ({note})`, typeof(note) == "string" and #note > 0)
+end
+check(`(guard) every band was reached ({spoken})`, spoken >= 3)
+
+-- The three must be DIFFERENT, or the panel says the same thing while the
+-- player's situation changes -- which is the defect this round is about, moved
+-- one layer down.
+local texts: { [string]: string } = {}
+local collisions = 0
+for band in bandsSeen do
+	local note = Silence.note(band :: any)
+	if texts[note] then
+		collisions += 1
+	end
+	texts[note] = band
+end
+check(`no two bands read the same ({collisions} collisions)`, collisions == 0)
+
+-- The bar and the words must agree: full pressure is the overdue band, empty is
+-- clear. A meter that fills before the rule fires would teach the wrong rule.
+check("an empty bar means clear", Silence.band(0) == "clear" and Silence.pressure(0) == 0)
+check(
+	"a full bar means the call is going through",
+	Silence.pressure(Config.SpeakEvery) == 1 and Silence.band(Config.SpeakEvery) == "overdue"
+)
+local mismatches = 0
+for step = 0, 200 do
+	local quiet = Config.SpeakEvery * (step / 200)
+	if (Silence.pressure(quiet) >= 1) ~= Silence.isOverdue(quiet) then
+		mismatches += 1
+	end
+end
+check(`the bar is full exactly when the rule fires ({mismatches} disagreements)`, mismatches == 0)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

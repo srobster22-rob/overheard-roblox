@@ -158,10 +158,6 @@ Round.LINES = {
 	-- were split -- three different events must not share one sentence.
 	lost = "I'm sorry, your call cannot be completed as dialled.",
 	understood = "I have that party for you.",
-	-- THE SUPERVISOR, entity #4. Private, to one player who has gone quiet:
-	-- your clock is nearly out. It is a WARNING and must not read like the
-	-- call itself, or the lead time it exists to give is wasted.
-	stillThere = "Are you still on the line, caller?",
 	-- And the call going through, said to everyone: the Operator has been
 	-- given a name and a room. Distinct from `connecting`, which is what it
 	-- says when it understood something SAID -- the whole point of the
