@@ -5670,3 +5670,5 @@ log 18, silence **40**.
 *Not claimed:* whether being called for silence *feels* fair, or whether a
 45-second talking deadline is exhausting rather than tense. Both need Studio,
 which is device-blocked.
+
+**Commit** `db1e4e8`
