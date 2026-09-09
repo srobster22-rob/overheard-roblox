@@ -152,6 +152,62 @@ for name in builtRooms do
 	check(`World builds room '{name}' and Config declares it`, known[name] == true)
 end
 
+print("")
+print("a station's prompt never gives away somebody else's room")
+
+-- R41. The prompts are free text and nothing checked them against the words the
+-- Operator listens for. `board` read *"Line is out. Patch it to jack 47."* and
+-- `out` is plain language for `exit`, whose payload is the ARCHIVE — so a holder
+-- reading their own board instruction aloud sent the Operator to the other room.
+-- That is not a rule anyone can learn: the punishment names a room the prompt
+-- was never about, and it lands on a teammate working there.
+--
+-- A prompt conveying its OWN concept is left alone. Learning not to read your
+-- line verbatim is the game; being punished for a concept you never mentioned
+-- is not.
+
+local Heuristic = rt.require(rt.systems.Heuristic)
+local livePool = Round.dealSecrets(99)
+check(`(guard) the whole pool is in play ({#livePool} concepts)`, #livePool >= 3)
+
+local speaker = { UserId = 1 } :: any
+local stationCount = 0
+for _, station in Round.STATIONS do
+	stationCount += 1
+	local spoken = string.gsub(station.prompt, "%%s", "47")
+
+	-- Every concept the sentence conveys, via the same reader the Operator uses.
+	local conveyed = Heuristic.conveyed({ speaker = speaker, text = spoken, at = 1 }, livePool, {})
+	local strangers: { string } = {}
+	for _, reading in conveyed do
+		if reading.concept ~= station.concept then
+			table.insert(strangers, reading.concept :: string)
+		end
+	end
+	check(
+		`'{station.id}' gives away nothing but its own concept ({if #strangers == 0
+			then "none"
+			else table.concat(strangers, ", ")})`,
+		#strangers == 0
+	)
+
+	-- The substitution must be exercised, or a prompt whose giveaway sits in the
+	-- number would slip through untested.
+	check(`(guard) '{station.id}' has a number substituted in`, string.find(spoken, "47", 1, true) ~= nil)
+end
+check(`(guard) stations were swept ({stationCount})`, stationCount >= 2)
+
+-- The control: the words that WERE in that prompt really are dangerous, so the
+-- sweep above is not passing because the reader is deaf.
+local outLoud = Heuristic.conveyed({ speaker = speaker, text = "the line is out", at = 1 }, livePool, {})
+local heardExit = false
+for _, reading in outLoud do
+	if reading.concept == "exit" then
+		heardExit = true
+	end
+end
+check("(control) 'out' on its own really does give away the exit", heardExit)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

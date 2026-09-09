@@ -73,7 +73,13 @@ local STATIONS: { Station } = {
 	{
 		id = "board",
 		concept = "jack_number",
-		prompt = "Line is out. Patch it to jack %s.",
+		-- No word here may give away a concept other than this station's own.
+		-- "Line is OUT" did: `out` is plain language for `exit`, whose payload is
+		-- the ARCHIVE, so a holder reading their board instruction aloud sent the
+		-- Operator to the other room. That is not a rule anyone can learn -- the
+		-- punishment names a room the prompt was never about. `tests/round.luau`
+		-- asserts it against the live pool rather than trusting this comment.
+		prompt = "Line is dead. Patch it to jack %s.",
 		actionText = "Patch",
 	},
 	{
