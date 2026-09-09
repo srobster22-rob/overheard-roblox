@@ -283,7 +283,25 @@ local function silentGroup(ticks: number): (number, number, boolean)
 	end
 	board:deal(present)
 
-	local won, calls = 0, 0
+	-- WHERE each player is standing. The shipped dispatch reads a position and
+	-- finds the room containing it; without this the soak was choosing a room by
+	-- `userId % #Config.Rooms`, which is not the game.
+	--
+	-- One of them stands in the corridor on purpose. That is the case the
+	-- dispatch cannot serve -- filed in R54 as an owner question, and a soak that
+	-- never puts anybody there would report a call rate the game cannot reach.
+	-- The corridor player is id 1 deliberately. Nobody here ever speaks, so every
+	-- clock runs out together and `overdue` breaks the tie by id -- put them last
+	-- and the dispatch serves somebody in a room first and never reaches them, so
+	-- the corridor case would go unexercised while looking fine.
+	local standing: { [number]: { x: number, z: number } } = {
+		[1] = Layout.spawn(),
+		[2] = rooms.board,
+		[3] = rooms.board,
+		[4] = rooms.archive,
+	}
+
+	local won, calls, unreachable, announced = 0, 0, 0, 0
 	local everMoved = false
 	local roundsPlayed, playingTicks, thisRound, longestRound = 0, 0, 0, 0
 
@@ -295,11 +313,40 @@ local function silentGroup(ticks: number): (number, number, boolean)
 		-- The dispatch is the server's, in miniature: everyone stands in a room,
 		-- so the longest-quiet player's room is where it is sent.
 		if round:isPlaying() then
-			local due = supervisor:overdue(now)
-			if #due > 0 then
-				supervisor:called(due[1], now)
-				calls += 1
-				pursuit:sendTo(Config.Rooms[(due[1] % #Config.Rooms) + 1])
+			-- `putThroughTheSilentLine`, as the server runs it: longest-quiet
+			-- first, the room the player is actually standing in, and nothing
+			-- forgiven unless the call really goes through (R55).
+			for _, userId in supervisor:overdue(now) do
+				local at = standing[userId]
+				if not at then
+					continue
+				end
+				local found = false
+				for _, name in Config.Rooms do
+					local centre = rooms[name]
+					if centre and Layout.inRoom(centre, at) then
+						found = true
+						-- `alreadyComing` is the server's second gate: a trip
+						-- already under way answers this silence, so the player
+						-- is forgiven but nothing new is announced (R55).
+						local alreadyComing = pursuit.targetName == name
+						local _, onItsWay = pursuit:sendTo(name)
+						if onItsWay then
+							supervisor:called(userId, now)
+							calls += 1
+							if not alreadyComing then
+								announced += 1
+							end
+						end
+						break
+					end
+				end
+				if found then
+					break
+				end
+				-- In the corridor: no room to send anything to, so this player's
+				-- silence goes unanswered and the next overdue player is tried.
+				unreachable += 1
 			end
 		end
 
@@ -358,11 +405,11 @@ local function silentGroup(ticks: number): (number, number, boolean)
 		end
 	end
 
-	return won, calls, everMoved, longestRound, roundsPlayed
+	return won, calls, everMoved, longestRound, roundsPlayed, unreachable, announced
 end
 
 local TICKS = 2400 -- 600 simulated seconds, the length that was measured
-local _silentWins, calls, moved, longestRound, roundsPlayed = silentGroup(TICKS)
+local _silentWins, calls, moved, longestRound, roundsPlayed, unreachable, announced = silentGroup(TICKS)
 check(`(guard) the silent run was long enough to matter ({TICKS} ticks)`, TICKS >= 2400)
 check(`silence is called out ({calls} calls in {TICKS} ticks)`, calls > 0)
 check("the Operator no longer stands still through a silent session", moved)
@@ -390,6 +437,21 @@ check(
 -- player, which four players should clear several times over.
 local floorCalls = math.floor((TICKS * Config.TickSeconds) / (Config.SpeakEvery + Config.SupervisorCooldown))
 check(`...and often enough to be pressure ({calls} >= {floorCalls})`, calls >= floorCalls)
+
+-- R54 filed "the corridor is a place to hide from the Supervisor" as an owner
+-- question. This is that question with a number on it: how often a silent player
+-- standing in the corridor was reached for and could not be served. It is
+-- RECORDED, not asserted to be zero -- whether the corridor should be a refuge
+-- is the owner's call, and a test that demanded either answer would be making it.
+check(`(recorded, see R54) the corridor cannot be served ({unreachable} attempts)`, unreachable >= 0)
+check(`(guard) ...and somebody really did stand there ({unreachable})`, unreachable > 0)
+
+-- R55: every announcement must be a call that really went through, and a trip
+-- already under way must not be announced twice. Measured here rather than
+-- trusted, because R55 found 116 of 117 announcements were about calls that
+-- were never placed.
+check(`no silence is announced that was not also a call ({announced} of {calls})`, announced <= calls)
+check(`(guard) ...and announcements do happen ({announced})`, announced > 0)
 
 print("")
 print("one player with a bad connection")

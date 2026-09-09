@@ -867,6 +867,84 @@ check(
 	string.find(clientCode, "Config.", 1, true) ~= nil
 )
 
+-- R59, and this is the CLASS. R49 wrote the rule in `tests/soak.luau` in
+-- capitals -- "IT IS WIRED LIKE THE SERVER OR IT IS NOT EVIDENCE" -- after its
+-- own first draft called `board:submit` directly, skipped `board.onSolved`, and
+-- produced a finding that turned out to be the harness. R54 then added the
+-- Supervisor block to that same file and dispatched with
+-- `Config.Rooms[(userId % #Config.Rooms) + 1]`: a room picked from a user id.
+--
+-- The shipped dispatch reads the player's POSITION, finds the room containing
+-- it, and forgives nobody unless the call really goes through. The soak shared
+-- none of that, and reported 36 calls where the wired version reports 18 -- a
+-- number quoted in two log entries that was measuring the harness.
+--
+-- A capital-letter comment is not a guard. The calls the server's dispatch makes
+-- are DERIVED from its source here, and the soak has to make them too.
+print("")
+print("the soak dispatches the way the server dispatches")
+
+local soakSource = fs.readFile("tests/soak.luau")
+local soakCode = LuauCode.stripNonCode(soakSource)
+check("(guard) read the soak", #soakCode > 0)
+
+local dispatch = string.match(serverCode, "local function putThroughTheSilentLine%(%).-" .. NL .. "end") or ""
+check("(guard) read the server's dispatch", #dispatch > 0)
+
+-- Everything the dispatch reaches for, as `Module.member` or `object:method`.
+-- Remotes are excluded by name: the soak has no clients to fire at, and that is
+-- the one part of the dispatch it is right not to mirror.
+local IGNORE: { [string]: boolean } = {
+	heardRemote = true,
+	Round = true,
+	built = true,
+	os = true,
+	math = true,
+	table = true,
+	string = true,
+}
+
+local wanted: { string } = {}
+local seen: { [string]: boolean } = {}
+for owner, member in string.gmatch(dispatch, "([%a][%w_]*)[.:]([%a][%w_]*)%(") do
+	local key = `{owner}.{member}`
+	if not IGNORE[owner] and not seen[key] then
+		seen[key] = true
+		table.insert(wanted, key)
+	end
+end
+for owner, member in string.gmatch(dispatch, "([%a][%w_]*)%.([%a][%w_]*)[^(%w_]") do
+	local key = `{owner}.{member}`
+	if not IGNORE[owner] and not seen[key] then
+		seen[key] = true
+		table.insert(wanted, key)
+	end
+end
+table.sort(wanted)
+check(`(guard) the dispatch reaches for several things ({#wanted})`, #wanted >= 4)
+
+local missing: { string } = {}
+for _, key in wanted do
+	local owner, member = string.match(key, "([%a][%w_]*)%.([%a][%w_]*)")
+	-- The soak names its locals differently (`supervisor`, `pursuit`, `rooms`),
+	-- so the MEMBER is what has to appear, not the whole expression.
+	if not string.find(soakCode, "." .. member, 1, true) and not string.find(soakCode, ":" .. member, 1, true) then
+		table.insert(missing, `{owner}.{member}`)
+	end
+end
+check(`the soak uses everything the dispatch uses ({#missing} missing)`, #missing == 0)
+if #missing > 0 then
+	print(`        the soak never touches: {table.concat(missing, ", ")}`)
+end
+
+-- The two that carry the meaning, stated outright so a rename cannot quietly
+-- drop them from the derived list above.
+check("the soak finds a player's room by position", string.find(soakCode, "Layout.inRoom(", 1, true) ~= nil)
+check("...and forgives nobody unless the call went through", string.find(soakCode, "onItsWay", 1, true) ~= nil)
+
+-- (control) something the dispatch does NOT do must not be found by this reader.
+check("(control) the reader is not matching everything", not seen["Layout.neverWritten"])
+
 -- R57, and this is the CLASS. `Hud.EXCLUSIVE` is a list of promises about what
 -- the CLIENT will do, held in a shared module the client does not have to obey.
 -- R56 added `{ "Round over", "Supervisor" }` and used it to justify placing the

@@ -6116,3 +6116,113 @@ annoying, and whether `RenderStepped` is the right beat for it rather than a
 slower one. Both need Studio. The arithmetic is proved; the feel is not.
 
 **Commit** `519226e`
+
+
+## R59 — the soak's Supervisor is not the shipped Supervisor
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — two suspicions, one of them wrong.**
+
+*Checked and clean.* R55 made the dispatch `return` when a call could only be
+queued. That `return` leaves the whole function, so every remaining overdue
+player is abandoned for that tick — including one standing in the room the
+Operator is already walking into, where the call WOULD go through. Measured,
+4,000 ticks, two players per room, one talking constantly to keep it busy:
+
+| | served | of which by a trip already under way |
+|---|---|---|
+| as shipped (`return`) | **112** | 54 |
+| keep looking down the list | **112** | 54 |
+
+**Identical.** `Pursuit` counts only `approaching` and `closing` as busy, so the
+blocking window is narrow, and inside it the cooldown means few players are due
+anyway. The hypothesis was wrong and there is no defect here. Recorded so the
+next round does not re-derive it.
+
+*The real one.* R49 wrote a rule in `tests/soak.luau` in capitals — **"IT IS
+WIRED LIKE THE SERVER OR IT IS NOT EVIDENCE"** — after its own first draft
+called `board:submit` directly, skipped `board.onSolved`, and produced a finding
+that was the harness. R54 then added the Supervisor block to that same file:
+
+```
+pursuit:sendTo(Config.Rooms[(due[1] % #Config.Rooms) + 1])
+```
+
+A room chosen by taking a user id modulo the room count. The shipped dispatch
+reads the player's POSITION, finds the room they are standing in, checks
+`onItsWay` before forgiving anybody, and does nothing at all for a player in the
+corridor. The soak shares none of that. So `silence is called out (36 calls in
+2400 ticks)` — a number this project has quoted in two log entries — is not
+evidence about the game that ships.
+
+1. *(picked)* **Wire the soak's Supervisor the way the server wires it**, and
+   see what the honest number is.
+2. The client's `BAND_COLOUR` restating band names — **still recorded** (R58),
+   still latent.
+3. R21's corner fairness, R36's patience, the `%` in a server prompt,
+   geometry-blind movement, no player light, the stemming pair, R46's learning
+   gap, `anyFinishable`'s margin, and R54's three — **all still filed.**
+
+**Stage 2 — the fix.** The soak's silent group now has POSITIONS, and its
+dispatch mirrors `putThroughTheSilentLine` line for line: longest-quiet first,
+the room the player is actually standing in, `onItsWay` checked before anybody
+is forgiven, and the second gate (`alreadyComing`) that decides whether anything
+is announced.
+
+One player stands in the corridor on purpose — and with the LOWEST id, because
+nobody in that group ever speaks, so every clock runs out together and `overdue`
+breaks the tie by id. Put the corridor player last and the dispatch serves
+somebody in a room first and never reaches them: the case would go unexercised
+while the guard looked green. It did exactly that on the first run, reporting
+**0** corridor attempts.
+
+**Stage 3 — proof.** A guard for the class, in `tests/wiring.luau`: everything
+the server's dispatch reaches for is DERIVED from its source, and the soak has to
+reach for it too. Remotes are excluded by name — the soak has no clients, and
+that is the one part it is right not to mirror.
+
+*It caught a real difference on its first run.* The server reads
+`pursuit.targetName` to decide whether a trip already under way should be
+announced again; the soak did not. Rather than exempting it, the soak now
+measures that too — so R55's metric is permanent.
+
+Two plants, each failed by name:
+
+| plant | what failed |
+|---|---|
+| R54's synthetic room, picked from a user id | `the soak never touches: Layout.inRoom`, and `the soak finds a player's room by position` |
+| the soak forgives without checking the call went through | `...and forgives nobody unless the call went through` |
+
+Restored; sha256 `b0c8d9b5…15fc951b`.
+
+**Verified in the product, not the source.** The same 2,400-tick silent session,
+now wired like the server:
+
+| | synthetic (R54) | wired like the server |
+|---|---|---|
+| calls | **36** | **18** |
+| of which announced | not measured | **9** |
+| corridor attempts that could not be served | not measured | **225** |
+
+The honest call rate is **half** what this project has been quoting since R54.
+It still clears the pressure floor (18 >= 8) with one of four players standing
+somewhere the Supervisor cannot reach at all.
+
+The 9-of-18 is R55 working: half the calls are answered by a trip already under
+way, so the player is forgiven and nothing is said twice.
+
+**FOR THE OWNER — R54's corridor question, now with a number.** In a 2,400-tick
+session a silent player in the corridor was reached for and could not be served
+**225 times**. It is recorded, not asserted: whether the corridor should be a
+refuge is your call, and a test demanding either answer would be making it.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon 22, heuristic 40, operator ok, objectives 122,
+pursuit 103, round 57, config 63, wiring **311**, connected 32, ordering 4,
+heat 20, layout 91, lifecycle 75, hud 22, readout 29, soak **23**, hum 21,
+log 18, silence 62.
+
+*Not claimed:* that the soak now mirrors the server everywhere. This round
+derived the requirement for ONE function, the Supervisor's dispatch. The capture
+path, the loss check and the restart are still mirrored by hand and by habit.
