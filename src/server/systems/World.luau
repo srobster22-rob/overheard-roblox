@@ -158,6 +158,9 @@ function World.build(): Built
 	-- position here makes `Pursuit.sendTo` refuse the move, so the Operator
 	-- simply never comes and nothing anywhere errors. Checked in both
 	-- directions, loudly, because a silent monster reads as a dead game.
+	-- (R6 had to write "the config" in these messages instead of naming the
+	-- dial, because the guard could not tell a string from a read and the
+	-- message would have certified it. R7's scanner can, so they say it.)
 	local rooms: { [string]: { x: number, z: number } } = {
 		board = { x = boardOrigin.X, z = boardOrigin.Z },
 		archive = { x = recordsOrigin.X, z = recordsOrigin.Z },
@@ -167,12 +170,12 @@ function World.build(): Built
 	for _, name in Config.Rooms do
 		declared[name] = true
 		if not rooms[name] then
-			error(`the config declares room '{name}', which World.build gives no position for`)
+			error(`Config.Rooms declares room '{name}', which World.build gives no position for`)
 		end
 	end
 	for name in rooms do
 		if not declared[name] then
-			error(`World.build builds room '{name}', which the config does not declare`)
+			error(`World.build builds room '{name}', which Config.Rooms does not declare`)
 		end
 	end
 
