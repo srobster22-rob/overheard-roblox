@@ -55,9 +55,19 @@ function Layout.cornerDistance(): number
 	return math.sqrt(half * half + half * half)
 end
 
--- How far the Operator reaches when it arrives. DERIVED, so the promise in
--- Config cannot drift from the number again: it stops at the room centre, and
--- the whole room is inside this.
+-- R77. This comment used to say "how far the Operator reaches when it
+-- arrives... DERIVED, so the promise in Config cannot drift from the number
+-- again", describing a Config.OperatorReach dial that R23 deleted -- capture
+-- is the ROOM itself now (Connected.reachedInRoom), and `Config.luau`'s own
+-- comment says so: "There is no OperatorReach dial any more... a radius
+-- nobody enforces is worse than none."
+--
+-- Left as the honest radius primitive rather than deleted, the same call R69
+-- made for Connected.reached: it is possible geometry, not currently wired to
+-- anything, and `Layout.cornerDistance` -- which exists only to feed this --
+-- has exactly one other caller (its own test). NOT claimed to be needed;
+-- filed for the owner alongside R73's group-identity question rather than
+-- removed on this round's say-so or kept on a stale comment's.
 function Layout.reach(): number
 	return Layout.cornerDistance()
 end

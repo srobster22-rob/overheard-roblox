@@ -7581,3 +7581,64 @@ proving the real survivor. It is not evidence either way; a seventh wave should
 pick it up rather than assume it is fine.
 
 **Commit** `f8eab22`
+
+
+## R77 — finishing R76's unfinished mutation: cornerDistance
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — the one left over.** R76 named `cornerDistance` as untested by
+this round's sweep, explicitly not evidence either way. Its only existing
+check — `"the corner is further than the wall", Layout.cornerDistance() >
+Layout.halfRoom()` — is satisfied by any constant bigger than `halfRoom()`,
+which is exactly the shape of mistake this project keeps finding (a check that
+passes for the right reason and several wrong ones alike).
+
+1. *(picked)* **Run the mutation, close it if it survives.**
+2. R63's queued-room drop, R59's corridor number, R62's loss-rate number, and
+   R73's group-identity question — all **still filed**, awaiting the owner.
+
+**Stage 2 — the sweep, and a second finding underneath it.** Re-planted: a
+hardcoded `return 30` for `cornerDistance()` passes 103/103 unchanged, exactly
+as R76 suspected — `"the corner is further than the wall"` is satisfied by any
+constant bigger than `halfRoom()`.
+
+Reading `cornerDistance`'s one caller (`Layout.reach()`) to fix the test
+properly surfaced a second, unrelated thing: **`Layout.reach()`'s own comment
+describes a `Config.OperatorReach` dial that R23 deleted.** It reads "DERIVED,
+so the promise in Config cannot drift from the number again" — but `Config.luau`
+itself says, in so many words, "There is no `OperatorReach` dial any more...
+capture is now the ROOM itself... a radius nobody enforces is worse than none."
+`Layout.reach()` has zero callers anywhere in `src/`, and `cornerDistance`'s
+only other reference besides its own test is that same dead caller.
+
+This is close to R69's `Connected.reached` shape — a radius-based primitive
+made obsolete by R23's move to room-capture — but NOT the same: `Connected.
+reached` carries an explicit "kept because it is the honest primitive for
+anything that is genuinely round," and this carries no such note, only a
+description of a dial that provably no longer exists. Given R69's own lesson —
+reading the comment before concluding a function is dead — the comment here
+does not justify keeping it; it just describes something false. **Not deleted
+this round anyway**: R69 was wrong once already by moving from "no callers" to
+"delete" too quickly, and this round's job was the test, not a verdict on
+`reach()`'s fate. The stale half of the comment is corrected in place, and
+whether the function should go is filed rather than decided.
+
+**Stage 3 — proof.** The test now checks the actual Pythagorean relationship
+(`cornerDistance() == halfRoom() * sqrt(2)`) rather than a one-sided inequality
+any oversized constant satisfies. Re-planted: `cornerDistance is derived from
+halfRoom, not a stand-in (30 = 24 * sqrt(2))` fails by name. Restored from
+byte-copy backup; sha256 `11cb3262…957abaef21b95` unchanged.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon 22, heuristic 49, operator ok, objectives 122,
+pursuit 104, round 59, config 63, wiring 354, connected 32, ordering 4,
+heat 20, layout **104**, lifecycle 90, hud 26, readout 29, soak 42, hum 29,
+log 18, silence 62, lexiconsave 28.
+
+**FOR THE OWNER, filed rather than decided:** `Layout.reach()` and
+`Layout.cornerDistance()` have no production caller. Whether to delete them
+(matching `Config.luau`'s own verdict that a radius nobody enforces is worse
+than none), keep them as a documented primitive (the `Connected.reached`
+precedent), or repurpose them for a future entity's reach is a real choice
+this round did not have grounds to make either way.

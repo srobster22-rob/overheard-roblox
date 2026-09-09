@@ -41,6 +41,17 @@ print("the dimensions are sane")
 check(`(guard) the room has a size ({Layout.Room})`, Layout.Room > 0)
 check("half the room is half the room", Layout.halfRoom() == Layout.Room / 2)
 check("the corner is further than the wall", Layout.cornerDistance() > Layout.halfRoom())
+-- R77. "Further than the wall" is satisfied by any constant bigger than
+-- halfRoom(), which is exactly what a mutation sweep replaced cornerDistance
+-- with (a bare 30) and passed. The actual relationship that matters is
+-- Pythagorean -- the corner is half*sqrt(2) from the centre, not merely
+-- SOME number past the wall -- and this is the version that catches a
+-- hardcoded stand-in.
+local half = Layout.halfRoom()
+check(
+	`cornerDistance is derived from halfRoom, not a stand-in ({Layout.cornerDistance()} = {half} * sqrt(2))`,
+	math.abs(Layout.cornerDistance() - half * math.sqrt(2)) < 0.0001
+)
 
 print("")
 print("the Operator takes the room it arrived in - and only that room")
