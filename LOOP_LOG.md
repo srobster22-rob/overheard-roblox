@@ -7887,3 +7887,5 @@ log 18, silence 62, lexiconsave 28.
 design. Whether it should read differently (or whether a broken prompt should
 instead be logged and silently dropped rather than shown at all) is a smaller,
 genuinely cosmetic call left for whoever next looks at this panel in Studio.
+
+**Commit** `9ce7bde`
