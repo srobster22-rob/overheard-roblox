@@ -7475,3 +7475,51 @@ found is pinned. A boundary nobody thought to nudge is still unmeasured, the
 same honest limit R64 and R69 both named.
 
 **Commit** `c954494`
+
+
+## R75 — every one of the Operator's own lines, swept for collisions at once
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — generalising a rule stated three times but only checked once.**
+`Round.LINES` now holds eleven sentences, and its own comments state the same
+rule against three different pairs by hand: `givingUp` vs `busy` ("reusing it
+here would repeat exactly the collision R10 and R13 each had to unpick"),
+`lost` vs `completed`/`taken` ("three different events must not share one
+sentence"), and `traced` vs `connecting` ("the whole point of the Supervisor is
+that this one is for saying nothing"). R64 built a guard for exactly one pair
+of these eleven — the two `Lifecycle` OUTCOME texts — after a mutation sweep
+found a lost round could go unannounced. Nothing sweeps the other nine against
+each other, or against those two, all at once.
+
+That is the same shape as every prior instance of this exact defect (R10, R13,
+R51, R56, R64): a comment records the rule by hand, for the specific pair that
+round happened to be looking at, and the next line added is checked against
+none of the others.
+
+1. *(picked)* **Sweep every value in `Round.LINES` pairwise, in one guard,
+   derived from the table itself.**
+2. R63's queued-room drop, R59's corridor number, R62's loss-rate number, and
+   R73's group-identity question — all **still filed**, awaiting the owner.
+
+**Stage 2 — the fix.** A guard in `tests/wiring.luau`, right beside R56's
+dead-line sweep and reusing its same key-parsing loop: every `Round.LINES`
+entry is read from the raw source (values as well as keys this time), compared
+pairwise, and any two that read identically are reported by name.
+
+**Stage 3 — proof.** A `(control)` confirms two lines this round already knows
+are distinct (`busy`, `givingUp`) really do read as distinct, so a green result
+means the sweep looked and found nothing, not that it never looked. One plant:
+`connecting` rewritten to reuse `busy`'s exact sentence — caught by name,
+`no two lines share a sentence (1 collisions)`, naming the pair
+(`busy = connecting`). Restored from byte-copy backup; sha256 `c8a80a7e…5c33e5cfaf9f034e0137e5cab5e7b0109508f6b977` unchanged.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon 22, heuristic 49, operator ok, objectives 122,
+pursuit 104, round 59, config 63, wiring **354**, connected 32, ordering 4,
+heat 20, layout 99, lifecycle 90, hud 26, readout 29, soak 42, hum 29, log 18,
+silence 62, lexiconsave 28.
+
+*Not claimed:* that every line's WORDING is right, only that no two currently
+collide and the next one added is checked against all ten rather than whichever
+one the round adding it happened to be thinking about.

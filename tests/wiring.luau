@@ -820,6 +820,62 @@ check(`every line is said somewhere ({#unsaid} unsaid)`, #unsaid == 0)
 if #unsaid > 0 then
 	print(`        never said: {table.concat(unsaid, ", ")}`)
 end
+-- R75, and this is the CLASS. Three of these eleven lines carry a comment
+-- stating, by hand, that they must not collide with one specific other line:
+-- `givingUp` vs `busy` ("reusing it here would repeat exactly the collision
+-- R10 and R13 each had to unpick"), `lost` vs `completed`/`taken` ("three
+-- different events must not share one sentence"), and `traced` vs
+-- `connecting` ("the whole point of the Supervisor is that this one is for
+-- saying nothing"). R64 built a guard for exactly ONE pair of these eleven --
+-- the two Lifecycle outcome texts -- after a mutation sweep found a lost round
+-- could go unannounced. Nothing swept the other nine against each other, or
+-- against those two, all at once.
+--
+-- Every value in Round.LINES, read straight from the source, pairwise.
+print("")
+print("no two of the Operator's own lines read the same")
+
+local allLines: { [string]: string } = {}
+local inLinesBlock = false
+for line in string.gmatch(roundSource, "[^" .. NL .. "]+") do
+	if string.find(line, "Round.LINES = {", 1, true) then
+		inLinesBlock = true
+	elseif inLinesBlock and string.match(line, "^}") then
+		inLinesBlock = false
+	elseif inLinesBlock and not string.match(line, "^%s*%-%-") then
+		local key, text = string.match(line, '^%s*([%a][%w_]*) = "([^"]*)"')
+		if key then
+			allLines[key] = text
+		end
+	end
+end
+local lineCount = 0
+for _ in allLines do
+	lineCount += 1
+end
+check(`(guard) the Operator's whole script was read ({lineCount} lines)`, lineCount >= 8)
+
+local byText: { [string]: string } = {}
+local collidingPairs: { string } = {}
+for key, text in allLines do
+	local earlier = byText[text]
+	if earlier then
+		table.insert(collidingPairs, `{earlier} = {key}`)
+	else
+		byText[text] = key
+	end
+end
+check(`no two lines share a sentence ({#collidingPairs} collisions)`, #collidingPairs == 0)
+if #collidingPairs > 0 then
+	print(`        colliding: {table.concat(collidingPairs, ", ")}`)
+end
+
+-- (control) the reader must be able to tell TWO real lines apart, or it is
+-- reporting zero collisions because it read nothing.
+check(
+	"(control) two lines this round knows are distinct really do read as distinct",
+	allLines.busy ~= nil and allLines.givingUp ~= nil and allLines.busy ~= allLines.givingUp
+)
 check("(control) a line that does not exist is not found", not string.find(everything, "LINES.neverWritten", 1, true))
 
 -- And the Supervisor's channel is consumed by the client, not merely declared.
