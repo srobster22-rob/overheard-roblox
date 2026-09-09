@@ -269,7 +269,19 @@ end
 -- `tests/layout.luau` asserts the invariant against the real dial rather than
 -- trusting this comment.
 function Layout.operatorPost(): Point
-	return { x = -Layout.Separation / 6, z = 0 }
+	-- EQUIDISTANT from both rooms, so both get the same warning.
+	--
+	-- R27 put this at `-Separation / 6` to sit well inside the band and away
+	-- from the player spawn, and never checked it for symmetry: forty studs from
+	-- the archive and eighty from the board meant the audible part of an
+	-- approach was 1.6 seconds to one room and 6.0 to the other. R27's own guard
+	-- could not see it — it asserts an approach STARTS audible, which a second
+	-- and a half satisfies, and never asked for how long.
+	--
+	-- The corridor midpoint is the only equidistant point on it, so the post
+	-- sits there, pushed to the edge of the corridor floor to leave the spawn
+	-- pad clear. Both rooms now hear 3.8 seconds of it.
+	return { x = 0, z = -(Layout.corridorWidth() / 2 - 1) }
 end
 
 return Layout

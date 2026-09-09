@@ -434,6 +434,70 @@ check(
 	Config.StationReach - Config.PromptReach <= Layout.halfRoom()
 )
 
+print("")
+print("every room hears it for the same length of time")
+
+-- R50. R27 asserts an approach STARTS audible, and never asks for how long. Its
+-- post sat at -Separation/6 -- forty studs from the archive, eighty from the
+-- board -- so the audible part of an approach was 1.6 seconds to one room and
+-- 6.0 to the other. A second and a half is not "you hear it crossing the
+-- building", which is the promise GAME.md makes, and R27's guard was satisfied
+-- by it.
+
+local audible: { [string]: number } = {}
+local postAt = Layout.operatorPost()
+for name, centre in { board = Layout.boardCentre(), archive = Layout.archiveCentre() } do
+	local distance = math.sqrt((postAt.x - centre.x) ^ 2 + (postAt.z - centre.z) ^ 2)
+	-- It goes quiet inside SilenceRadius, so the audible leg ends there.
+	local travel = (distance - Config.ArriveRadius) / Config.PursuitSpeed
+	local silent = (Config.SilenceRadius - Config.ArriveRadius) / Config.PursuitSpeed
+	audible[name] = travel - silent
+end
+
+local shortest, longest = math.huge, 0
+local rooms = 0
+for name, seconds in audible do
+	rooms += 1
+	shortest = math.min(shortest, seconds)
+	longest = math.max(longest, seconds)
+	check(`(measured) the {name} hears {string.format("%.1f", seconds)}s of approach`, seconds > 0)
+end
+check(`(guard) more than one room was measured ({rooms})`, rooms >= 2)
+
+-- The warning must be long enough to react to. A player crosses the corridor at
+-- Roblox's default WalkSpeed in a couple of seconds; less warning than that is
+-- not a tell, it is a surprise.
+local REACTABLE = 2
+check(
+	`the least-warned room still gets a usable warning ({string.format("%.1f", shortest)}s >= {REACTABLE}s)`,
+	shortest >= REACTABLE
+)
+
+-- And no room may be told much more than another, or the tell means different
+-- things in different parts of the building.
+check(
+	`no room hears much more than another ({string.format("%.1f", shortest)}s vs {string.format("%.1f", longest)}s)`,
+	longest - shortest < 1
+)
+
+-- The mechanism, stated so a future move of the post has to keep it: the post is
+-- equidistant from every room.
+local distances: { number } = {}
+for _, centre in { Layout.boardCentre(), Layout.archiveCentre() } do
+	table.insert(distances, math.sqrt((postAt.x - centre.x) ^ 2 + (postAt.z - centre.z) ^ 2))
+end
+check(
+	`the post is equidistant from both rooms ({string.format("%.1f", distances[1])} vs {string.format(
+		"%.1f",
+		distances[2]
+	)})`,
+	math.abs(distances[1] - distances[2]) < 1
+)
+
+-- It must still be somewhere a player can be, or the post is inside a wall.
+check("the post is still on the corridor floor", math.abs(postAt.z) <= Layout.corridorWidth() / 2)
+check("...and clear of the spawn pad's centre", math.abs(postAt.z) > 0)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)
