@@ -45,9 +45,23 @@ local function sources(dir: string, out: { string }): { string }
 	return out
 end
 
+-- A MENTION IS NOT A READ. R4's version of this guard searched the raw file
+-- text, so the single line `-- Must cover every name in Config.Rooms.` sitting
+-- in World.luau was enough to certify `Config.Rooms` as a live dial. It was
+-- read nowhere in src/ for two rounds and the suite said `ok` every time. Any
+-- dial could be certified by writing a sentence about it, which makes the
+-- guard worse than none: it reports safety it never checked.
+local function stripComments(source: string): string
+	-- Block comments first (including the --[==[ ]==] forms), then line
+	-- comments to end of line. Replaced with a space so nothing joins up.
+	local stripped = string.gsub(source, "%-%-%[(=*)%[.-%]%1%]", " ")
+	stripped = string.gsub(stripped, "%-%-[^\n]*", " ")
+	return stripped
+end
+
 local corpus = ""
 for _, path in sources("src", {}) do
-	corpus ..= fs.readFile(path)
+	corpus ..= stripComments(fs.readFile(path))
 end
 
 -- Top-level keys are indented exactly one tab; anything nested is deeper.
@@ -60,6 +74,28 @@ for line in string.gmatch(configSource, "[^\n]+") do
 	end
 end
 
+-- The guard's own credibility, checked before it is trusted. If the stripper
+-- silently stopped working, every check below would go back to accepting a
+-- comment and would still print `ok`.
+print("a mention is not a read")
+check(
+	"a line comment naming a dial does not count",
+	string.find(stripComments("-- see Config.Ghost for this\n"), "Config.Ghost", 1, true) == nil
+)
+check(
+	"a block comment naming a dial does not count",
+	string.find(stripComments("--[[ Config.Ghost ]]"), "Config.Ghost", 1, true) == nil
+)
+check(
+	"a long-bracket block comment naming a dial does not count",
+	string.find(stripComments("--[==[ Config.Ghost ]==]"), "Config.Ghost", 1, true) == nil
+)
+check(
+	"real code is left intact",
+	string.find(stripComments("local x = Config.Ghost -- a note\n"), "Config.Ghost", 1, true) ~= nil
+)
+
+print("")
 print("every live dial is read")
 check("Config has top-level keys to check", #topLevel > 0)
 for _, key in topLevel do

@@ -103,6 +103,30 @@ for count = 0, #all do
 end
 check("dealSecrets fills up to the requested count", #Round.dealSecrets(#all) == #all)
 
+-- Rooms. `Config.Rooms` and `World.build`'s `rooms` table are two lists that
+-- must agree, and until R6 the only thing keeping them in step was a comment.
+-- A name declared in Config with no position in World makes `Pursuit.sendTo`
+-- refuse the move: the Operator never arrives, nothing errors, and the checks
+-- above still pass because they only ask whether a payload is in Config. A
+-- room built but not declared is the mirror — this file would reject a payload
+-- that would have worked. Both directions, every name, read out of World's
+-- source rather than a hand-kept list.
+print("")
+print("rooms")
+local roomsMap = string.match(worldSource, "\n\tlocal rooms: {.-} = {(.-)\n\t}") or ""
+local builtRooms: { [string]: boolean } = {}
+for name in string.gmatch(roomsMap, "\n\t\t([%a][%w_]*) = ") do
+	builtRooms[name] = true
+end
+check("World's rooms table was found in source", next(builtRooms) ~= nil)
+check("Config declares at least one room", #Config.Rooms > 0)
+for _, name in Config.Rooms do
+	check(`Config declares room '{name}' and World builds it`, builtRooms[name] == true)
+end
+for name in builtRooms do
+	check(`World builds room '{name}' and Config declares it`, known[name] == true)
+end
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

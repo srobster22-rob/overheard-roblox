@@ -25,3 +25,14 @@ Write in plain English. One item per line. Top item goes first.
   ONE THING FOR YOU: when a player joins mid-round, should the lines be
   re-dealt (holders reshuffled) or should whoever knows a number keep it?
   The code currently reshuffles. That is a design call, not a bug.
+
+- R6 - the test that is supposed to catch dead settings could be fooled by a
+  comment. One setting (the list of rooms the Operator can be sent to) had been
+  dead for two rounds while the suite said it was fine. The test now ignores
+  comments, and the room list is checked against the rooms the game actually
+  builds - in both directions - so a room named in settings but never built
+  can no longer make the Operator silently never show up.
+  ONE THING FOR YOU (new, small): with only one player in the server, nobody
+  can finish a round - both lines deal to that player, and the rule is that the
+  holder may not enter their own answer. Should there be a minimum player
+  count, or should a solo player be allowed to solve their own?

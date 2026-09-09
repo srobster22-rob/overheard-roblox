@@ -433,3 +433,147 @@ routed to the right room, and the built `.rbxlx` carries all of it.
 (R6). The station work that was blocking a fuller round is done.
 
 **Commit.** `5da2adc`
+
+## R6 — the dead-dial guard was fooled by a comment (2026-09-08)
+
+**Stage 0.** `OWNER.md` still has nothing under `## Next`, so this round picks
+for itself. Two open items are with the owner and were NOT touched: the decay
+rate (`CoolPerSecond`, needs a playtest) and the mid-round re-deal question.
+Both stay filed.
+
+**Stage 1 — shortlist.** R4 and R5 were the same shape twice: a thing declared
+and wired to nothing, and two lists that had to agree with nothing forcing it.
+This round hunts that family deliberately, and specifically for instances where
+a spot check passes BY LUCK — R5's plant showed counts 3-5 passing under the
+planted bug, so luck is the thing that hides this family.
+
+1. *(picked)* **`Config.Rooms` is a dead dial, and R4's dead-dial guard
+   certifies it as live because a COMMENT mentions it.** Grepped every
+   top-level Config key for a non-comment read in `src/`. Five have real code
+   readers. `Rooms` has exactly one hit in all of `src/`:
+   `World.luau:158`, the comment `-- Must cover every name in Config.Rooms.`
+   `tests/config.luau` searches the raw file text for the literal
+   `Config.Rooms`, so the comment satisfies it and the baseline suite prints
+   `ok 'Rooms' is read somewhere in src/`. This is R4's own bug surviving R4's
+   own guard, on luck. Two defects in one: (a) the guard cannot tell a read
+   from a mention, so EVERY future dial can be certified by writing a comment
+   about it; (b) `Config.Rooms` and `World.build().rooms` are two lists that
+   must agree with nothing forcing it — a name in Config with no position in
+   World means `Pursuit.sendTo` returns false, the Operator never moves, and
+   nothing anywhere errors. Player-facing and silent, exactly R5's shape.
+2. **`Remotes.REMOTE_NAMES` vs the `Remotes.get("...")` call sites.** Same
+   family: a hand-kept list of five names the server creates, versus five
+   string literals at ten call sites. A name fetched but never created is an
+   infinite `WaitForChild` yield on the client — a silently dead UI panel, no
+   error. Real class, but today the two lists DO agree, so there is no live
+   defect; it is a guard with nothing to catch yet. Second best. Filed.
+3. **`Objectives.deal` on a 1-player server deals both objectives to that
+   player,** and `submit` forbids the holder from solving their own, so a solo
+   server can never finish a round. Real, but it is the game's central
+   invariant working as designed on a player count the game does not target;
+   the fix is a design call (lobby minimum), not a bug fix. Filed, not picked.
+4. **`Round.LINES` has one line for every station,** so the Operator says the
+   same sentence at the breaker as at the switchboard. Cosmetic, and the
+   Operator's flat politeness is deliberate per `GAME.md`. Rejected.
+5. **Client `Submit` payload shape vs the server handler.** Checked: client
+   fires `(stationId, value)`, server reads `(player, id, value)` and type-
+   guards both. Agrees, and is already validated. No defect. Recorded so the
+   next round does not re-run this sweep.
+
+**Pick: #1**, taken as a class fix on the guard rather than an instance fix on
+the dial. Making `World` read `Config.Rooms` alone would turn the check green
+again and leave the comment-blindness in place for the next dial.
+
+**Stage 2 — built.**
+
+- `tests/config.luau` — the guard now strips comments before searching. A
+  `stripComments` pass removes `--[[ ]]` and `--[==[ ]==]` block comments and
+  `--` line comments, so a sentence about a dial no longer certifies it. Four
+  new checks test the STRIPPER ITSELF against inline samples first, because a
+  stripper that silently stopped working would send every check below back to
+  accepting comments while still printing `ok`.
+- `src/server/systems/World.luau` — `Config.Rooms` is now genuinely read.
+  `build` assembles `rooms` into a named local, then verifies the two lists
+  agree in BOTH directions and `error`s loudly: a declared room with no
+  position, or a built room nobody declared. Before, the only thing holding
+  them in step was the comment sitting in exactly that spot.
+- Deliberately did NOT put "Config.Rooms" in either error message. The guard
+  cannot strip string literals — Luau interpolation (`{Config.GameName}`) is a
+  legitimate read inside a string — so an error message naming the dial would
+  have certified it exactly the way the comment did. Found this by planting:
+  the first attempt at the plant PASSED because my own new error strings were
+  keeping the dial alive. The messages say "the config" instead.
+- `tests/round.luau` — a derived `rooms` block parses World's source for the
+  `rooms` table and checks set EQUALITY against `Config.Rooms`, naming every
+  room in both directions. Not a spot check: it iterates both lists in full,
+  because R5's plant showed a spot check clearing a bug by luck.
+
+**Stage 3 — review.**
+
+Full suite via `test.cmd`, real output: lexicon 14/14, operator all assertions,
+objectives 15/15, pursuit 21/21, round 38/38, config 15/15, `suite passed`,
+exit 0. **103 checks, up from R5's 93.** `selene src`: 0 errors, 0 warnings, 0
+parse errors. `rojo build default.project.json -o <scratchpad>/check.rbxlx`
+exit 0, and the built place greps positive for `local rooms: { [string]`,
+`for _, name in Config.Rooms do` and both new error strings — the change
+reached the product.
+
+Plant-and-restore, four plants, each failing BY NAME:
+
+1. **The R6 bug itself.** Restored `git show HEAD:src/server/systems/World.luau`
+   — the file that shipped in R5, where the only mention of `Config.Rooms` in
+   all of `src/` is a comment. `tests/config` failed:
+   `FAIL  'Rooms' is read somewhere in src/`, 14/15, exit 1. That line printed
+   `ok` for two rounds. (`tests/round` also fails under this plant, since the
+   pre-R6 file has no named `rooms` local to parse.)
+2. **Config declares a room World does not build** (`cellar` added to
+   `Config.Rooms`). `tests/round` failed:
+   `FAIL  Config declares room 'cellar' and World builds it`, 38/39, exit 1.
+   This is the live-fire version of the silent bug: `Pursuit.sendTo` refuses
+   the payload, the Operator never arrives, nothing errors anywhere.
+3. **World builds a room Config does not declare** (`cellar` added to World's
+   table). `tests/round` failed on the mirror check:
+   `FAIL  World builds room 'cellar' and Config declares it`, 38/39, exit 1.
+   Both directions proven separately, not assumed from one.
+4. **The stripper stops working** (`stripComments` made a no-op). `tests/config`
+   failed all three of its own credibility checks:
+   `a line comment naming a dial does not count`, `a block comment ...`,
+   `a long-bracket block comment ...`, 12/15, exit 1. A first attempt at this
+   plant disabled only the block-comment pass and PASSED — recorded because it
+   is the same luck-shape this round is about: a partial plant clears.
+
+All restored and re-verified byte-identical against the pre-plant baselines:
+World `39ebcdbf…050f611f`, Config `9bbdf4b5…1b66ae19` (byte-identical to HEAD,
+so it shows unmodified in `git status`), tests/config `12e976dc…277a1120`,
+tests/round `0f8f2c95…aad13dcb`. Suite re-run green afterwards.
+
+One process note worth keeping: backing up `src/shared/Config.luau` and
+`tests/config.luau` into one scratch directory silently CLOBBERED one with the
+other — Windows filenames are case-insensitive. Caught it by hash, not by
+noticing. Backups of same-named files need distinct names here.
+
+**Studio-blocked.** Roblox Studio is device-blocked on this machine, so nothing
+was seen running. Specifically unverified: that `World.build`'s new `error` on
+a room mismatch actually fires at runtime (it is reached only when the two
+lists disagree, which they no longer do), and anything visual. What the
+headless suite DID prove: the dead-dial guard can now tell a read from a
+mention and says so about its own stripper; `Config.Rooms` has a real code
+reader for the first time; the declared and built room lists are checked for
+equality in both directions over every name; and the built `.rbxlx` carries
+all of it.
+
+**Left open, deliberately.**
+- **A string literal naming a dial still certifies it.** Narrower than the
+  comment hole and not fixable the same way — stripping strings would break
+  `Config.GameName`, whose only reads are inside interpolated strings. Avoided
+  creating an instance of it this round; not solved as a class.
+- Shortlist #2, `Remotes.REMOTE_NAMES` vs the `Remotes.get("...")` call sites:
+  a real instance of this family with no live defect today. A derived check is
+  cheap and would catch a silent `WaitForChild` hang. Good R7 candidate.
+- Shortlist #3, a 1-player server can never finish a round, because both
+  objectives deal to the only player and the holder may not solve their own.
+  Needs a lobby minimum — a design call. **Owner question, filed not decided.**
+- **Still with the owner, untouched this round:** the decay rate
+  (`CoolPerSecond = 0.01`) is an untuned guess needing a playtest, and the
+  mid-round re-deal question from R5 (does a joining player reshuffle who
+  knows what?).

@@ -7,7 +7,10 @@
 -- must never be within earshot by walking. Distance is the mechanic.
 
 local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+
+local Config = require(ReplicatedStorage.Shared.Config)
 
 local World = {}
 
@@ -148,6 +151,31 @@ function World.build(): Built
 	Lighting.FogEnd = 90
 	Lighting.FogColor = Color3.fromRGB(10, 9, 8)
 
+	-- Payload name -> room centre. `Config.Rooms` is the CONTRACT this must
+	-- satisfy: it is the list `tests/round.luau` validates every secret payload
+	-- against. The two used to be kept in step by a comment sitting exactly
+	-- here, which is not a mechanism — a name declared in Config with no
+	-- position here makes `Pursuit.sendTo` refuse the move, so the Operator
+	-- simply never comes and nothing anywhere errors. Checked in both
+	-- directions, loudly, because a silent monster reads as a dead game.
+	local rooms: { [string]: { x: number, z: number } } = {
+		board = { x = boardOrigin.X, z = boardOrigin.Z },
+		archive = { x = recordsOrigin.X, z = recordsOrigin.Z },
+	}
+
+	local declared: { [string]: boolean } = {}
+	for _, name in Config.Rooms do
+		declared[name] = true
+		if not rooms[name] then
+			error(`the config declares room '{name}', which World.build gives no position for`)
+		end
+	end
+	for name in rooms do
+		if not declared[name] then
+			error(`World.build builds room '{name}', which the config does not declare`)
+		end
+	end
+
 	return {
 		readerPrompt = readerPrompt,
 		stations = {
@@ -155,11 +183,7 @@ function World.build(): Built
 			breaker = breakerPrompt,
 		},
 		spawn = Vector3.new(0, FLOOR_Y + 4, 0),
-		-- Must cover every name in Config.Rooms.
-		rooms = {
-			board = { x = boardOrigin.X, z = boardOrigin.Z },
-			archive = { x = recordsOrigin.X, z = recordsOrigin.Z },
-		},
+		rooms = rooms,
 		-- It starts at the far end of the board room, not on top of anyone.
 		operatorStart = { x = boardOrigin.X, z = boardOrigin.Z + ROOM / 2 - 4 },
 	}
