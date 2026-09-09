@@ -905,6 +905,62 @@ if #unseeded > 0 then
 end
 check("(control) the reader is not matching every file", rolled < 20)
 
+-- R64, and this is the CLASS. The mutation sweep's one survivor was a lost round
+-- recording no outcome, which nothing noticed -- and the reason it MATTERS is
+-- here: the client picks the sentence it shows from that field. An outcome the
+-- server can record and the client has no words for renders as the fallback,
+-- so two different endings arrive as one sentence. That is R10's, R13's and
+-- R51's defect for the fourth time.
+--
+-- The outcomes are derived from `Lifecycle`'s own type, never typed here.
+print("")
+print("every outcome the round can have has its own words")
+
+local lifecycleSource = fs.readFile("src/server/systems/Lifecycle.luau")
+local outcomeType = string.match(lifecycleSource, "export type Outcome = ([^" .. NL .. "]+)") or ""
+check(`(guard) found the Outcome type ({outcomeType})`, #outcomeType > 0)
+
+local outcomes: { string } = {}
+for name in string.gmatch(outcomeType, '"([%a]+)"') do
+	table.insert(outcomes, name)
+end
+check(`(guard) it names some outcomes ({table.concat(outcomes, ", ")})`, #outcomes >= 2)
+
+local said: { [string]: string } = {}
+local textBlock = string.match(clientSource, "local OUTCOME_TEXT = {(.-)}") or ""
+check("(guard) found the client's outcome text", #textBlock > 0)
+for key, text in string.gmatch(textBlock, '([%a]+) = "([^"]+)"') do
+	said[key] = text
+end
+
+local mute: { string } = {}
+for _, outcome in outcomes do
+	if not said[outcome] then
+		table.insert(mute, outcome)
+	end
+end
+check(`every outcome has words ({#mute} without any)`, #mute == 0)
+if #mute > 0 then
+	print(`        no words for: {table.concat(mute, ", ")}`)
+end
+
+-- ...and they must be DIFFERENT words, or the two endings arrive as one.
+local heardText: { [string]: string } = {}
+local collisions = 0
+for _, outcome in outcomes do
+	local text = said[outcome]
+	if text then
+		if heardText[text] then
+			collisions += 1
+		end
+		heardText[text] = outcome
+	end
+end
+check(`no two outcomes read the same ({collisions} collisions)`, collisions == 0)
+
+-- (control) an outcome the type does not name must not be found to have words.
+check("(control) the reader does not invent outcomes", said["abandoned"] == nil)
+
 -- R59 and R60, and this is the CLASS. R49 wrote the rule in `tests/soak.luau` in
 -- capitals -- "IT IS WIRED LIKE THE SERVER OR IT IS NOT EVIDENCE" -- after its
 -- own first draft called `board:submit` directly, skipped `board.onSolved`, and

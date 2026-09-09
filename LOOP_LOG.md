@@ -6675,3 +6675,87 @@ entirely and let the newest giveaway win. I filed it rather than choosing.
 could name; a system nobody thought to disable is still unmeasured.
 
 **Commit** `43eaf9f`
+
+
+## R64 — mutation-testing the game itself
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — turning R63's method on the thing that matters.** R63 disabled each
+of the soak's couplings and found six of eight could be gutted with the suite
+still green. That measured what the HARNESS is blind to.
+
+The same method aimed at `src/` measures something more useful: **what the suite
+is blind to in the game.** Twenty suites and roughly 1,200 checks say the rules
+are right. Mutation testing is the only way to find out how many of those rules
+could be quietly broken without a single check going red — and every round since
+R38 has been finding defects the suite did not catch, which is the same question
+asked one instance at a time.
+
+1. *(picked)* **Break the game on purpose, one rule at a time, and record which
+   breakages nothing notices.** Then close what it finds.
+2. R63's queued-room drop — **filed for the owner**, awaiting a decision.
+3. The client's `BAND_COLOUR` restating band names — **still recorded**, latent.
+4. R21's corner fairness, R36's patience, the `%` in a server prompt,
+   geometry-blind movement, no player light, the stemming pair, R46's learning
+   gap, `anyFinishable`'s margin, R54's three, R59's corridor number, and R62's
+   loss-rate number — **all still filed.**
+
+**Stage 2 — the sweep.** Twenty-six mutations across `src/`, in two waves, each
+a semantic break rather than a syntax error, with the whole suite run after
+every one. `src/` was byte-copied first and its tree hash checked after: same
+before and after, both waves.
+
+**Twenty-five of twenty-six were caught.** Nearly every rule this project has
+argued about since R9 is genuinely pinned — the acting threshold, whole-word
+matching, the seen-by refusal, the jam, room-not-circle capture, losing
+interest, commitment to one call, the corridor's two widths, the cooldown, the
+join clock, the filling bar, panel overlap, station reach, the deal's
+preference, the safe band, the corridor floor.
+
+**One survived.** Making `finish("lost")` record no outcome passes all ~1,200
+checks.
+
+`tests/lifecycle.luau` pins `outcome == "won"` twice and pins `nil` after a
+restart — and **never once pins the lost one**, while R18's entire round was
+*"the round can now be lost, not only won"*. The client picks its sentence from
+that field: a lost round would have said *"The round is over."* instead of
+*"Everyone was put on the line."*, so the fact that the monster took everybody
+is simply dropped.
+
+**Stage 3 — the fix, and the class behind it.** Fifteen checks in
+`tests/lifecycle.luau`: the lost outcome recorded as itself, both outcomes swept
+from a list rather than hand-written one at a time, and each cleared by a
+restart (R31's boundary — an outcome that outlives its round tells the next
+round's players how the last one ended).
+
+Then the class, in `tests/wiring.luau`: **every outcome `Lifecycle` can record
+must have its own words in the client**, derived from the `Outcome` type rather
+than typed into the test, and no two may read the same. That is R10's, R13's and
+R51's defect for the fourth time — two different events arriving as one
+sentence — and this is the first guard that would catch a third outcome being
+added mute.
+
+Two plants, each failed by name:
+
+| plant | what failed |
+|---|---|
+| the surviving mutant — a lost round records no outcome | `...and RECORDS that it was lost`, `'lost' is recorded as itself` |
+| the client's words for `lost` deleted | `every outcome has words (1 without any)` — `no words for: lost` |
+
+Restored; sha256 `b881b4d1…a3a33019b` and `8f96c6b9…801b4ff3`.
+
+**Verified in the product, not the source.** The sweep re-run after the fix:
+**0 surviving mutants of 12**, and `src/` hashes identical before and after
+(`1cfda70a7e177ed1`).
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon 22, heuristic 40, operator ok, objectives 122,
+pursuit 103, round 57, config 63, wiring **324**, connected 32, ordering 4,
+heat 20, layout 91, lifecycle **90**, hud 22, readout 29, soak 38, hum 21,
+log 18, silence 62.
+
+*Not claimed:* that 26 mutations measure the suite. They are the rules I could
+name and break in one line each; a rule nobody thought to break is still
+unmeasured, and the honest reading of "25 of 26 caught" is that the sweep was
+aimed where the tests already look.

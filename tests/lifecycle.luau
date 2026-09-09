@@ -501,6 +501,50 @@ check(
 	hottest < Config.ActThreshold
 )
 
+print("")
+print("a lost round says it was lost")
+
+-- R64. A mutation sweep broke twelve rules in `src/` one at a time and ran the
+-- whole suite after each. Eleven were caught. This one was not: making
+-- `finish("lost")` record NO outcome passed all ~1,200 checks.
+--
+-- This file pins the won outcome twice and pins nil after a restart, and never
+-- once pins the lost one -- while R18's whole round was "the round can now be
+-- lost, not only won". The client picks its sentence from this field, so a lost
+-- round would have told players "The round is over." instead of "Everyone was
+-- put on the line.": the fact that the monster took everybody, dropped.
+
+local ended = Lifecycle.new()
+check("(guard) it starts playing", ended:isPlaying())
+check("it can be lost", ended:finish("lost", 10))
+check("...and stops playing", not ended:isPlaying())
+check("...and RECORDS that it was lost", ended.outcome == "lost")
+check("...which is not the won outcome", ended.outcome ~= "won")
+
+-- Both outcomes are reachable from a fresh round and each records its own name.
+-- Swept from the type rather than typed twice, so a third outcome cannot be
+-- added and left unrecorded.
+local OUTCOMES = { "won", "lost" }
+for _, outcome in OUTCOMES do
+	local fresh = Lifecycle.new()
+	check(`(guard) a fresh round can finish '{outcome}'`, fresh:finish(outcome :: any, 5))
+	check(`'{outcome}' is recorded as itself`, fresh.outcome == outcome)
+end
+
+-- And a restart clears it, whichever way the round went. R31's boundary: an
+-- outcome that outlives its round is a panel telling the next round's players
+-- how the last one ended.
+for _, outcome in OUTCOMES do
+	local cycled = Lifecycle.new()
+	cycled:finish(outcome :: any, 5)
+	check(
+		`(guard) '{outcome}' is ready to restart`,
+		cycled:readyToRestart(5 + Config.IntermissionSeconds + 1, Config.IntermissionSeconds)
+	)
+	check(`the round restarts after '{outcome}'`, cycled:restart())
+	check(`...and '{outcome}' is forgotten`, cycled.outcome == nil)
+end
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)
