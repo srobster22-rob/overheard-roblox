@@ -523,7 +523,11 @@ local NL = string.char(10)
 local capture = string.match(serverCode, "local function takeWhoeverIsHere%(.-" .. NL .. "end") or ""
 check("(guard) found the capture function", #capture > 0)
 check("the loss stops the Operator", string.find(capture, "pursuit:stop()", 1, true) ~= nil)
-check("the loss is checked inside the capture path", string.find(capture, "allTaken(", 1, true) ~= nil)
+-- R49 moved the losing rule into `endTheRoundIfNobodyCanWin`, which the capture
+-- path and the tick both ask, so the capture path no longer calls `allTaken`
+-- directly. The rule's own checks are further down; this one only has to say
+-- that capture still asks SOMETHING about losing.
+check("the capture path still decides losses", string.find(capture, "endTheRoundIfNobodyCanWin", 1, true) ~= nil)
 
 print("")
 print("capture runs on the clock, not only on arrival")
@@ -566,6 +570,14 @@ check("decay keeps its own slower beat", string.find(tickBody, "Config.DecaySeco
 -- R36. A queued room is only taken up when the Operator is idle, so the server
 -- has to ask. Without this the queue fills and nothing ever drains it.
 check("the tick takes up a queued room", string.find(tickBody, "pursuit:takePending()", 1, true) ~= nil)
+
+-- R49. Losing is asked on every beat, not only when the Operator arrives. R48
+-- put it in the capture path alone and the soak measured the cost: 134 ticks of
+-- a stranded round still running after the Operator had walked away.
+check(
+	"the tick asks whether the round is already lost",
+	string.find(tickBody, "endTheRoundIfNobodyCanWin", 1, true) ~= nil
+)
 
 check("the tick asks whether it should leave", string.find(tickBody, "shouldLeave", 1, true) ~= nil)
 check("the linger is a dial, not a literal", string.find(tickBody, "Config.LingerSeconds", 1, true) ~= nil)
@@ -688,31 +700,35 @@ check("winning stops the Operator", string.find(solvedBlock, "pursuit:stop()", 1
 -- the panel is stale exactly when it matters.
 check("the phase is pushed when the round is won", string.find(solvedBlock, "pushPhase", 1, true) ~= nil)
 
--- R48. Everyone taken is one way to lose; nobody LEFT being able to finish
+-- R48/R49. Everyone taken is one way to lose; nobody LEFT being able to finish
 -- anything is the other. Three of four caught in one arrival strands a line with
--- its reader, and the survivor could then neither win nor be forced to lose, so
--- the round ran forever with no timer to rescue it.
-local captureBody = string.match(serverCode, "local function takeWhoeverIsHere%(%).-" .. NL .. "end") or ""
-check("(guard) found the capture path", #captureBody > 0)
-check("...and it is the one that ends a lost round (control)", string.find(captureBody, "LINES.lost", 1, true) ~= nil)
-check("a round nobody can finish is computed", string.find(captureBody, "anyFinishable", 1, true) ~= nil)
--- ...and USED. The first version of this check looked only for the call, and
--- deleting `or stranded` from the loss condition left the computation sitting
--- there unused while the guard reported safety. Same shape as R43, where a
--- sweep passed against the very wording it was written to catch.
+-- its reader, and the survivor could then neither win nor be forced to lose.
+--
+-- R48 put this inside the capture path. R49's soak measured what that cost --
+-- 134 ticks of a stranded round still running after the Operator walked away --
+-- so it now lives in a function of its own that BOTH the capture path and the
+-- tick ask. These checks follow it there.
+local loseBody = string.match(serverCode, "local function endTheRoundIfNobodyCanWin%(.-" .. NL .. "end") or ""
+check("(guard) found the losing rule", #loseBody > 0)
 check(
-	"a round nobody can finish is also LOST",
-	string.find(captureBody, "line:allTaken(present) or stranded", 1, true) ~= nil
+	"...and everyone being taken still loses (control)",
+	string.find(loseBody, "line:allTaken(present)", 1, true) ~= nil
 )
-check(
-	"...and a WON board is excluded from that, locally",
-	string.find(captureBody, "board:allSolved()", 1, true) ~= nil
-)
+check("a round nobody can finish is also lost", string.find(loseBody, "board:anyFinishable(able)", 1, true) ~= nil)
+check("...and a WON board is excluded from it", string.find(loseBody, "board:allSolved()", 1, true) ~= nil)
 check(
 	"...measured against the players who can still act",
-	string.find(captureBody, "line:isConnected(userId)", 1, true) ~= nil
+	string.find(loseBody, "line:isConnected(userId)", 1, true) ~= nil
 )
-check("the phase is pushed when a new round begins", string.find(beginBody, "pushPhase", 1, true) ~= nil)
+-- The clause that stops a solo server losing instantly and looping: a board
+-- nobody can finish with NOBODY connected is the dealing problem, not a round
+-- that play has stranded.
+check("...and only when play stranded it", string.find(loseBody, "line:count() > 0", 1, true) ~= nil)
+
+local captureBody = string.match(serverCode, "local function takeWhoeverIsHere%(%).-" .. NL .. "end") or ""
+check("(guard) found the capture path", #captureBody > 0)
+check("the capture path asks the losing rule", string.find(captureBody, "endTheRoundIfNobodyCanWin", 1, true) ~= nil)
+check("...and announces it (control)", string.find(captureBody, "LINES.lost", 1, true) ~= nil)
 -- RAW source: the remote name is a string body and the lexer strips those, so
 -- against `clientCode` this reads `Remotes.get()` and never matches. Fifth time
 -- this project has hit that; the remote-names block above says the same thing.

@@ -116,6 +116,39 @@ local function livePositions(): { [number]: Connected.Point }
 	return out
 end
 
+-- Has the group lost? Two ways, and they mean the same thing.
+--
+-- Everyone taken is the obvious one. The other is that nobody LEFT can finish
+-- anything: R23 made the Operator take everyone in a room at once, so three of
+-- four caught in one arrival strands a line with its reader, and the survivor
+-- can then neither win nor be forced to lose.
+--
+-- ASKED ON THE TICK, not only when the Operator arrives. R48 put this check in
+-- the capture path alone, and the R49 soak measured what that costs: 134 ticks
+-- — about half a minute — of a stranded round still running after the Operator
+-- had walked away, because nothing looked again until it came back.
+--
+-- The `line:count() > 0` clause is what keeps a solo server from losing
+-- instantly and looping: a board nobody can finish with NOBODY connected is the
+-- dealing problem, which is the owner's filed solo question, not a round that
+-- play has stranded.
+local function endTheRoundIfNobodyCanWin(present: { number }): boolean
+	if #present == 0 or board:allSolved() then
+		return false
+	end
+	if line:allTaken(present) then
+		return true
+	end
+
+	local able: { number } = {}
+	for _, userId in present do
+		if not line:isConnected(userId) then
+			table.insert(able, userId)
+		end
+	end
+	return line:count() > 0 and not board:anyFinishable(able)
+end
+
 local function takeWhoeverIsHere()
 	-- The ROOM it arrived in, not a circle around it. See Connected.reachedInRoom:
 	-- a circle big enough to cover the square also covers 9.94 studs of corridor
@@ -146,22 +179,7 @@ local function takeWhoeverIsHere()
 	for _, p in Players:GetPlayers() do
 		table.insert(present, p.UserId)
 	end
-	-- Everyone taken is one way to lose. The other is that nobody LEFT can finish
-	-- anything: three of four caught in one arrival strands a line with its
-	-- reader, and the survivor could then neither win nor be forced to lose, so
-	-- the round ran forever. Both mean the group cannot win, so both end it.
-	local able: { number } = {}
-	for _, userId in present do
-		if not line:isConnected(userId) then
-			table.insert(able, userId)
-		end
-	end
-	-- `allSolved` also reports nothing finishable -- there is nothing left. The
-	-- phase gate already stops capture running after a win, but stating it here
-	-- means this branch does not depend on a check three hundred lines away.
-	local stranded = #present > 0 and not board:allSolved() and not board:anyFinishable(able)
-
-	if (line:allTaken(present) or stranded) and round:finish("lost", os.clock()) then
+	if endTheRoundIfNobodyCanWin(present) and round:finish("lost", os.clock()) then
 		heardRemote:FireAllClients(Round.LINES.lost, "", 1)
 		pushPhase(nil)
 		-- It stops hunting once there is nobody left to hunt. Leaving it
@@ -454,6 +472,20 @@ task.spawn(function()
 		-- ...but not forever. Nothing except the loss ever released it before
 		-- R25, so a single plain word parked it on an objective for the rest of
 		-- the round and nobody could ever finish that station.
+		-- Losing is checked every beat, not only when the Operator arrives: a
+		-- round stranded by a capture stayed live until it came back.
+		if round:isPlaying() then
+			local here: { number } = {}
+			for _, p in Players:GetPlayers() do
+				table.insert(here, p.UserId)
+			end
+			if endTheRoundIfNobodyCanWin(here) and round:finish("lost", os.clock()) then
+				heardRemote:FireAllClients(Round.LINES.lost, "", 1)
+				pushPhase(nil)
+				pursuit:stop()
+			end
+		end
+
 		-- A room it heard about while it was busy. Taken up only once it is idle
 		-- again, so it finishes one call before answering the next -- see
 		-- Pursuit.sendTo, and the livelock that made commitment necessary.
