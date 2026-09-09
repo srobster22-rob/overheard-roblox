@@ -12,6 +12,8 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Objectives = require(script.systems.Objectives)
 local Operator = require(script.systems.Operator)
+local Presence = require(script.systems.Presence)
+local Pursuit = require(script.systems.Pursuit)
 local Round = require(script.systems.Round)
 local World = require(script.systems.World)
 
@@ -30,6 +32,18 @@ local board = Objectives.new()
 board:add("board", "jack_number", "Line is out. Patch it to jack %s.")
 
 local built = World.build()
+
+local pursuit = Pursuit.new(built.rooms, built.operatorStart)
+local body = Presence.spawn(pursuit)
+
+pursuit.onStateChanged = function(state: string, targetName: string?)
+	print(`[operator] {state}{if targetName then ` -> {targetName}` else ""}`)
+	if state == "arrived" then
+		-- It reached what it understood. For now it announces and settles;
+		-- catching players is R10 (being "connected").
+		heardRemote:FireAllClients(Round.LINES.taken, targetName or "", 1)
+	end
+end
 
 -- Rate limiting. Every remote the client can fire needs one, or an exploiter
 -- brute-forces two-digit answers instantly.
@@ -53,6 +67,9 @@ end
 operator.onUnderstood = function(concept: string, payload: string, confidence: number)
 	print(`[operator] understood '{concept}' ({string.format("%.2f", confidence)}) -> {payload}`)
 	heardRemote:FireAllClients(Round.LINES.understood, concept, confidence)
+	-- Understanding is what moves it. An unknown payload is refused inside
+	-- Pursuit rather than sending it somewhere arbitrary.
+	pursuit:sendTo(payload)
 end
 
 operator.onBurned = function(coinage)
@@ -138,6 +155,10 @@ end)
 
 Players.PlayerRemoving:Connect(function(player: Player)
 	lastSubmit[player.UserId] = nil
+end)
+
+game:BindToClose(function()
+	body.stop()
 end)
 
 print(`[server] {Config.GameName} - {#secrets} secrets this round`)

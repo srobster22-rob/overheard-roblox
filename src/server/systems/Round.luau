@@ -15,6 +15,9 @@ local Round = {}
 
 -- The seed pool. `plain` is everything the Operator already understands for
 -- that concept; players must get the idea across without any of it.
+-- `payload` MUST name a room that World.build actually returns, or Pursuit
+-- refuses the move and understanding has no visible effect. Only `board` and
+-- `archive` exist today; add rooms before adding payloads.
 local SECRET_POOL: { Secret } = {
 	{
 		concept = "jack_number",
@@ -24,12 +27,12 @@ local SECRET_POOL: { Secret } = {
 	{
 		concept = "breaker",
 		plain = { "breaker", "fuse", "fusebox", "power", "electric", "switch", "lever" },
-		payload = "basement",
+		payload = "board",
 	},
 	{
 		concept = "exit",
 		plain = { "exit", "door", "out", "outside", "street", "leave", "escape", "stair" },
-		payload = "lobby",
+		payload = "archive",
 	},
 	{
 		concept = "directory",
@@ -39,7 +42,7 @@ local SECRET_POOL: { Secret } = {
 	{
 		concept = "hiding",
 		plain = { "hide", "hiding", "closet", "locker", "cabinet", "under", "behind" },
-		payload = "hunt",
+		payload = "archive",
 	},
 }
 

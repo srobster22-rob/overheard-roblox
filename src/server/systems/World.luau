@@ -97,6 +97,10 @@ export type Built = {
 	readerPrompt: ProximityPrompt,
 	boardPrompt: ProximityPrompt,
 	spawn: Vector3,
+	-- Payload name -> room centre, for Pursuit. Payloads with no room here are
+	-- refused rather than guessed at; see Pursuit.sendTo.
+	rooms: { [string]: { x: number, z: number } },
+	operatorStart: { x: number, z: number },
 }
 
 function World.build(): Built
@@ -141,6 +145,13 @@ function World.build(): Built
 		readerPrompt = readerPrompt,
 		boardPrompt = boardPrompt,
 		spawn = Vector3.new(0, FLOOR_Y + 4, 0),
+		-- Must cover every name in Config.Rooms.
+		rooms = {
+			board = { x = boardOrigin.X, z = boardOrigin.Z },
+			archive = { x = recordsOrigin.X, z = recordsOrigin.Z },
+		},
+		-- It starts at the far end of the board room, not on top of anyone.
+		operatorStart = { x = boardOrigin.X, z = boardOrigin.Z + ROOM / 2 - 4 },
 	}
 end
 

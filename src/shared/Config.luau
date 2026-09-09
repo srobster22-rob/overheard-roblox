@@ -25,6 +25,11 @@ local Config = {
 
 	-- How much every term cools between rounds.
 	CoolPerRound = 0.1,
+
+	-- Rooms the Operator can be sent to. World.build must return a position for
+	-- every one of these, and every secret payload must name one of them.
+	-- tests/round.luau enforces the second half of that.
+	Rooms = { "board", "archive" },
 }
 
 return Config

@@ -15,7 +15,8 @@ See `GAME.md` for the fiction and `RESEARCH.md` for platform limits.
 A round is finished only when ALL of these hold:
 
 1. `selene src` reports 0 errors and 0 warnings.
-2. `lune run tests/lexicon` passes, and any new pure logic has a test there.
+2. `test.cmd` passes (the whole headless suite), and any new pure logic has a
+   test of its own in `tests/`.
 3. `rojo build default.project.json -o game.rbxlx` succeeds.
 4. The change was exercised in a running Studio session (via MCP `run_code`, or
    a 2-player playtest if it touches replication) — not merely compiled.
@@ -35,8 +36,7 @@ new listener re-teaches players a habit and then punishes it.
 Backlog, roughly in order. Reorder freely; do not skip the gate.
 
 - [x] **R2** Objectives that force transfer. DONE.
-- [ ] **R3** The Operator as a physical thing. Movement toward `payload`
-      rooms on understanding. Sound before sight; silence is the tell.
+- [x] **R3** The Operator as a physical thing. DONE.
 - [ ] **R4** Speech-to-Text. Route voice through `AudioSpeechToText` into the
       same `Operator:hear` pipeline. MUST degrade to typed chat (see
       RESEARCH.md — voice needs verified 13+).
@@ -120,3 +120,43 @@ playtesting cannot complete a round. **R3 must open a 2-player playtest.**
 
 **Next.** R3, and open Test > Clients and Servers with 2 players before
 anything else.
+
+## R3 — the Operator gets a body (2026-09-08)
+
+**Built.**
+- `systems/Pursuit` — pure movement and, more importantly, the AUDIBILITY rule.
+  Plain `{x, z}` points so it tests headlessly. It is audible while crossing the
+  building and goes silent once inside `silenceRadius`. The scare is not the
+  noise arriving, it is the noise STOPPING.
+- `systems/Presence` — the Roblox body. A dark mass and a looping hum whose
+  volume is driven from `Pursuit:isAudible()` each Heartbeat, faded rather than
+  cut so it reads as a decision instead of a bug. No mesh yet on purpose: at
+  this stage the sound is the entire performance.
+- Wiring: `onUnderstood` now calls `pursuit:sendTo(payload)`. Understanding is
+  what MOVES it, which closes the loop from speech -> comprehension -> threat.
+
+**Two real bugs caught by writing the tests, not by running the game.**
+1. Most secret payloads named rooms World never built (`basement`, `lobby`,
+   `hunt`). Pursuit refuses unknown payloads, so those understandings would have
+   silently done nothing — no error anywhere. Payloads realigned to the rooms
+   that exist, and `tests/round.luau` now asserts every payload resolves against
+   `Config.Rooms`. That guard is the durable fix; the realignment alone was not.
+2. `Pursuit` originally recomputed state before moving, so it could report
+   "arrived" a frame early. Now it moves first and derives state from where it
+   actually is.
+
+**Proven.** Full suite via `test.cmd`: lexicon 14/14, objectives 15/15, pursuit
+21/21, round 14/14, operator all assertions. `selene` 0/0. `rojo build` OK.
+The silence rule has its own dedicated assertions — including that once it goes
+quiet it never becomes audible again while closing, which is the property that
+would quietly rot first.
+
+**NOT proven.** Still nothing run in Studio. Specifically unverified: that the
+hum is actually audible at range, that `rbxasset://sounds/electronicpingshort.wav`
+is a sensible placeholder, and that the body does not clip through walls (it
+moves in a straight line and ignores geometry — fine for a blockout, wrong
+later).
+
+**Next.** R2b (second station, so a second objective is reachable) is small and
+unblocks a fuller round. But the honest priority is a 2-player Studio playtest:
+three rounds of logic now rest on zero runtime evidence.
