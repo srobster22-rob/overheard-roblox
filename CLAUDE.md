@@ -1,4 +1,7 @@
-# roblox-game — scary multiplayer
+# OVERHEARD — co-op horror, Roblox
+
+**Read `LOOP_LOG.md` first — it outranks every other doc here.**
+`GAME.md` is the design bible, `RESEARCH.md` the platform limits.
 
 Luau on Roblox, synced to Studio with Rojo. Filesystem is the source of truth;
 Studio is the viewer and playtester. Never ask the user to paste code back.
@@ -32,6 +35,10 @@ Studio is the viewer and playtester. Never ask the user to paste code back.
   as unfair and they leave.
 
 ## Testing
+`lune run tests/lexicon` for pure logic — keep the text layer free of Roblox
+APIs so it stays headlessly testable. `TestOperator` needs a runtime; run it
+from Studio or MCP.
+
 Studio's playtest with 2 players (Test > Clients and Servers) is the minimum
 bar for anything touching replication. A thing that works in solo playtest and
 breaks with 2 players is the default outcome, not the exception.
