@@ -6458,3 +6458,5 @@ hum 21, log 18, silence 62.
 Supervisor, so its four invariants are measured in the pre-R54 game. That is
 real, it is written up in Stage 1 above, and it is the next round's work — now
 that there is a seed to measure it against.
+
+**Commit** `338b232`
