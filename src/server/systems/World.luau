@@ -38,12 +38,11 @@ local function part(name: string, size: Vector3, cf: CFrame, color: Color3, pare
 	return p
 end
 
-local function room(name: string, origin: Vector3, parent: Instance): Model
+local function room(name: string, origin: Vector3, openOn: string, parent: Instance): Model
 	local model = Instance.new("Model")
 	model.Name = name
 	model.Parent = parent
 
-	local half = ROOM / 2
 	local wallH = 14
 	local floorColor = Color3.fromRGB(48, 44, 40)
 	local wallColor = Color3.fromRGB(62, 56, 48)
@@ -57,14 +56,22 @@ local function room(name: string, origin: Vector3, parent: Instance): Model
 		model
 	)
 
-	local offsets = {
-		{ Vector3.new(0, wallH / 2, -half), Vector3.new(ROOM, wallH, 1) },
-		{ Vector3.new(0, wallH / 2, half), Vector3.new(ROOM, wallH, 1) },
-		{ Vector3.new(-half, wallH / 2, 0), Vector3.new(1, wallH, ROOM) },
-		{ Vector3.new(half, wallH / 2, 0), Vector3.new(1, wallH, ROOM) },
-	}
-	for i, spec in offsets do
-		part(`Wall{i}`, spec[2], CFrame.new(origin + spec[1]), wallColor, model)
+	-- Built from Layout.walls so the geometry a player walks through is the same
+	-- geometry tests/layout.luau sweeps. Until R22 this was four full-span walls
+	-- with no gap, and both work rooms were sealed boxes nobody could enter.
+	local centre = { x = origin.X, z = origin.Z }
+	for i, wall in Layout.walls(centre, openOn) do
+		local spanX = math.max(wall.maxX - wall.minX, 1)
+		local spanZ = math.max(wall.maxZ - wall.minZ, 1)
+		local midX = (wall.minX + wall.maxX) / 2
+		local midZ = (wall.minZ + wall.maxZ) / 2
+		part(
+			`Wall{i}`,
+			Vector3.new(spanX, wallH, spanZ),
+			CFrame.new(midX, origin.Y + wallH / 2, midZ),
+			wallColor,
+			model
+		)
 	end
 
 	-- One weak light per room. Never enough; that is the point.
@@ -129,8 +136,8 @@ function World.build(): Built
 	local recordsOrigin = Vector3.new(-SEPARATION / 2, 0, 0)
 	local boardOrigin = Vector3.new(SEPARATION / 2, 0, 0)
 
-	room("RecordsRoom", recordsOrigin, folder)
-	room("BoardRoom", boardOrigin, folder)
+	room("RecordsRoom", recordsOrigin, Layout.corridorSide({ x = recordsOrigin.X, z = recordsOrigin.Z }), folder)
+	room("BoardRoom", boardOrigin, Layout.corridorSide({ x = boardOrigin.X, z = boardOrigin.Z }), folder)
 
 	-- A corridor so the two rooms are connected but the walk is long enough to
 	-- make shouting the answer feel like the wrong idea.

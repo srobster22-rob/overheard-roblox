@@ -51,6 +51,19 @@ end
 
 local built = World.build()
 
+-- `built.spawn` was computed by World and read by nobody for twenty-one
+-- rounds, so players landed wherever Roblox decided rather than in the
+-- corridor between the two rooms. Placed here rather than in World because it
+-- is a game-flow decision, not geometry.
+local spawnPad = Instance.new("SpawnLocation")
+spawnPad.Name = "Exchange"
+spawnPad.Anchored = true
+spawnPad.CanCollide = false
+spawnPad.Transparency = 1
+spawnPad.Size = Vector3.new(12, 1, 8)
+spawnPad.Position = built.spawn
+spawnPad.Parent = workspace
+
 local pursuit = Pursuit.new(built.rooms, built.operatorStart)
 local body = Presence.spawn(pursuit)
 

@@ -98,6 +98,56 @@ check("the rooms are separated by more than a room's width", Layout.Separation >
 local gap = Layout.Separation - Layout.Room
 check(`the walk between rooms is a real walk ({gap} studs of corridor)`, gap >= Layout.Room)
 
+print("")
+print("you can actually walk to the stations")
+
+-- THE DEFECT R22 FOUND. `World.room()` built four full-span walls and cut no
+-- gap, so both work rooms were sealed boxes: the walk from the corridor to the
+-- Switchboard crossed the wall plane x=36 at z=-10.8, inside a wall spanning
+-- z=-24..24. Every system in the game sat behind a wall with no door in it, and
+-- nothing caught it because World needs Roblox instances to load.
+
+local spawn = Layout.spawn()
+local offset = Layout.stationOffset()
+local walls = Layout.allWalls()
+check(`(guard) the building has walls to be blocked by ({#walls})`, #walls >= 8)
+
+for name, centre in { board = Layout.boardCentre(), archive = Layout.archiveCentre() } do
+	local station = { x = centre.x + offset.x, z = centre.z + offset.z }
+	check(`the {name} station is inside its room (guard)`, Layout.inRoom(centre, station))
+
+	-- The route, not a straight line. The station sits 18 studs off the room's
+	-- centre line, so the direct walk from the corridor clips the wall at
+	-- z=-10.8 even with the door open; a player goes to the door, then to the
+	-- station. Demanding a clear straight line here would have reported the
+	-- building unplayable and argued for a 22-stud door -- fixing the model
+	-- instead of the game.
+	local route = Layout.routeToStation(centre)
+	check(`(guard) the {name} route has legs ({#route})`, #route >= 3)
+	check(`you can walk from the corridor to the {name} station`, Layout.routeIsClear(route))
+
+	check(`the corridor leg to {name} is clear`, Layout.walkIsClear(spawn, Layout.doorPoint(centre)))
+	check(`the doorway leg to {name} is clear`, Layout.walkIsClear(Layout.doorPoint(centre), station))
+end
+
+-- The keep side: the doorway must be a doorway, not a missing wall. Walking at
+-- the room's far corner must still be blocked, or the room has no walls at all.
+local board = Layout.boardCentre()
+local half = Layout.halfRoom()
+local outsideCorner = { x = board.x + half + 10, z = board.z + half + 10 }
+local insideCorner = { x = board.x + half - 2, z = board.z + half - 2 }
+check("you cannot walk in through the far corner", not Layout.walkIsClear(outsideCorner, insideCorner))
+
+-- And the wall the door is NOT in must still stop you.
+local behind = { x = board.x + half + 10, z = board.z }
+local inside = { x = board.x, z = board.z }
+check("you cannot walk in through the back wall", not Layout.walkIsClear(behind, inside))
+
+-- The doorway is where the corridor is, not somewhere unreachable.
+local doorApproach = { x = board.x - half - 6, z = board.z }
+check("the doorway faces the corridor", Layout.walkIsClear(doorApproach, inside))
+check(`(guard) the door has a width ({Layout.Door})`, Layout.Door > 0 and Layout.Door < Layout.Room)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)
