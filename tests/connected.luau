@@ -81,6 +81,75 @@ lose:connect(B, 2)
 check("both taken is a loss", lose:allTaken({ A, B }) == true)
 check("a fresh joiner un-loses it", lose:allTaken({ A, B, C }) == false)
 
+print("")
+print("occupancy is continuous, not a single frame")
+
+-- R24. Capture used to run ONLY from `pursuit.onStateChanged` on the transition
+-- to `arrived`, and `Pursuit.setState` returns early when the state is
+-- unchanged. So the Operator took whoever stood in the room at that one instant
+-- and was harmless from then on: demonstrated at 60 seconds standing beside it,
+-- `captures=0`. The server now asks every `Config.TickSeconds`.
+--
+-- Modelled here against the REAL Pursuit and Connected, driven the way the
+-- server drives them, because `init.server` cannot be loaded headlessly.
+
+local Pursuit = rt.require(rt.systems.Pursuit)
+local Layout = rt.require(rt.shared.Layout)
+
+local board = Layout.boardCentre()
+local tracker = Pursuit.new({ board = { x = board.x, z = board.z } }, { x = 0, z = 0 })
+local occupancy = Connected.new()
+local positions: { [number]: { x: number, z: number } } = { [1] = { x = 0, z = 0 } }
+
+local captured = 0
+local function tick()
+	-- Exactly the server's rule: while it is standing in the room, it is taking.
+	if tracker.state ~= "arrived" then
+		return
+	end
+	for _, id in occupancy:reachedInRoom(tracker.position, positions, Layout.halfRoom()) do
+		if occupancy:connect(id, 0) then
+			captured += 1
+		end
+	end
+end
+
+tracker:sendTo("board")
+for _ = 1, 40 do
+	tracker:step(1)
+	tick()
+	if tracker.state == "arrived" then
+		break
+	end
+end
+check("(guard) the Operator reached the room", tracker.state == "arrived")
+check("a player out in the corridor is not taken", captured == 0)
+
+-- The defect: walk in AFTER it has arrived.
+positions[1] = { x = board.x, z = board.z }
+check("(guard) the player is now inside that room", Layout.inRoom(board, positions[1]))
+tick()
+check("walking in after it arrived is still fatal", captured == 1)
+check("and the player is on the line", occupancy:isConnected(1) == true)
+
+-- Idempotent across ticks: standing there must not re-announce every 0.25s.
+local before = captured
+for _ = 1, 20 do
+	tick()
+end
+check("standing there does not re-capture on every tick", captured == before)
+
+-- Someone who leaves before the next tick is not taken by a stale position.
+local second = Connected.new()
+local movers: { [number]: { x: number, z: number } } = { [2] = { x = board.x, z = board.z } }
+local out = 0
+movers[2] = { x = 0, z = 0 }
+for _, id in second:reachedInRoom(board, movers, Layout.halfRoom()) do
+	out += 1
+	local _ = id
+end
+check("a player who left the room is not taken", out == 0)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

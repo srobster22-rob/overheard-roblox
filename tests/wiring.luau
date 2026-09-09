@@ -514,6 +514,41 @@ check("(guard) found the capture function", #capture > 0)
 check("the loss stops the Operator", string.find(capture, "pursuit:stop()", 1, true) ~= nil)
 check("the loss is checked inside the capture path", string.find(capture, "allTaken(", 1, true) ~= nil)
 
+print("")
+print("capture runs on the clock, not only on arrival")
+
+-- R24. `tests/connected.luau` proves the RULE; this proves the SERVER runs it.
+-- Capture used to be reachable from exactly one place — the `arrived`
+-- transition — and `Pursuit.setState` returns early when the state has not
+-- changed, so the Operator took whoever stood in the room at that one instant
+-- and was harmless afterwards. A player could walk in and stay a minute.
+
+local captureCalls = 0
+local from = 1
+while true do
+	local first, last = string.find(serverCode, "takeWhoeverIsHere()", from, true)
+	if not first then
+		break
+	end
+	from = last + 1
+	captureCalls += 1
+end
+-- One is the declaration, so two call sites means three occurrences.
+check(`capture is reachable from more than one place ({captureCalls} occurrences)`, captureCalls >= 3)
+
+local tickBody = string.match(serverCode, "task.spawn%(function%(%).-" .. string.char(10) .. "end%)") or ""
+check("(guard) found the server tick loop", #tickBody > 0)
+-- `pursuit.state` is CODE; the literal "arrived" is a string body the lexer
+-- strips, so asking the stripped tick for it always fails. Same trap R18 hit
+-- reading the Operator's lines out of stripped source.
+check("the tick asks the Operator's state", string.find(tickBody, "pursuit.state", 1, true) ~= nil)
+local rawTick = string.match(serverSource, "task.spawn%(function%(%).-" .. string.char(10) .. "end%)") or ""
+check("(guard) found the tick in raw source too", #rawTick > 0)
+check("and compares it against arrived", string.find(rawTick, "arrived", 1, true) ~= nil)
+check("the tick runs capture", string.find(tickBody, "takeWhoeverIsHere()", 1, true) ~= nil)
+check("the tick is paced by a dial, not a literal", string.find(tickBody, "Config.TickSeconds", 1, true) ~= nil)
+check("decay keeps its own slower beat", string.find(tickBody, "Config.DecaySeconds", 1, true) ~= nil)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

@@ -32,6 +32,14 @@ local Config = {
 	-- unable to say anything at all.
 	CoolPerSecond = 0.01,
 
+	-- The server clock. Capture is asked every tick, because occupancy is a
+	-- continuous fact: before R24 the Operator took whoever was in the room at
+	-- the one instant it arrived, then stood there permanently harmless.
+	TickSeconds = 0.25,
+	-- Decay keeps its own slower beat. It is time-based, so ticking it faster
+	-- would be correct but would replicate the whole lexicon four times a second.
+	DecaySeconds = 1,
+
 	-- Guessing. The answer is two digits -- 90 possibilities -- and the submit
 	-- remote is rate-limited to one attempt every 0.75s, so a player alone at a
 	-- keypad brute-forces a line in about 34 seconds without anyone ever

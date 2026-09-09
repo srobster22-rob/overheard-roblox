@@ -315,15 +315,37 @@ Players.PlayerRemoving:Connect(function(player: Player)
 	end
 end)
 
--- The Operator forgets, in real time. Ticked here rather than inside Operator
--- so the module stays pure and headlessly testable. Rebroadcast only when heat
--- actually moved, or this replicates the whole lexicon once a second forever.
+-- The server's clock. Two jobs at two rates.
+--
+-- CAPTURE runs every tick, because until R24 it ran ONCE — from
+-- `pursuit.onStateChanged` on the transition to `arrived`, and `setState`
+-- returns early when the state has not changed. The Operator took whoever
+-- happened to be in the room at that single instant and then stood there
+-- permanently harmless: a player could walk in beside it and stay for a minute
+-- untouched. Occupancy is a continuous fact, so it has to be asked continuously.
+--
+-- DECAY stays on its one-second beat. It is time-based, so a faster tick would
+-- be correct but would replicate the whole lexicon four times a second.
 local running = true
 task.spawn(function()
+	local sinceDecay = 0
 	while running do
-		task.wait(1)
-		if running and operator:decay(os.clock()) then
-			broadcastLexicon()
+		task.wait(Config.TickSeconds)
+		if not running then
+			break
+		end
+
+		-- Still standing in the room it understood? Then it is still taking.
+		if pursuit.state == "arrived" then
+			takeWhoeverIsHere()
+		end
+
+		sinceDecay += Config.TickSeconds
+		if sinceDecay >= Config.DecaySeconds then
+			sinceDecay = 0
+			if operator:decay(os.clock()) then
+				broadcastLexicon()
+			end
 		end
 	end
 end)
