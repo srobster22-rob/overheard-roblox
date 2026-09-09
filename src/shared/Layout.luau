@@ -118,6 +118,37 @@ function Layout.walls(centre: Point, openOn: string): { Rect }
 	return out
 end
 
+-- THE CORRIDOR ---------------------------------------------------------------
+--
+-- Until R28 it was 8 studs wide against a 12-stud doorway, with nothing at its
+-- edges, and it is the ONLY floor for the 72 studs between the two rooms. Two
+-- studs of every doorway approach had no floor under it, and a player anywhere
+-- along that span who stepped past z = +/-4 fell out of the world — worst
+-- exactly when it matters most, since escaping means running out of a room in
+-- the dark.
+
+-- Derived from the doorway, so the approach to a door is always floored. A
+-- corridor narrower than the door it serves is a hole by construction.
+function Layout.corridorWidth(): number
+	return Layout.Door
+end
+
+-- Where the corridor floor ends and the rooms begin.
+function Layout.corridorHalfLength(): number
+	return Layout.Separation / 2 - Layout.halfRoom()
+end
+
+-- The corridor's own walls, so you cannot walk off the side of it. They stop at
+-- the room walls, leaving the doorways open.
+function Layout.corridorWalls(): { Rect }
+	local halfW = Layout.corridorWidth() / 2
+	local endX = Layout.corridorHalfLength()
+	return {
+		{ minX = -endX, minZ = -halfW, maxX = endX, maxZ = -halfW },
+		{ minX = -endX, minZ = halfW, maxX = endX, maxZ = halfW },
+	}
+end
+
 -- Every wall in the building.
 function Layout.allWalls(): { Rect }
 	local out: { Rect } = {}
@@ -125,6 +156,9 @@ function Layout.allWalls(): { Rect }
 		for _, wall in Layout.walls(centre, Layout.corridorSide(centre)) do
 			table.insert(out, wall)
 		end
+	end
+	for _, wall in Layout.corridorWalls() do
+		table.insert(out, wall)
 	end
 	return out
 end

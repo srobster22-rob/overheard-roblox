@@ -227,6 +227,57 @@ for name, roomCentre in rooms do
 	check(`the post is not inside {name}`, not Layout.inRoom(roomCentre, post))
 end
 
+print("")
+print("the corridor is floored under its doors, and has edges")
+
+-- R28. It was 8 studs wide against a 12-stud doorway, with nothing at its
+-- sides, and it is the only floor for the 72 studs between the rooms. Two studs
+-- of every doorway approach had no floor; stepping past z = +/-4 anywhere along
+-- it dropped you out of the world. Escaping means running out of a room in the
+-- dark, so this was worst exactly when it mattered.
+
+check(
+	`the corridor is at least as wide as the door it serves ({Layout.corridorWidth()} >= {Layout.Door})`,
+	Layout.corridorWidth() >= Layout.Door
+)
+
+-- Sweep the doorway span: every z a player can stand in while using a door must
+-- have corridor floor under it on the approach.
+local doorHalf = Layout.Door / 2
+local corridorHalf = Layout.corridorWidth() / 2
+local unfloored = 0
+for step = -20, 20 do
+	local z = doorHalf * (step / 20)
+	if math.abs(z) > corridorHalf then
+		unfloored += 1
+	end
+end
+check(`no part of a doorway approach is unfloored ({unfloored} gaps)`, unfloored == 0)
+
+-- The edges themselves. Walking sideways out of the corridor must be stopped.
+local corridorWalls = Layout.corridorWalls()
+check(`(guard) the corridor has walls ({#corridorWalls})`, #corridorWalls == 2)
+local midCorridor = { x = 0, z = 0 }
+local offTheSide = { x = 0, z = corridorHalf + 20 }
+check("you cannot walk off the side of the corridor", not Layout.walkIsClear(midCorridor, offTheSide))
+local offTheOtherSide = { x = 0, z = -(corridorHalf + 20) }
+check("nor off the other side", not Layout.walkIsClear(midCorridor, offTheOtherSide))
+
+-- REGRESSION GUARD, and the reason this could have gone wrong: corridor walls
+-- that ran the full separation would seal both doorways shut and undo R22.
+for name, roomCentre in { board = Layout.boardCentre(), archive = Layout.archiveCentre() } do
+	check(`the corridor walls do not seal the {name} doorway`, Layout.routeIsClear(Layout.routeToStation(roomCentre)))
+end
+check(
+	`the corridor walls stop at the rooms ({Layout.corridorHalfLength()})`,
+	Layout.corridorHalfLength() == Layout.Separation / 2 - Layout.halfRoom()
+)
+
+-- And the Operator's post still stands on floor that exists.
+local post = Layout.operatorPost()
+check("the Operator's post is on the corridor floor", math.abs(post.z) <= corridorHalf)
+check("...and within its length", math.abs(post.x) <= Layout.corridorHalfLength())
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

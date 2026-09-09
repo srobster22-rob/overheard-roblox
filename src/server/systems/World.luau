@@ -141,13 +141,30 @@ function World.build(): Built
 
 	-- A corridor so the two rooms are connected but the walk is long enough to
 	-- make shouting the answer feel like the wrong idea.
+	-- Width DERIVED from the doorway: a corridor narrower than the door it
+	-- serves leaves part of every approach unfloored. It was 8 against a 12-stud
+	-- door until R28, and it is the only floor for the span between the rooms.
 	part(
 		"Corridor",
-		Vector3.new(SEPARATION, 1, 8),
+		Vector3.new(SEPARATION, 1, Layout.corridorWidth()),
 		CFrame.new(Vector3.new(0, FLOOR_Y, 0)),
 		Color3.fromRGB(44, 40, 36),
 		folder
 	)
+
+	-- Edges, so fleeing in the dark does not drop you out of the world. Built
+	-- from Layout.corridorWalls, which stops them at the room walls and leaves
+	-- the doorways open.
+	local wallH = 14
+	for i, wall in Layout.corridorWalls() do
+		part(
+			`CorridorWall{i}`,
+			Vector3.new(math.max(wall.maxX - wall.minX, 1), wallH, math.max(wall.maxZ - wall.minZ, 1)),
+			CFrame.new((wall.minX + wall.maxX) / 2, FLOOR_Y + wallH / 2, (wall.minZ + wall.maxZ) / 2),
+			Color3.fromRGB(52, 47, 41),
+			folder
+		)
+	end
 
 	local readerPrompt = station("Directory", "Read", recordsOrigin + Vector3.new(0, 4, -18), folder)
 	local boardPrompt = station("Switchboard", "Patch", boardOrigin + Vector3.new(0, 4, -18), folder)
