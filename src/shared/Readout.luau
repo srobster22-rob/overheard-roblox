@@ -45,10 +45,23 @@ function Readout.lineRows(entries: { any }): { Row }
 			solved += 1
 		end
 		if entry.holding and not entry.solved and entry.prompt and entry.answer then
-			-- The note follows its own line IMMEDIATELY. That adjacency is the
-			-- whole point of the row list being built here instead of being
-			-- reassembled from two number series at render time.
-			table.insert(rows, { text = string.format(entry.prompt, entry.answer), kind = "line" })
+			-- R80 found `string.format` can be made to throw outright: a literal
+			-- `%` anywhere in a station's prompt besides its own `%s` slot is not
+			-- escaped, and `string.format` treats every `%` as the start of a
+			-- directive. R80's own gate catches that at test time for prompts
+			-- this project writes by hand, but a gate only helps if the round
+			-- adding a new one remembers to run it -- a translation, or a typo
+			-- that slips past it some other way, would still crash this call and
+			-- take the whole panel down for whoever holds that line.
+			--
+			-- `pcall` here means a broken prompt degrades to plain concatenation
+			-- (still names the actual number, just without the sentence around
+			-- it) instead of erroring the reader's line out of existence. THE
+			-- ANSWER is the one piece of information this row exists to carry;
+			-- losing the sentence is a cosmetic failure, losing the number is a
+			-- broken round.
+			local ok, formatted = pcall(string.format, entry.prompt, entry.answer)
+			table.insert(rows, { text = if ok then formatted else `{entry.prompt} ({entry.answer})`, kind = "line" })
 			table.insert(rows, { text = Readout.PRIVATE_NOTE, kind = "note" })
 		end
 	end

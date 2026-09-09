@@ -7836,3 +7836,54 @@ added will be told immediately if it is not, the same shape as R79's fix one
 round earlier.
 
 **Commit** `147f7b7`
+
+
+## R81 — Readout.lineRows still had no defense of its own against R80's crash
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — closing what R80 explicitly left open.** R80 built a gate that
+catches a bad station prompt at test time, and said outright: *"Not claimed:
+that `Readout.lineRows` is now defensive against a bad prompt at runtime — it
+still has no `pcall`, and still crashes if one gets past this guard some other
+way (a translation, a typo in a future round that skips the gate)."* The gate
+only helps if every round remembers to run it; the function itself still has
+none of its own.
+
+1. *(picked)* **Wrap the format call so a broken prompt degrades instead of
+   crashing the reader's whole panel.**
+2. R78's still-open list is otherwise unchanged.
+
+**Stage 2 — the fix.** The format call in `Readout.lineRows` is now wrapped in
+`pcall`. On success it renders exactly as before; on failure it falls back to
+plain concatenation — `entry.prompt .. " (" .. entry.answer .. ")"` in effect —
+so the sentence around the number can break without the number itself
+disappearing. The answer is the one piece of information this row exists to
+carry; losing the prose around it is cosmetic, losing the answer is a broken
+round.
+
+**Stage 3 — proof.** 7 new checks in `tests/readout.luau`: `lineRows` does not
+error on R80's exact broken prompt, a line row is still produced, the answer
+(`42`) still appears in it, the raw prompt text survives concatenated, and its
+private note still follows immediately. Two `(control)`s confirm a well-formed
+prompt is genuinely **formatted**, not silently routed through the fallback —
+`"Breaker 42 tripped."`, not `"Breaker %s tripped. (42)"` — so the fallback is
+proven to fire only when it needs to. Planted: the `pcall` removed, restoring
+the crash; failed by name, `lineRows does not error on a broken prompt`.
+Restored from byte-copy backup; sha256 `ccbc826e…240ddf092f960` unchanged.
+
+**Verified in the product, not merely the source.** Called `Readout.lineRows`
+with R80's exact planted prompt end to end: renders without crashing, and the
+reader still sees `"Static at 60% strength. Breaker %s tripped. Someone has to
+throw it. (42)"` — ungainly, but the number that matters is right there.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon 22, heuristic 49, operator ok, objectives 122,
+pursuit 104, round 61, config 63, wiring 354, connected 32, ordering 4,
+heat 20, layout 110, lifecycle 90, hud 26, readout **36**, soak 42, hum 29,
+log 18, silence 62, lexiconsave 28.
+
+*Not claimed:* that the fallback's WORDING is good — it is a safety net, not a
+design. Whether it should read differently (or whether a broken prompt should
+instead be logged and silently dropped rather than shown at all) is a smaller,
+genuinely cosmetic call left for whoever next looks at this panel in Studio.

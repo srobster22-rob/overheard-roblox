@@ -187,6 +187,39 @@ local heldRows = Readout.lineRows({
 check("(guard) a held line was rendered", heldRows[1].kind == "line")
 check("...and it is allowed to name its own concept", #givesAway(heldRows[1].text) > 0)
 
+print("")
+print("a broken prompt degrades instead of crashing the panel")
+
+-- R81. R80 found a stray % in a station's prompt makes string.format throw
+-- outright. R80's own gate catches that at test time for the two prompts this
+-- project writes by hand; this is the runtime half -- something a gate can be
+-- skipped past (a translation, a typo) must not take the whole panel down for
+-- whoever holds that line.
+local broken = {
+	{ holding = true, solved = false, prompt = "Static at 60% strength. Breaker %s tripped.", answer = "42" },
+}
+local brokenOk, brokenRows = pcall(Readout.lineRows, broken)
+check("lineRows does not error on a broken prompt", brokenOk)
+if brokenOk then
+	check(`(guard) a line row was still produced ({#brokenRows})`, #brokenRows > 0)
+	check(
+		"the ANSWER still appears somewhere -- losing it is a broken round",
+		string.find(brokenRows[1].text, "42", 1, true) ~= nil
+	)
+	check(
+		"the raw prompt text still appears, concatenated rather than formatted",
+		string.find(brokenRows[1].text, "Static at 60%", 1, true) ~= nil
+	)
+	check("...and its own note still follows it immediately", brokenRows[2].kind == "note")
+end
+
+-- (control) a well-formed prompt must still go through string.format, not the
+-- fallback -- proving the fallback is not silently swallowing every prompt.
+local fine = { { holding = true, solved = false, prompt = "Breaker %s tripped.", answer = "42" } }
+local fineRows = Readout.lineRows(fine)
+check("(control) a good prompt is FORMATTED, not just concatenated", fineRows[1].text == "Breaker 42 tripped.")
+check("(control) ...which reads differently from the fallback's shape", fineRows[1].text ~= "Breaker %s tripped. (42)")
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)
