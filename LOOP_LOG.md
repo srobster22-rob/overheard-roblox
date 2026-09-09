@@ -2185,4 +2185,4 @@ that counts a check" was true for fourteen rounds and is not any more.
   keep-side checks pin the boundary so the fix cannot drift into the other
   failure mode.
 
-**Commit.** `PENDING`
+**Commit.** `c0fe17f`
