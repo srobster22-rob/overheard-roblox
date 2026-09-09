@@ -568,6 +568,15 @@ check("and the tick actually releases it", string.find(tickBody, "pursuit:withdr
 
 -- R29. A finished round is not a hunting ground, and there has to BE a next one.
 check("capture is gated on the round still being played", string.find(tickBody, "round:isPlaying()", 1, true) ~= nil)
+
+-- R32. Gating capture alone left the Operator announcing itself and walking
+-- audibly through an intermission it could take nobody in. The FEED has to be
+-- gated too, or the hum means nothing some of the time -- which is worse than
+-- no hum, because the hum is the game.
+local chatBody = string.match(serverCode, "TextChatService.OnIncomingMessage = function.-" .. NL .. "end") or ""
+check("(guard) found the chat handler", #chatBody > 0)
+check("...and it is the one that feeds the Operator (control)", string.find(chatBody, "operator:hear", 1, true) ~= nil)
+check("the Operator only listens while a round is live", string.find(chatBody, "round:isPlaying()", 1, true) ~= nil)
 check("the tick waits out an intermission", string.find(tickBody, "Config.IntermissionSeconds", 1, true) ~= nil)
 check("and starts the next round", string.find(tickBody, "beginRound()", 1, true) ~= nil)
 

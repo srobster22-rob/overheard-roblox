@@ -194,6 +194,18 @@ TextChatService.OnIncomingMessage = function(message: TextChatMessage)
 	if not player then
 		return nil
 	end
+
+	-- It is only listening while a round is being played. R29 gated CAPTURE on
+	-- this and nothing else, so during the intermission a plain giveaway still
+	-- made the Operator announce itself and walk audibly toward a room it could
+	-- take nobody in -- and then `beginRound` teleported it home mid-walk.
+	-- The whole game rests on the hum meaning something; a hum that sometimes
+	-- means nothing is worse than no hum. Gating the FEED also keeps lobby
+	-- chatter out of the observation buffer.
+	if not round:isPlaying() then
+		return nil
+	end
+
 	operator:hear({
 		speaker = player,
 		text = message.Text,

@@ -14,6 +14,7 @@ local Harness = require("./harness")
 
 local rt = Harness.build()
 local Lifecycle = rt.require(rt.systems.Lifecycle)
+type Lifecycle_Round = Lifecycle.Round
 local Objectives = rt.require(rt.systems.Objectives)
 local Connected = rt.require(rt.systems.Connected)
 
@@ -153,6 +154,74 @@ local before = #kept:snapshot()
 check(`(guard) the group coined something ({before})`, before > 0)
 kept:forgetObservations()
 check("forgetting observations does not wipe the Lexicon", #kept:snapshot() == before)
+
+print("")
+print("a finished round is not listened to either")
+
+-- R32. R29 gated CAPTURE on the round being live and nothing else, so during
+-- the intermission a plain giveaway still made the Operator announce itself and
+-- walk audibly at a room it could take nobody in. The whole game rests on the
+-- hum meaning something; a hum that sometimes means nothing is worse than none.
+--
+-- Modelled against the real Operator, Pursuit and Lifecycle, wired the way the
+-- server wires them, because `init.server` cannot be loaded headlessly.
+
+local Pursuit = rt.require(rt.systems.Pursuit)
+local Layout = rt.require(rt.shared.Layout)
+local RoundModule = rt.require(rt.systems.Round)
+
+local hunted = { board = Layout.boardCentre(), archive = Layout.archiveCentre() }
+local dealt = RoundModule.dealSecrets(3)
+
+-- The plain giveaway for a room that exists, taken from the real pool.
+local giveaway: string? = nil
+for _, secret in dealt do
+	if secret.payload == "board" then
+		giveaway = secret.plain[1]
+	end
+end
+check("(guard) the real pool gave us a plain term for the board room", giveaway ~= nil)
+
+local function serverLike(live: Lifecycle_Round)
+	local op = Operator.new(dealt)
+	local chase = Pursuit.new(hunted, Layout.operatorPost())
+	local broadcasts = 0
+	op.onUnderstood = function(_concept: string, payload: string)
+		broadcasts += 1
+		chase:sendTo(payload)
+	end
+	-- THE GATE, exactly as the server states it.
+	local function feed(text: string, at: number)
+		if not live:isPlaying() then
+			return
+		end
+		op:hear({ speaker = { UserId = 1 } :: any, text = text, at = at })
+	end
+	return feed, chase, function()
+		return broadcasts
+	end
+end
+
+local playing = Lifecycle.new()
+local feedLive, chaseLive, countLive = serverLike(playing)
+feedLive(`patch the {giveaway}`, 1)
+check("(control) while the round is live it DOES hunt", chaseLive.targetName == "board")
+check("(control) and it announces", countLive() > 0)
+check("(control) and you hear it", chaseLive:isAudible())
+
+local finished = Lifecycle.new()
+finished:finish("won", 100)
+local feedOver, chaseOver, countOver = serverLike(finished)
+feedOver(`patch the {giveaway}`, 101)
+check("a finished round does not start a hunt", chaseOver.targetName == nil)
+check("...and says nothing to anyone", countOver() == 0)
+check("...and stays silent", chaseOver:isAudible() == false)
+check("...and does not move", chaseOver.state == "idle")
+
+-- And it starts listening again once the next round begins.
+finished:restart()
+feedOver(`patch the {giveaway}`, 200)
+check("the next round is listened to again", chaseOver.targetName == "board")
 
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
