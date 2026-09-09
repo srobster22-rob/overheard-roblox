@@ -105,3 +105,15 @@ Write in plain English. One item per line. Top item goes first.
   fixed - but the blame was not. The game now knows the difference between "you
   did something wrong" and "somebody beat you to it", and the Operator is only
   allowed to say the busy line to the first kind. Nothing to decide here.
+
+- R14 - the Operator forgot words but never let go of them. The Lexicon panel
+  is the only place you can see what it has picked up, and it listed every
+  phrase the group ever coined for the life of the server - including ones at
+  0%, which it does not understand at all and cannot act on, sitting in the
+  same list as the words that will get you caught. It also only ever grew: one
+  long chat message offers about 79 candidate phrases, and one solve within
+  twenty seconds wrote all of them in permanently, so the panel filled with
+  junk and every line of chat afterwards was scanned against it. A phrase that
+  cools all the way to zero is now dropped, so the list drains on its own and
+  only shows words it actually knows something about. Nothing to decide here.
+

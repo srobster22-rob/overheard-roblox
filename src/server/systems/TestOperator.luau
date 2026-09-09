@@ -121,6 +121,75 @@ return function()
 	assert(creditedTo.exit == true, "the solve inside the window must be credited")
 	assert(creditedTo.breaker == nil, "one utterance must not also be credited to a second concept")
 
+	-- 9. A TERM THAT REACHES ZERO LEAVES THE REGISTER. Until R14 forgetting was
+	-- true of the heat and false of the entry: the coinage stayed forever at
+	-- zero, was replicated to every client on every change, and was drawn in
+	-- the Lexicon panel at "0%" beside words that will get the group killed.
+	local gone = Operator.new(secrets)
+	gone:hear({ speaker = fakeSpeaker, text = "purple lantern", at = 0 })
+	gone:credit("exit", 1)
+	assert(#gone.lexicon > 0, "setup: the coinage must exist before it is cooled (guard)")
+	local before = #gone.lexicon
+	assert(gone:cool(0.0001) == true, "a partial cool must report movement")
+	assert(#gone.lexicon == before, "a warm coinage must NOT be dropped")
+	gone:cool(1)
+	assert(#gone.lexicon == 0, "a coinage cooled to zero must leave the register")
+	assert(#gone:snapshot() == 0, "and must not be replicated to any client")
+
+	-- 10. Dropping it is observationally NEUTRAL for comprehension, which is
+	-- what makes it safe to drop. Asserted against the backend directly rather
+	-- than left as an argument in a comment: `understand` scores a coinage as
+	-- heat/BURNED_AT and only takes it `if confidence > best.confidence` from a
+	-- floor of 0, so a zero-heat coinage can never be the concept it picks.
+	local Heuristic = require(script.Parent.Heuristic)
+	local atZero = { { phrase = "purple lantern", concept = "exit", heat = 0, sightings = 9, coinedBy = 1 } }
+	local cold = Heuristic.understand(
+		{ speaker = fakeSpeaker, text = "meet at the purple lantern", at = 0 } :: any,
+		secrets :: any,
+		atZero :: any
+	)
+	assert(cold.concept == nil, "a zero-heat coinage must convey nothing, so removing it changes nothing")
+	local warm = Heuristic.understand(
+		{ speaker = fakeSpeaker, text = "meet at the purple lantern", at = 0 } :: any,
+		secrets :: any,
+		{ { phrase = "purple lantern", concept = "exit", heat = 1, sightings = 9, coinedBy = 1 } } :: any
+	)
+	assert(warm.concept == "exit", "guard: the same phrase HOT must be understood, or 10 proves nothing")
+
+	-- 11. Removal must NOT be conditional on the heat having moved this tick.
+	-- An entry already resting at zero cools to zero, so an "only if it
+	-- changed" test would leave behind exactly the entries this clears. Reached
+	-- through the real boundary that creates one: an utterance exactly
+	-- `CreditWindow` seconds before the solve is inside the window by one tick
+	-- and scores recency 0, so it enters the register already at zero heat.
+	local edge = Operator.new(secrets)
+	edge:hear({ speaker = fakeSpeaker, text = "purple lantern", at = 0 })
+	edge:credit("exit", Config.CreditWindow)
+	assert(#edge.lexicon > 0, "setup: an utterance at exactly the window edge is still credited (guard)")
+	for _, c in edge.lexicon do
+		assert(c.heat == 0, `setup: window-edge terms enter at zero heat, '{c.phrase}' has {c.heat}`)
+	end
+	assert(edge:cool(0.01) == true, "clearing a resting-at-zero entry must report a change, or it is never replicated")
+	assert(#edge.lexicon == 0, "a coinage resting at zero must still be dropped")
+
+	-- 12. THE PLAYER-FACING CASE, END TO END. One chat message inside Roblox's
+	-- ~200-character cap offers dozens of candidate terms, and one solve inside
+	-- the credit window wrote every one of them into the register permanently.
+	-- It must now drain on its own.
+	local words: { string } = {}
+	for i = 1, 40 do
+		table.insert(words, `zzz{i}`)
+	end
+	local flood = Operator.new(secrets)
+	flood:hear({ speaker = fakeSpeaker, text = table.concat(words, " "), at = 0 })
+	flood:credit("exit", 0.5)
+	assert(#flood.lexicon > 20, `setup: one long message must flood the register, got {#flood.lexicon} (guard)`)
+	-- Real time passes with nobody saying any of it again.
+	flood:decay(2000)
+	flood:decay(2000 + (1 / Config.CoolPerSecond))
+	assert(#flood.lexicon == 0, `the flood must drain with time, {#flood.lexicon} left`)
+	assert(#flood:snapshot() == 0, "and the client must stop being sent it")
+
 	print("[TestOperator] all assertions passed")
 	return true
 end

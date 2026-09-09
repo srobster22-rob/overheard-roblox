@@ -377,6 +377,47 @@ check(
 	heardInSubmit == 2
 )
 
+-- WHAT THE OPERATOR STILL HAS ON FILE --------------------------------------
+--
+-- Third of the same family, and the one that reached the player's eyes rather
+-- than their ear. `snapshot` is replicated to every client on every lexicon
+-- change and `renderLexicon` draws EVERY entry it is handed, with no heat
+-- floor. So while `cool` left a fully-forgotten coinage sitting in the register
+-- at zero, the Lexicon panel listed words at "0%" -- words the Operator cannot
+-- act on, by its own rule -- in the same list as the words that get you caught.
+-- The server had forgotten and the player's screen had not. It only ever grew:
+-- one 230-character message offers 79 candidate terms and one solve wrote them
+-- all in.
+--
+-- Behavioural proof is in `TestOperator` (9-12). These are the two structural
+-- properties a rewrite of that loop would silently lose.
+print("")
+print("a forgotten coinage leaves the register")
+
+local operatorCode = LuauCode.stripNonCode(fs.readFile("src/server/systems/Operator.luau"))
+local coolBody = string.match(operatorCode, "function Operator%.cool.-\nend")
+check("the cool function was found (guard)", coolBody ~= nil)
+check(
+	"cooling removes a coinage from the lexicon",
+	coolBody ~= nil and string.find(coolBody :: string, "table.remove(self.lexicon", 1, true) ~= nil
+)
+-- Backwards, or `table.remove` shifts the tail and the loop steps over the
+-- entry after each one it drops -- half the dead terms would survive.
+check(
+	"and walks the register backwards so removal cannot skip an entry",
+	coolBody ~= nil and string.find(coolBody :: string, "for i = #self.lexicon, 1, -1 do", 1, true) ~= nil
+)
+-- THE ONE A CARELESS REWRITE GETS WRONG: an entry already resting at zero
+-- cools to zero, so `cooled ~= c.heat` is false for it. Tucking the removal
+-- inside that branch leaves behind exactly the entries this exists to clear,
+-- and every behavioural check that starts from a WARM coinage still passes.
+local movedBranch = coolBody and string.match(coolBody :: string, "if cooled ~= c%.heat then.-\n\t\tend")
+check("the heat-moved branch was found (guard)", movedBranch ~= nil)
+check(
+	"the removal is NOT gated on the heat having moved this tick",
+	movedBranch ~= nil and string.find(movedBranch :: string, "table.remove", 1, true) == nil
+)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

@@ -148,15 +148,53 @@ end
 -- Terms cool off. It forgets, a little, which is what keeps a long-running
 -- group from being permanently mute. Returns whether anything actually moved,
 -- so callers can avoid replicating an unchanged lexicon.
+--
+-- A TERM THAT REACHES ZERO IS DROPPED, not left sitting at zero. Until R14 it
+-- was left, and "it forgets" was only ever true of the heat, never of the
+-- register:
+--
+--   * `snapshot` ships every dead entry to every client on every change, and
+--     `renderLexicon` draws every entry it is given with no heat floor. So the
+--     one panel that tells a player what the Operator has picked up listed
+--     words at "0%" -- words it does not know at all, and by this module's own
+--     rule cannot act on -- in the same list, in the same shape, as the words
+--     that will get them killed. What the player could SEE and what the server
+--     believed had come apart.
+--   * `Heuristic.understand` walks the whole register once per secret per
+--     utterance, re-tokenising and re-stemming each phrase, so dead entries are
+--     paid for on every line of chat forever.
+--   * And the register only grows. One 230-character message -- inside
+--     Roblox's chat cap -- offers 79 candidate terms, and one solve inside the
+--     credit window writes all 79 in. Nothing removed them, so a single long
+--     message permanently enlarged the panel and the per-utterance scan.
+--
+-- Dropping at zero is observationally neutral for COMPREHENSION, which is why
+-- it is safe: `understand` scores a coinage as `heat / BURNED_AT` and only
+-- takes it `if confidence > best.confidence` starting from 0, so a zero-heat
+-- coinage can never be the concept it picks. `tests/operator.luau` asserts that
+-- directly rather than leaving it as an argument. What DOES change is that a
+-- phrase which comes back after being fully forgotten comes back fresh, with
+-- `sightings` at 1 and a new `coinedBy`. That is the correct reading of
+-- forgetting: the Operator is not keeping a file on a word it no longer knows.
+--
+-- Removal is NOT conditional on the heat having moved this tick. A term already
+-- resting at zero cools to zero, so an "only if it changed" test would leave
+-- exactly the entries this is meant to clear.
 function Operator.cool(self: Operator, amount: number): boolean
 	if amount <= 0 then
 		return false
 	end
 	local changed = false
-	for _, c in self.lexicon do
+	-- Backwards: `table.remove` shifts everything after the index.
+	for i = #self.lexicon, 1, -1 do
+		local c = self.lexicon[i]
 		local cooled = math.max(0, c.heat - amount)
 		if cooled ~= c.heat then
 			c.heat = cooled
+			changed = true
+		end
+		if c.heat <= 0 then
+			table.remove(self.lexicon, i)
 			changed = true
 		end
 	end

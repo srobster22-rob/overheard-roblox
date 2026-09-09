@@ -1764,3 +1764,228 @@ something wrong" anywhere in this codebase.
   Operator that accuses a player for typing the right number has one correct
   answer, and the fifth shape is a consequence of a question already filed, not
   a new fork.
+
+## R14 — the Operator never forgets a word, it only stops understanding it
+
+**Stage 0 — is this project out of player-facing defects?**
+
+No, and the honest reason is that the search was pointed in one direction for
+ten rounds. Every round from R5 on has swept the OBJECTIVE half of this game:
+stations, keypads, submits, holders, deals, re-deals, remotes, jams. That half
+is genuinely well swept and I agree R13's remaining list contains nothing
+player-facing.
+
+But the game is called OVERHEARD after the other half. `Operator`, `Heuristic`
+and `Lexicon` are the listener and the thing that LEARNS — the module header
+calls acquisition "the game", and says a monster that only did comprehension
+"would be a keyword filter". That half has one test file, `tests/operator.luau`,
+which is **20 lines long and contains no assertions of its own**: it shells out
+to `TestOperator` and reports pass/fail. It is the smallest file in the suite by
+a factor of three, guarding the largest idea in the project. Two of the four
+seams named as unswept — the boundaries of a value's range, and whether anything
+the player can SEE contradicts what the server believes — meet exactly there, so
+I probed it live against a real `Operator` and `Heuristic` before shortlisting
+rather than reading source. Six probes, four of them came back with something.
+
+So: not exhausted. Pointed away from the half of the game that has the least
+test surface and the most player-visible output.
+
+**Stage 1 — shortlist.** Every item below was produced by a headless probe
+against real modules, not by reading.
+
+1. **Nothing ever leaves the Operator's register.** `Operator.cool` floors heat
+   at 0 and leaves the coinage in `self.lexicon` forever. The module's own
+   header says decay is what stops "every coinage the group ever lands on" being
+   "burned for the lifetime of the server" — but the entry itself is immortal
+   even when the heat is not. Three consequences, all measured: `snapshot()`
+   ships every dead entry to every client on every lexicon change; the client
+   renders **every** entry with no heat filter (`renderLexicon`, sorted by heat
+   descending, no floor), so the panel that tells you what the Operator has
+   picked up lists words at `0%` — words it does not know at all — beside the
+   words that will get you killed; and `Heuristic.understand` re-scans the whole
+   register per secret per utterance, re-tokenising and re-stemming each dead
+   phrase. Probed: one 230-character message (inside Roblox's chat cap) yields
+   **79 candidate coinages**, and one solve inside the credit window writes all
+   79 into the register and a 79-row snapshot to every player, permanently.
+   This is the player-sees-vs-server-believes seam and the value-range seam in
+   the same defect. **TAKEN.**
+2. **One message can offer 79 terms at once** (the burst, as distinct from the
+   leak). Real, and measured above — but it is a rate, and under the fix for
+   (1) it drains on its own in about 25 seconds instead of lasting the life of
+   the server. Capping how many terms one utterance may offer is a tuning dial
+   with a design opinion inside it. **Filed, not built.**
+3. **Five repeats of one word plus a solve burns it outright.** Probed: six
+   `hear`s of "gribble" 0.1s apart, then one `credit`, gives sightings 6 and
+   heat 1.0 — fully burned, `onBurned` fired. A player repeating themselves
+   because nobody answered — which is what people actually do when they are
+   ignored — burns their own coinage. Attractive, and R13-shaped (the game
+   punishing someone for something that is not their doing). **Not taken:**
+   `Config.HeatPerCredit` documents "roughly four uses burns a term", and six
+   messages IS six uses by the only definition the code has. Whether a "use"
+   should mean an occasion rather than a message is a design fork, and filing a
+   fifth owner question is worse than filing a note.
+4. **A multi-word coinage matches inside a longer word.** Probed: with "blue
+   one" burned, "the blue oneself" is understood at confidence 1.0.
+   `matchesAny` joins stems with spaces and uses `string.find(..., true)` — a
+   plain substring, no boundary. Real, but needs a multi-word coinage AND an
+   unlucky longer word to follow it. **Deferred, named.**
+5. **An undealt line accepts a correct answer from anybody.** Probed: a fresh
+   board with `holder = nil` returns `ok = true` for the right value from any
+   userId, because the invariant is spelled `holder == actorUserId`. Only
+   reachable before the first `PlayerAdded`, and nobody can read the answer to
+   type it, so it costs a guesser 40 minutes under R9. **Deferred.**
+6. R7's lexer scanner and R12's hand-kept adoption list. Test infrastructure,
+   deferred for a seventh and second time respectively.
+
+**Pick: 1.** It is the class fix — one rule, written where forgetting already
+lives — and it makes (2) self-healing rather than permanent.
+
+**Stage 2 — built.**
+
+- `Operator.cool` now DROPS a coinage whose heat has reached zero instead of
+  leaving it in the register. The loop walks backwards, because `table.remove`
+  shifts the tail and a forward loop would step over the entry after each one it
+  dropped. Removal is deliberately NOT inside the `if cooled ~= c.heat` branch:
+  an entry already resting at zero cools to zero, so gating on "the heat moved"
+  would leave behind precisely the entries this exists to clear. Removal counts
+  as a change, so the server rebroadcasts and the panel actually updates.
+- Why dropping is safe, stated in the module and then ASSERTED rather than
+  argued: `understand` scores a coinage as `heat / BURNED_AT` and only takes it
+  `if confidence > best.confidence` from a floor of 0, so a zero-heat coinage
+  can never be the concept it picks. Removing it therefore changes no
+  comprehension outcome. What it does change is that a phrase which comes back
+  after being fully forgotten comes back fresh — `sightings` at 1, a new
+  `coinedBy` — which is the correct reading of forgetting: the Operator is not
+  keeping a file on a word it no longer knows.
+- `TestOperator` gains assertions 9-12, and this is the round's other half.
+  That file backs `tests/operator.luau`, the smallest file in the suite and the
+  only one guarding acquisition. 9: a warm coinage is not dropped, a cooled one
+  leaves the register and stops being replicated. 10: the neutrality claim, put
+  to `Heuristic` directly — a zero-heat coinage conveys nothing, with a HOT
+  guard beside it so the check cannot pass vacuously. 11: the resting-at-zero
+  case, reached through a real boundary rather than by hand — an utterance
+  exactly `CreditWindow` seconds before the solve is inside the window by one
+  tick and scores recency 0, so it enters the register already at zero heat and
+  was the one entry no amount of decay could ever remove. 12: the player-facing
+  case end to end — a 40-word message floods the register, and time alone
+  drains it to empty.
+- `tests/wiring.luau` 99 -> 104: the two structural properties a rewrite would
+  silently lose (removal exists; the loop runs backwards) plus the gating check
+  and two guards.
+
+**Stage 3 — review.**
+
+`C:\Users\srobs\roblox-game\test.cmd` by ABSOLUTE path, **17,405 chars** of
+output, exit 0: lexicon 14/14, `[TestOperator] all assertions passed` /
+`operator: all assertions passed`, objectives 84/84, pursuit 36/36, round 46/46,
+config 44/44, wiring 104/104, `suite passed`. **328 counted checks, up from
+R13's 323**, plus four new named assertions inside `TestOperator`, which the
+tally does not count. `selene src`: 0 errors, 0 warnings, 0 parse errors.
+`rojo build default.project.json` exit 0.
+
+**Reached the product.** Built to `r14_overheard_check.rbxlx` and grepped with
+python. Controls known present: `OVERHEARD` x5, `PlayerRemoving` x4. New:
+`table.remove(self.lexicon` x1, `for i = #self.lexicon, 1, -1 do` x1, and both
+new assertion messages x1 each. Unchanged: `if result.fault then` x1. Control
+known absent: `ZZ_NOT_IN_THIS_FILE_ZZ` x0; R12's deleted `function
+Round.pickSecrets` still x0.
+
+**Six plants.** The runner used an absolute path to `test.cmd` and asserted more
+than 2000 characters of output before reading any tally, so a silent runner
+could not be read as six dead plants. Each reported whether it applied; each
+exited 1 and failed BY NAME with no crash; each was restored by byte-copy from a
+post-edit backup and verified by sha256 (`Operator.luau`
+`5EE5841E...E8B9E1E9`, `Heuristic.luau` `F913CEE0...35EBC5D1`).
+
+1. **The shipped defect** — R13's exact behaviour, nothing ever removed:
+   `FAILED ... a coinage cooled to zero must leave the register` and `FAIL
+   cooling removes a coinage from the lexicon`, wiring 103/104.
+2. **The careless rewrite** — removal tucked inside the heat-moved branch:
+   `FAILED ... clearing a resting-at-zero entry must report a change, or it is
+   never replicated` and `FAIL the removal is NOT gated on the heat having moved
+   this tick`, wiring 103/104. This is the plant that justifies assertion 11
+   existing at all: every behavioural check that starts from a WARM coinage
+   still passes under it.
+3. **Forward iteration** — `table.remove` steps over the next entry: `FAILED ...
+   a fully cooled coinage must be forgotten again` and `FAIL and walks the
+   register backwards`, wiring 103/104.
+4. **Removal reports no change**, so the client is never told: `FAILED ...
+   clearing a resting-at-zero entry must report a change`. Wiring stays 104/104
+   — this one is invisible to source-reading and only the behavioural assertion
+   sees it, which is the mirror of R12's plant 6, where only the source-reading
+   check saw it.
+5. **Over-eager** — warm coinages dropped too: caught, exit 1.
+6. **A zero-heat coinage IS understood** (`learned = 1` in `Heuristic`), which
+   would falsify the neutrality claim removal rests on: caught, exit 1.
+
+**Honest note on plants 5 and 6.** Both were caught, but by an OLDER assertion
+(6, `a partly cooled coinage is still understood` / `a coinage left alone long
+enough must be forgotten`) rather than by the checks written for them —
+`TestOperator` is `assert`-based, so it aborts at the first failure and an
+earlier assertion shadows a later one. So plants 1-4 prove assertions 9, 11 and
+12 by name; assertion 10's neutrality guard is proven only indirectly, by an
+older assertion covering the same claim. Recording that rather than implying six
+by-name hits on six new checks.
+
+Suite re-run green after all six: exit 0, 17,405 chars, wiring 104/104.
+
+**Studio-blocked.** Roblox Studio is device-blocked; nothing here was seen or
+heard running and no claim in this entry is a playtest claim. Specifically
+unverified: how the Lexicon panel looks once dead rows stop arriving, and
+whether the drain reads to a player as the Operator forgetting or as words
+vanishing (the panel gives no exit animation, and rows simply stop being sent).
+The 79-terms-from-one-message figure is from a headless probe against the real
+`Heuristic`, not from a live chat message. What the headless suite DID prove: a
+warm coinage survives cooling and a cold one does not; a coinage resting at zero
+is cleared even though its heat did not move that tick; clearing reports a
+change so the broadcast fires; a zero-heat coinage conveys nothing, with a hot
+control beside it; a 40-word message floods the register and time alone empties
+it; and the built `.rbxlx` carries the rule.
+
+**Was the search exhausted?** No — and the reason is worth keeping. Ten rounds
+swept the objective half of the game and swept it well. The listener half, which
+the game is named after and whose own header calls acquisition "the game", had
+a 20-line test file with no assertions in it. Six probes against it returned
+four findings in one pass, which is a higher yield than any round since R9. The
+lesson is not "there are always more bugs" — it is that a defect count is a
+property of where you are pointing, and this project has two halves that were
+being audited at very different rates.
+
+**Retired this round.** Nothing carried was retired. The fix is a class fix
+rather than an instance: "the Operator forgets" is now true of the register and
+not only of the number, so there is no longer a category of thing the server has
+discarded but the player's screen still shows.
+
+**Left open.**
+- **The burst, filed not built.** One message can offer 79 candidate terms.
+  Under this round's fix the flood drains in about 25 seconds instead of lasting
+  the life of the server, so it is a transient rather than a leak. Capping how
+  many terms one utterance may offer is a tuning dial with a design opinion in
+  it.
+- **Spam-burn, filed as a note rather than as a fifth owner question.** Six
+  `hear`s of one word 0.1s apart plus one solve gives sightings 6 and heat 1.0 —
+  fully burned. A player repeating themselves because nobody answered burns
+  their own coinage. But `Config.HeatPerCredit` documents "roughly four uses
+  burns a term", and six messages IS six uses by the only definition the code
+  has; whether a "use" should be an occasion rather than a message is a design
+  fork, and a fifth open question is worse than a note.
+- **A multi-word coinage matches inside a longer word.** Probed: with "blue
+  one" burned, "the blue oneself" is understood at confidence 1.0.
+  `matchesAny` joins stems with spaces and uses a plain `string.find`, no word
+  boundary. Real, narrow, named.
+- **An undealt line accepts a correct answer from anybody**, because the
+  invariant is spelled `holder == actorUserId` and `nil` is not equal to a
+  userId. Only reachable before the first `PlayerAdded`, and nobody can read the
+  answer to type it.
+- R7's item stands for a SEVENTH round: the shared scanner is a lexer, so
+  `if false and ...` passes any wiring guard. It is the oldest thing here.
+- R12's filed self-audit: the `src/server/systems/` adoption list is hand-kept
+  and needs a per-entry exemption list, not a port of the shared sweep.
+- The two overlapping remote-name guards are still two.
+- R13's fifth seam shape — a re-deal landing between being told a number and
+  entering it — remains blocked on the owner's join-reshuffle question.
+- **Still with the owner, untouched and NOT decided here:** `CoolPerSecond`; the
+  mid-round re-deal on JOIN; the solo-player-cannot-finish question; and R9's
+  loud-vs-quiet wrong-code question. **No new owner question this round** — a
+  module documented as forgetting, which kept every word it ever heard, has one
+  correct answer.
