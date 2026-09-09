@@ -664,6 +664,27 @@ check("the client listens for the phase", string.find(clientSource, 'Remotes.get
 -- CONNECTED, not merely defined. The first version of this check looked for the
 -- handler's name and passed against a client that declared `onPhase` and never
 -- subscribed to anything -- the same weakness R20 found in its ramp check.
+-- R34. The layout module is only worth having if the client reads it. A
+-- `Shared.Hud` nobody consults is decoration, and the sweep in tests/hud.luau
+-- would go on passing against a client full of hand-typed rects.
+check(
+	"the client requires Shared.Hud",
+	string.find(clientCode, "require(ReplicatedStorage.Shared.Hud)", 1, true) ~= nil
+)
+check("...and builds its panels from it", string.find(clientCode, "Hud.get(name)", 1, true) ~= nil)
+
+-- No panel may carry geometry of its own any more: `panel()` takes a name and
+-- nothing else. A call with extra arguments is a rect the sweep cannot see.
+local strayGeometry = 0
+for args in string.gmatch(clientCode, "= panel%((.-)%)") do
+	if string.find(args, ",", 1, true) then
+		strayGeometry += 1
+		print(`    panel call carries its own geometry: {args}`)
+	end
+end
+check("(guard) panel call sites were found", string.find(clientCode, "= panel(", 1, true) ~= nil)
+check(`no panel is placed with numbers typed in the client ({strayGeometry})`, strayGeometry == 0)
+
 check(
 	"...and actually subscribes to it",
 	string.find(clientCode, "phaseRemote.OnClientEvent:Connect(onPhase)", 1, true) ~= nil

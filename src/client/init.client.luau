@@ -13,6 +13,7 @@ local Players = game:GetService("Players")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Heat = require(ReplicatedStorage.Shared.Heat)
+local Hud = require(ReplicatedStorage.Shared.Hud)
 local Keypad = require(ReplicatedStorage.Shared.Keypad)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
@@ -39,12 +40,21 @@ local BRASS = Color3.fromRGB(198, 176, 124)
 local DIM = Color3.fromRGB(110, 106, 100)
 local PANEL_BG = Color3.fromRGB(14, 13, 12)
 
-local function panel(name: string, size: UDim2, position: UDim2, anchor: Vector2): Frame
+-- Placed from Shared.Hud, never from numbers typed here. Every panel used to
+-- carry its own hand-picked mix of scale and offset, and nothing checked the
+-- result: five overlapping pairs at 800x480, six at 480x270, with the Lexicon
+-- buried under the centre panels on exactly the screens most players use.
+-- `tests/hud.luau` sweeps every viewport; it can only do that if this reads
+-- from the same table.
+local function panel(name: string): Frame
+	local spec = Hud.get(name)
+	assert(spec, `no Hud panel named '{name}'`)
+
 	local frame = Instance.new("Frame")
 	frame.Name = name
-	frame.AnchorPoint = anchor
-	frame.Position = position
-	frame.Size = size
+	frame.AnchorPoint = Vector2.new(spec.anchorX, spec.anchorY)
+	frame.Position = UDim2.new(spec.scaleX, spec.offsetX, spec.scaleY, spec.offsetY)
+	frame.Size = UDim2.fromOffset(spec.width, spec.height)
 	frame.BackgroundColor3 = PANEL_BG
 	frame.BackgroundTransparency = 0.15
 	frame.BorderSizePixel = 0
@@ -85,7 +95,7 @@ end
 
 -- LEXICON ------------------------------------------------------------------
 
-local lexPanel = panel("Lexicon", UDim2.fromOffset(260, 200), UDim2.new(1, -16, 0, 16), Vector2.new(1, 0))
+local lexPanel = panel("Lexicon")
 
 local lexList = Instance.new("ScrollingFrame")
 lexList.Position = UDim2.fromOffset(8, 32)
@@ -150,7 +160,7 @@ end
 
 -- YOUR LINE ----------------------------------------------------------------
 
-local linePanel = panel("Your line", UDim2.fromOffset(300, 120), UDim2.fromOffset(16, 16), Vector2.new(0, 0))
+local linePanel = panel("Your line")
 
 local lineList = Instance.new("Frame")
 lineList.Position = UDim2.fromOffset(8, 32)
@@ -195,7 +205,7 @@ end
 
 -- THE BOARD ----------------------------------------------------------------
 
-local boardPanel = panel("The board", UDim2.fromOffset(280, 130), UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+local boardPanel = panel("The board")
 boardPanel.Visible = false
 
 local hint = label(boardPanel, "enter the jack number you were told", 11, DIM)
@@ -262,7 +272,7 @@ openBoardRemote.OnClientEvent:Connect(onOpenBoard)
 -- plainly, because a player who thinks they are dead stops talking -- and their
 -- voice is the only thing they have left, and the thing their team still needs.
 
-local onLine = panel("On the line", UDim2.fromOffset(300, 74), UDim2.fromScale(0.5, 0.12), Vector2.new(0.5, 0))
+local onLine = panel("On the line")
 onLine.Visible = false
 onLine.BackgroundColor3 = Color3.fromRGB(38, 14, 14)
 
@@ -287,7 +297,7 @@ end)
 -- This panel is PERSISTENT for the whole intermission on purpose: an outcome
 -- you can miss by looking away is not an outcome.
 
-local overPanel = panel("Round over", UDim2.fromOffset(320, 92), UDim2.fromScale(0.5, 0.28), Vector2.new(0.5, 0.5))
+local overPanel = panel("Round over")
 overPanel.Visible = false
 
 local overWhat = label(overPanel, "", 13, INK)
