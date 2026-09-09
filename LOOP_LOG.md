@@ -5542,3 +5542,5 @@ hum 21, log **18**.
 
 *Not claimed:* nothing about the game changed this round. The defect was in the
 process, and it had eaten thirty-three rounds of it.
+
+**Commit** `edb7fbb`
