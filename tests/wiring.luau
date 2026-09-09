@@ -852,6 +852,86 @@ check(
 check("the client is sent the words from Shared.Silence", string.find(serverCode, "Silence.note(", 1, true) ~= nil)
 check("...and the fill from Shared.Silence", string.find(serverCode, "Silence.pressure(", 1, true) ~= nil)
 
+-- R57, and this is the CLASS. `Hud.EXCLUSIVE` is a list of promises about what
+-- the CLIENT will do, held in a shared module the client does not have to obey.
+-- R56 added `{ "Round over", "Supervisor" }` and used it to justify placing the
+-- clock where those two rects overlap at MinWidth -- then wrote a client that
+-- shows the panel on every push and never hides it again. The promise was true
+-- of the server and false of the product.
+--
+-- Swept from `Hud.exclusions()`, never from a list typed here.
+print("")
+print("every panel promised to be exclusive can actually be hidden")
+
+local HudModule = rt.require(rt.shared.Hud)
+
+-- Which local holds which panel, read from the client rather than assumed.
+local holders: { [string]: string } = {}
+for var, name in string.gmatch(clientSource, 'local ([%a][%w_]*) = panel%("([^"]+)"%)') do
+	holders[name] = var
+end
+local holderCount = 0
+for _ in holders do
+	holderCount += 1
+end
+check(`(guard) found the client's panels ({holderCount})`, holderCount >= 4)
+
+local pairs_ = HudModule.exclusions()
+check(`(guard) found the exclusions ({#pairs_} pairs)`, #pairs_ >= 2)
+
+for _, pair in pairs_ do
+	for _, name in pair do
+		local var = holders[name]
+		check(`the client builds a panel for '{name}'`, var ~= nil)
+		if var then
+			-- Every assignment to this panel's visibility, and how many of them
+			-- could HIDE it. The creation line is skipped: it is the first, and
+			-- every panel starts hidden, so counting it would let a panel that
+			-- can only ever be shown afterwards pass.
+			--
+			-- "Could hide it" is anything that is not the literal `true`. A
+			-- panel driven by an expression -- `onLine.Visible = caught == true`
+			-- -- can hide itself and must count, so testing for a literal
+			-- `false` would fail on correct code.
+			--
+			-- This is the rule that catches R56 by itself: its clock panel was
+			-- created hidden and then only ever set `true`, so it had ZERO ways
+			-- back. Counting assignments alone did not catch it -- creation plus
+			-- the push made two -- which is why the count is of hiding ones.
+			local shows, hides, seenCreation = 0, 0, false
+			for rhs in string.gmatch(clientCode, var .. "%.Visible = ([^" .. NL .. "]+)") do
+				if not seenCreation then
+					seenCreation = true
+					continue
+				end
+				if string.match(rhs, "^true%s*$") then
+					shows += 1
+				else
+					hides += 1
+				end
+			end
+			check(`(guard) '{name}' is shown somewhere ({shows})`, shows + hides > 0)
+			check(`'{name}' has a way back off the screen ({hides} of {shows + hides})`, hides > 0)
+		end
+	end
+end
+
+-- The specific promise R56 made, checked where it is kept.
+local phaseBody = string.match(clientCode, "local function onPhase%(.-" .. NL .. "end") or ""
+check("(guard) found the client's phase handler", #phaseBody > 0)
+check(
+	"the Supervisor's clock is hidden when the round ends",
+	string.find(phaseBody, "silencePanel.Visible = false", 1, true) ~= nil
+)
+
+-- (control) the reader must be able to fail: a panel nobody built is not found,
+-- and a variable nobody assigns has no assignments.
+check("(control) a panel that does not exist is not found", holders["Nothing"] == nil)
+check(
+	"(control) a variable nobody touches has no assignments",
+	select(2, string.gsub(clientCode, "neverWrittenPanel.Visible =", "")) == 0
+)
+
 -- Winning must stop the monster. Until R29 it did not, so a group finished the
 -- board and was then taken by something that had no idea the round was over.
 -- NL built with string.char, never an escape: this repo's patching has turned

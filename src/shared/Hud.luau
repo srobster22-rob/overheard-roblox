@@ -164,6 +164,17 @@ local EXCLUSIVE: { { string } } = {
 	{ "Round over", "Supervisor" },
 }
 
+-- The exclusions, readable. Every entry here is a PROMISE ABOUT THE CLIENT --
+-- "these two are never on screen together" -- sitting in a module the client
+-- does not have to obey. R56 added one and used it to justify where the
+-- Supervisor's clock sits, and the client then showed that panel on every push
+-- and never hid it again, so the pair it swore could not overlap did overlap at
+-- MinWidth. `tests/wiring.luau` sweeps this list against the client for a hide
+-- path, so the next promise added cannot be taken on trust either.
+function Hud.exclusions(): { { string } }
+	return EXCLUSIVE
+end
+
 function Hud.canCoexist(a: string, b: string): boolean
 	for _, pair in EXCLUSIVE do
 		if (pair[1] == a and pair[2] == b) or (pair[1] == b and pair[2] == a) then

@@ -5901,3 +5901,103 @@ whether a bar filling over 45 seconds reads as tense or as nagging. Studio is
 device-blocked. The geometry is proved at four viewport sizes; the feel is not.
 
 **Commit** `d312a1f`
+
+
+## R57 — I certified an exclusion the product does not honour
+
+**Stage 0.** `OWNER.md` `## Next` still empty. Every filed question untouched.
+
+**Stage 1 — reading R56 against itself.** R56 put the Supervisor's clock in the
+bottom-left. R34's sweep rejected the first size, so the width was derived from
+the gutter — and to place it at all, R56 added a pair to `Hud`'s `EXCLUSIVE`
+list: `Round over` and `Supervisor` "are never on screen together, because the
+Supervisor only runs while the round is being played."
+
+That is a claim about the CLIENT, written in a shared module, and nothing
+checked it. The client:
+
+```
+silencePanel.Visible = false   -- once, at creation
+silencePanel.Visible = true    -- on every push
+```
+
+...and never sets it false again. It is the only panel with no hide path — the
+board, `On the line` and `Round over` all have one. So the first time your clock
+is drawn it stays drawn: through the intermission, next to `Round over`.
+
+Measured at `Hud.MinWidth`: `Round over` spans x 160..480 and y 252..344; the
+Supervisor panel spans x 16..166 and y 292..344. **They overlap.** That is
+precisely the class R34 exists to prevent, and R56 certified it away with an
+exclusion instead of preventing it.
+
+The deeper fault is the shape of the guard, not the pixels. `EXCLUSIVE` is a
+list of PROMISES about what the client will do, sitting in a module the client
+does not have to obey, and every entry on it was taken on trust.
+
+1. *(picked)* **Make the exclusions true, and check them.** Hide the panel when
+   the round ends, and sweep every pair in `EXCLUSIVE` against the client for a
+   hide path, so the next promise added to that list cannot be taken on trust
+   either.
+2. R21's corner fairness and R36's patience — **still filed.**
+3. The `%` in a server prompt, geometry-blind movement, no player light, the
+   stemming pair, R46's learning gap, `anyFinishable`'s margin, and R54's three
+   — **all still filed.**
+
+**Stage 2 — the fix.** The client hides the clock in `onPhase` when the round
+ends, like every other panel. `Hud.exclusions()` now exposes the promise list so
+a guard can read it instead of restating it.
+
+**Stage 3 — proof.** 15 new checks in `tests/wiring.luau`. Which local holds
+which panel is read from the client (`local x = panel("Name")`), the pairs come
+from `Hud.exclusions()`, and for each panel in a pair every assignment to its
+`.Visible` is classified:
+
+- the creation line is skipped — every panel starts hidden, so counting it would
+  let a panel that can only ever be shown afterwards pass;
+- an assignment of the literal `true` is a SHOW, anything else is a HIDE, because
+  `onLine.Visible = caught == true` can hide itself and testing for a literal
+  `false` would fail on correct code;
+- a panel in an exclusive pair must have at least one HIDE.
+
+*The first version of this guard was too weak, and the plant showed it.* It
+counted assignments and required two — but R56's panel had two, its creation and
+its push, and zero ways back. Counting *hiding* assignments is what catches it.
+
+Two plants, each failed by name:
+
+| plant | what failed |
+|---|---|
+| R56's actual bug — the clock never hidden | `'Supervisor' has a way back off the screen (0 of 1)` **and** `the Supervisor's clock is hidden when the round ends` |
+| a new exclusion promised for `Lexicon`, which the client cannot hide | `'Lexicon' has a way back off the screen` |
+
+The second is the one that matters: it is the CLASS, so the next promise added
+to that list is checked whether or not anybody remembers to check it.
+
+Restored from byte-copy backups; sha256 `41a0a3ab…0489fa98` and
+`5a0b8c65…9222dddc`.
+
+**Verified in the product, not the source.** What R56 actually shipped, both
+panels on screen through the intermission:
+
+| viewport | overlap |
+|---|---|
+| **640x360** | **6 x 52 px** — `Round over` x 160..480 against the clock's x 16..166 |
+| 800x480 | none |
+| 1280x720 | none |
+| 1920x1080 | none |
+
+So the collision was real but narrow: it bit only at `MinWidth`, which is the
+small-screen end R34 exists for and where Roblox skews. **The staleness was at
+every size** — a clock reading `SILENT LINE - TRACED` sitting beside `ROUND
+LOST`, for a round that had stopped running it.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon 22, heuristic 40, operator ok, objectives 122,
+pursuit 103, round 57, config 63, wiring **299**, connected 32, ordering 4,
+heat 20, layout 91, lifecycle 75, hud 22, readout 29, soak 19, hum 21, log 18,
+silence 48.
+
+*Not claimed:* that no OTHER shared-module claim about the client is untrue.
+This round checked the exclusion list because that is where R56 put a promise;
+`Hud`, `Readout`, `Keypad`, `Heat` and `Silence` all describe what a client
+should draw, and only this one list is swept for being honoured.

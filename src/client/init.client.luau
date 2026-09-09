@@ -384,6 +384,18 @@ local function onPhase(state: { playing: boolean, outcome: string?, number: numb
 		return
 	end
 
+	-- The Supervisor's clock stops with the round, so its panel goes with it.
+	--
+	-- `Hud.EXCLUSIVE` says these two are never on screen together, and R56 used
+	-- that claim to justify where the clock sits: at MinWidth `Round over` spans
+	-- x 160..480 and the clock spans x 16..166, and they share the bottom of the
+	-- window. The claim was true of the SERVER (the Supervisor only runs while
+	-- the round is played) and false of this file, which showed the panel on
+	-- every push and never hid it again. An exclusion is a promise the client
+	-- has to keep; `tests/wiring.luau` now checks that every pair on that list
+	-- has one.
+	silencePanel.Visible = false
+
 	overPanel.Visible = true
 	local title = overPanel:FindFirstChild("Title") :: TextLabel?
 	if title then
