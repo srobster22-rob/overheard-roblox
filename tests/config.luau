@@ -163,7 +163,11 @@ print("remotes are created and used")
 local remotesSource = fs.readFile(REMOTES_PATH)
 local declared: { [string]: boolean } = {}
 local declaredCount = 0
-local namesList = string.match(remotesSource, "local REMOTE_NAMES = {(.-)}") or ""
+local namesList = -- Whitespace-tolerant, same as tests/wiring.luau: stylua wraps this declaration
+	-- onto two lines once the list is long enough, and a pattern demanding `= {` on
+	-- one line fails the moment a remote is added. The brittle version lived in BOTH
+	-- files; R33 fixed one and the suite caught the other.
+	string.match(remotesSource, "local REMOTE_NAMES%s*=%s*{(.-)}") or ""
 for name in string.gmatch(namesList, '"([%w_]+)"') do
 	declared[name] = true
 	declaredCount += 1

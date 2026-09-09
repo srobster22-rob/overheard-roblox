@@ -24,6 +24,7 @@ local objectivesRemote = Remotes.get("Objectives")
 local submitRemote = Remotes.get("Submit")
 local openBoardRemote = Remotes.get("OpenBoard")
 local rejectedRemote = Remotes.get("Rejected")
+local phaseRemote = Remotes.get("Phase")
 local connectedRemote = Remotes.get("Connected")
 
 local player = Players.LocalPlayer
@@ -275,6 +276,52 @@ connectedRemote.OnClientEvent:Connect(function(caught: boolean)
 		closeBoard()
 	end
 end)
+
+-- BETWEEN ROUNDS -------------------------------------------------------------
+--
+-- The client had no idea a round could end until R33. The win or loss was one
+-- sentence that faded after 2.5 seconds; the keypad stayed open and
+-- usable-looking; "restored 1/1" sat there and then silently became
+-- "restored 0/1" when the next round began, with nothing saying why.
+--
+-- This panel is PERSISTENT for the whole intermission on purpose: an outcome
+-- you can miss by looking away is not an outcome.
+
+local overPanel = panel("Round over", UDim2.fromOffset(320, 92), UDim2.fromScale(0.5, 0.28), Vector2.new(0.5, 0.5))
+overPanel.Visible = false
+
+local overWhat = label(overPanel, "", 13, INK)
+overWhat.Position = UDim2.fromOffset(8, 34)
+overWhat.Size = UDim2.new(1, -16, 0, 18)
+
+local overNext = label(overPanel, "", 11, DIM)
+overNext.Position = UDim2.fromOffset(8, 56)
+overNext.Size = UDim2.new(1, -16, 0, 28)
+
+local OUTCOME_TEXT = {
+	won = "The board was restored.",
+	lost = "Everyone was put on the line.",
+}
+
+local function onPhase(state: { playing: boolean, outcome: string?, number: number })
+	if state.playing then
+		overPanel.Visible = false
+		return
+	end
+
+	overPanel.Visible = true
+	local title = overPanel:FindFirstChild("Title") :: TextLabel?
+	if title then
+		title.Text = if state.outcome == "won" then "ROUND RESTORED" else "ROUND LOST"
+	end
+	overWhat.Text = OUTCOME_TEXT[state.outcome or ""] or "The round is over."
+	overWhat.TextColor3 = if state.outcome == "won" then BRASS else Color3.fromRGB(206, 62, 52)
+	overNext.Text = `round {state.number + 1} begins shortly`
+	-- A keypad you can still type into is a keypad that lies about being usable.
+	closeBoard()
+end
+
+phaseRemote.OnClientEvent:Connect(onPhase)
 
 -- THE OPERATOR'S VOICE -----------------------------------------------------
 

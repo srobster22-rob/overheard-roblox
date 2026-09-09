@@ -32,6 +32,9 @@ local openBoardRemote = Remotes.get("OpenBoard")
 -- error line. FireClient only, and it names its station. See Shared.Keypad.
 local rejectedRemote = Remotes.get("Rejected")
 local connectedRemote = Remotes.get("Connected")
+-- Whether a round is being played, and how the last one ended. The client had
+-- no idea a round could END until R33.
+local phaseRemote = Remotes.get("Phase")
 
 -- Stations are the source of truth: the board and the Operator's secrets are
 -- both derived from `Round.STATIONS`, so an objective can never exist for a
@@ -79,6 +82,19 @@ local function pushObjectives(player: Player?)
 	for _, p in Players:GetPlayers() do
 		objectivesRemote:FireClient(p, board:viewFor(p.UserId))
 	end
+end
+
+local function pushPhase(player: Player?)
+	local payload = {
+		playing = round:isPlaying(),
+		outcome = round.outcome,
+		number = round.number,
+	}
+	if player then
+		phaseRemote:FireClient(player, payload)
+		return
+	end
+	phaseRemote:FireAllClients(payload)
 end
 
 local function broadcastLexicon()
@@ -132,6 +148,7 @@ local function takeWhoeverIsHere()
 	end
 	if line:allTaken(present) and round:finish("lost", os.clock()) then
 		heardRemote:FireAllClients(Round.LINES.lost, "", 1)
+		pushPhase(nil)
 		-- It stops hunting once there is nobody left to hunt. Leaving it
 		-- travelling would keep the hum going over a finished round.
 		pursuit:stop()
@@ -177,6 +194,7 @@ board.onSolved = function(objective, _actor: number)
 		-- arrives; firing the same string for winning made the two opposite
 		-- events render as one sentence on the client.
 		heardRemote:FireAllClients(Round.LINES.completed, "", 1)
+		pushPhase(nil)
 		-- And it STOPS. Until R29 winning left the Operator hunting, so a group
 		-- could finish the board and then be taken by a monster that had no idea
 		-- the round was over.
@@ -259,6 +277,15 @@ submitRemote.OnServerEvent:Connect(function(player: Player, id: unknown, value: 
 	-- station id the client made up now fails on the same private channel as a
 	-- wrong code, and never touches `misses`, so a probe cannot cost the honest
 	-- actor a jam.
+	-- A finished round takes no more answers. R29 gated capture on the phase and
+	-- R32 gated listening; this is the last place that takes player input, and
+	-- without it a player types the number they were told into a keypad the game
+	-- still draws and it vanishes into a round that is over.
+	if not round:isPlaying() then
+		rejectedRemote:FireClient(player, id :: string, "the round is over")
+		return
+	end
+
 	-- On the line: you can still be heard, you cannot still act. Checked before
 	-- the station gate so the message names the real reason.
 	if line:isConnected(player.UserId) then
@@ -306,6 +333,7 @@ Players.PlayerAdded:Connect(function(player: Player)
 	end
 	board:deal(userIds)
 	task.defer(function()
+		pushPhase(nil)
 		pushObjectives(nil)
 		broadcastLexicon()
 	end)
@@ -370,6 +398,7 @@ local function beginRound()
 	-- next understanding of that room arrived instantly and silently.
 	pursuit:sendHome(built.operatorStart)
 	heardRemote:FireAllClients(Round.LINES.greeting, "", 0)
+	pushPhase(nil)
 	pushObjectives(nil)
 	broadcastLexicon()
 	print(`[server] round {round.number} begins`)

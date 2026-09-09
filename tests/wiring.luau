@@ -94,7 +94,11 @@ print("")
 print("remote names")
 local declared: { [string]: boolean } = {}
 local declaredCount = 0
-local nameList = string.match(remotesSource, "local REMOTE_NAMES = {(.-)}") or ""
+-- Whitespace-tolerant: stylua wraps this declaration onto two lines as soon as
+-- the list gets long enough, and a pattern that demanded `= {` on one line
+-- failed the whole block the moment an eighth remote was added. A guard that
+-- breaks on reformatting is a guard someone loosens later.
+local nameList = string.match(remotesSource, "local REMOTE_NAMES%s*=%s*{(.-)}") or ""
 for name in string.gmatch(nameList, '"([%a][%w_]*)"') do
 	declared[name] = true
 	declaredCount += 1
@@ -577,6 +581,23 @@ local chatBody = string.match(serverCode, "TextChatService.OnIncomingMessage = f
 check("(guard) found the chat handler", #chatBody > 0)
 check("...and it is the one that feeds the Operator (control)", string.find(chatBody, "operator:hear", 1, true) ~= nil)
 check("the Operator only listens while a round is live", string.find(chatBody, "round:isPlaying()", 1, true) ~= nil)
+
+-- R33, applying R32's lesson: enumerate EVERY behaviour the phase suppresses,
+-- not the one that motivated the gate. Submit is the last place that takes
+-- player input, and it checked isConnected, the station gate and the jam --
+-- never the phase. So a player typed the number they were told into a keypad
+-- the game still drew, and it vanished into a round that was over.
+-- Named apart from the `submitBody` extracted earlier in this file; two locals
+-- of the same name in one scope is legal Luau and reads like a bug.
+local submitPhaseBody = string.match(serverCode, "submitRemote.OnServerEvent:Connect%(function.-" .. NL .. "end%)")
+	or ""
+check("(guard) found the submit handler", #submitPhaseBody > 0)
+check(
+	"...and it is the one that scores answers (control)",
+	string.find(submitPhaseBody, "board:submit", 1, true) ~= nil
+)
+check("a finished round takes no more answers", string.find(submitPhaseBody, "round:isPlaying()", 1, true) ~= nil)
+
 check("the tick waits out an intermission", string.find(tickBody, "Config.IntermissionSeconds", 1, true) ~= nil)
 check("and starts the next round", string.find(tickBody, "beginRound()", 1, true) ~= nil)
 
@@ -632,6 +653,21 @@ local solvedBlock = string.match(serverCode, "if board:allSolved%(%).-" .. NL ..
 check("(guard) found the win path", #solvedBlock > 0)
 check("winning goes through the lifecycle", string.find(solvedBlock, "round:finish", 1, true) ~= nil)
 check("winning stops the Operator", string.find(solvedBlock, "pursuit:stop()", 1, true) ~= nil)
+-- R33. And the client has to be TOLD. Every place the phase changes must push it, or
+-- the panel is stale exactly when it matters.
+check("the phase is pushed when the round is won", string.find(solvedBlock, "pushPhase", 1, true) ~= nil)
+check("the phase is pushed when a new round begins", string.find(beginBody, "pushPhase", 1, true) ~= nil)
+-- RAW source: the remote name is a string body and the lexer strips those, so
+-- against `clientCode` this reads `Remotes.get()` and never matches. Fifth time
+-- this project has hit that; the remote-names block above says the same thing.
+check("the client listens for the phase", string.find(clientSource, 'Remotes.get("Phase")', 1, true) ~= nil)
+-- CONNECTED, not merely defined. The first version of this check looked for the
+-- handler's name and passed against a client that declared `onPhase` and never
+-- subscribed to anything -- the same weakness R20 found in its ramp check.
+check(
+	"...and actually subscribes to it",
+	string.find(clientCode, "phaseRemote.OnClientEvent:Connect(onPhase)", 1, true) ~= nil
+)
 check("the release is announced", string.find(tickBody, "LINES.givingUp", 1, true) ~= nil)
 
 print(`\n{checks - failures}/{checks} passed`)
