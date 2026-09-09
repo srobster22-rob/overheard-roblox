@@ -6840,3 +6840,5 @@ right twice in a row. The pattern worth naming for whoever runs a fourth wave:
 look for math that can only be exercised by a real runtime (Presence was one of
 three files this project cannot test headlessly — the others are unaudited),
 and look for existing tests whose two compared values happen to be equal.
+
+**Commit** `a55f913`
