@@ -72,3 +72,12 @@ Write in plain English. One item per line. Top item goes first.
   voice and your keypad are now separate channels, and a keypad message is also
   tagged with which station it is about, so the breaker cannot answer for the
   switchboard. Nothing to decide here.
+
+- R11 - the monster was supposed to go quiet when it got close to you. That
+  silence is the scare; the hum is just it crossing the building. But every
+  time it understood something, the hum switched back on wherever it happened
+  to be - and it understands you every time you talk about the thing you have
+  to talk about. So on a normal round it was standing right on top of you,
+  still humming, and announcing itself over and over. It now works out whether
+  it should be making noise from where it actually is, so it goes quiet once
+  and stays quiet, and it only announces arriving once. Nothing to decide here.
