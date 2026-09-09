@@ -16,6 +16,8 @@ export type Point = { x: number, z: number }
 -- movement, so the room went from lethal to safe with nothing to signal it.
 export type State = "idle" | "approaching" | "closing" | "arrived" | "leaving"
 
+local Config = require(game:GetService("ReplicatedStorage").Shared.Config)
+
 local Pursuit = {}
 Pursuit.__index = Pursuit
 
@@ -53,9 +55,9 @@ function Pursuit.new(rooms: { [string]: Point }, start: Point): Tracker
 		targetName = nil,
 		state = "idle" :: State,
 		dwell = 0,
-		speed = 9,
-		silenceRadius = 26,
-		arriveRadius = 4,
+		speed = Config.PursuitSpeed,
+		silenceRadius = Config.SilenceRadius,
+		arriveRadius = Config.ArriveRadius,
 		rooms = rooms,
 		onStateChanged = nil,
 	}, Pursuit)

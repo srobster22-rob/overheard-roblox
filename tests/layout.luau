@@ -170,6 +170,63 @@ local doorApproach = { x = board.x - half - 6, z = board.z }
 check("the doorway faces the corridor", Layout.walkIsClear(doorApproach, inside))
 check(`(guard) the door has a width ({Layout.Door})`, Layout.Door > 0 and Layout.Door < Layout.Room)
 
+print("")
+print("every approach starts where you can hear it")
+
+-- R27. `operatorStart` was the board room's centre plus 20 studs, and
+-- `classify()` calls anything within `Config.SilenceRadius` (26) `closing`,
+-- which is inaudible. So the Operator reached the board room -- which holds a
+-- required station -- having made no sound at all, while the archive got the
+-- full warning. R26 made it the normal case by sending it home after every
+-- linger. "Silence is the tell" is the game's central promise; half the
+-- building never got it.
+--
+-- Asserted against the real dial and swept through the real Pursuit, not
+-- against the number 26.
+
+local Pursuit = rt.require(rt.systems.Pursuit)
+local post = Layout.operatorPost()
+local rooms = { board = Layout.boardCentre(), archive = Layout.archiveCentre() }
+
+local roomCount = 0
+for _ in rooms do
+	roomCount += 1
+end
+check(`(guard) there are rooms to approach ({roomCount})`, roomCount >= 2)
+
+for name, roomCentre in rooms do
+	local d = math.sqrt((post.x - roomCentre.x) ^ 2 + (post.z - roomCentre.z) ^ 2)
+	check(
+		`the post is outside the silence radius of {name} ({string.format("%.1f", d)} > {Config.SilenceRadius})`,
+		d > Config.SilenceRadius
+	)
+
+	-- The invariant is about being HEARD, so sweep the real walk rather than
+	-- trusting the distance.
+	local walker = Pursuit.new(rooms, post)
+	walker:sendTo(name)
+	local everAudible = walker:isAudible()
+	local steps = 0
+	for _ = 1, 200 do
+		walker:step(0.5)
+		steps += 1
+		if walker:isAudible() then
+			everAudible = true
+		end
+		if walker.state == "arrived" then
+			break
+		end
+	end
+	check(`(guard) it actually reached {name} ({steps} steps)`, walker.state == "arrived")
+	check(`you hear it coming to {name}`, everAudible)
+end
+
+-- The post must not be somewhere a player cannot see it coming FROM either:
+-- it stands in the corridor, not inside a room.
+for name, roomCentre in rooms do
+	check(`the post is not inside {name}`, not Layout.inRoom(roomCentre, post))
+end
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

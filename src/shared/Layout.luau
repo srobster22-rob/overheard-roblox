@@ -202,4 +202,23 @@ function Layout.routeIsClear(route: { Point }): boolean
 	return true
 end
 
+-- Where the Operator stands when it has nothing to chase, and where it walks
+-- back to when it loses interest.
+--
+-- THE INVARIANT: it must be further from every room centre than
+-- `Config.SilenceRadius`, or an approach that starts here is inaudible for the
+-- whole trip. Until R27 the post was the board room's own centre plus 20 studs,
+-- inside a silence radius of 26 — so the Operator reached the board room, which
+-- holds a required station, having made no sound at all. R26 made that the
+-- normal case by sending it home after every linger.
+--
+-- The corridor runs x = -Separation/2 .. +Separation/2 at z = 0, so any x with
+-- |x -/+ Separation/2| >= SilenceRadius satisfies it. This sits well inside that
+-- band and away from the player spawn at the midpoint.
+-- `tests/layout.luau` asserts the invariant against the real dial rather than
+-- trusting this comment.
+function Layout.operatorPost(): Point
+	return { x = -Layout.Separation / 6, z = 0 }
+end
+
 return Layout

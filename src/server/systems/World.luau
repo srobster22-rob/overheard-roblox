@@ -200,8 +200,10 @@ function World.build(): Built
 		},
 		spawn = Vector3.new(0, FLOOR_Y + 4, 0),
 		rooms = rooms,
-		-- It starts at the far end of the board room, not on top of anyone.
-		operatorStart = { x = boardOrigin.X, z = boardOrigin.Z + ROOM / 2 - 4 },
+		-- Out in the corridor, far enough from BOTH rooms that every approach
+		-- begins outside the silence radius. Standing 20 studs from the board
+		-- room's centre meant it reached that room silently every time.
+		operatorStart = Layout.operatorPost(),
 	}
 end
 

@@ -48,6 +48,17 @@ local Config = {
 	-- one is not.
 	LingerSeconds = 20,
 
+	-- How the Operator moves, and when it goes quiet. These lived as literals
+	-- inside `Pursuit.new` until R27, which meant the invariant that matters --
+	-- that every approach STARTS outside the silence radius, so players always
+	-- hear it coming -- could not be asserted against the real number.
+	PursuitSpeed = 9,
+	-- Inside this distance from its target it stops making noise. The silence is
+	-- the tell; it is the whole scare.
+	SilenceRadius = 26,
+	-- Close enough to count as arrived.
+	ArriveRadius = 4,
+
 	-- Guessing. The answer is two digits -- 90 possibilities -- and the submit
 	-- remote is rate-limited to one attempt every 0.75s, so a player alone at a
 	-- keypad brute-forces a line in about 34 seconds without anyone ever
