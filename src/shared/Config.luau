@@ -43,6 +43,11 @@ local Config = {
 	GuessesBeforeLockout = 3,
 	LockoutSeconds = 20,
 
+	-- How close the Operator has to be, on arrival, to put you on the line.
+	-- Larger than `arriveRadius` on purpose: it stops at the room centre, and
+	-- being anywhere in that room should not be survivable.
+	OperatorReach = 22,
+
 	-- Rooms the Operator can be sent to. World.build must return a position for
 	-- every one of these, and every secret payload must name one of them.
 	-- tests/round.luau enforces the second half of that.

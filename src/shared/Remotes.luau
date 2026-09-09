@@ -14,7 +14,7 @@ local RunService = game:GetService("RunService")
 -- and is only ever fired at one client. They were the same remote until R10,
 -- which meant one player speaking painted another player's keypad with a red
 -- concept id. See `Shared.Keypad`.
-local REMOTE_NAMES = { "Heard", "LexiconUpdated", "Objectives", "Submit", "OpenBoard", "Rejected" }
+local REMOTE_NAMES = { "Heard", "LexiconUpdated", "Objectives", "Submit", "OpenBoard", "Rejected", "Connected" }
 
 local Remotes = {}
 

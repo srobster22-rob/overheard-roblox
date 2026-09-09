@@ -112,11 +112,17 @@ check(
 	"the jammed reply does not say whether the value was right",
 	duringJam.reason == bJam:submit("board", ACTOR, "99", T0 + 5).reason
 )
-check("the countdown shrinks as the jam runs down", bJam:submit("board", ACTOR, "99", T0 + 15).reason == "that line is jammed - wait 5s")
+check(
+	"the countdown shrinks as the jam runs down",
+	bJam:submit("board", ACTOR, "99", T0 + 15).reason == "that line is jammed - wait 5s"
+)
 
 -- Per (line, actor), so one guesser cannot lock the game for anyone else.
 check("another player is not jammed", bJam:submit("board", THIRD, "11", T0 + 5).reason == "that line is dead")
-check("and the same player is not jammed on the other line", bJam:submit("breaker", ACTOR, "11", T0 + 5).reason == "that line is dead")
+check(
+	"and the same player is not jammed on the other line",
+	bJam:submit("breaker", ACTOR, "11", T0 + 5).reason == "that line is dead"
+)
 
 -- Escalation. The second jam is twice the first, which is what turns guessing
 -- from slow into pointless.
@@ -213,7 +219,10 @@ check("somebody can now see the orphaned answer", b4:viewFor(orphan.holder :: nu
 -- The whole point: the round can be finished again. Somebody who is NOT the
 -- new holder enters the answer.
 local other = if orphan.holder == ACTOR then THIRD else ACTOR
-check("the re-dealt line is solvable by another present player", b4:submit("breaker", other, orphan.answer, T0).ok == true)
+check(
+	"the re-dealt line is solvable by another present player",
+	b4:submit("breaker", other, orphan.answer, T0).ok == true
+)
 
 print("re-dealing orphans does not overreach")
 local b5 = Objectives.new()
@@ -299,26 +308,18 @@ for _ = 1, 3 do
 end
 check("the guesser is jammed to begin with", (rejoinLine.jammedUntil[ACTOR] or 0) > T0)
 -- Everything PlayerRemoving actually does to this board today: nothing.
-check(
-	"Objectives exposes no per-player forget that PlayerRemoving could call",
-	(Objectives :: any).forgetPlayer == nil
-)
+check("Objectives exposes no per-player forget that PlayerRemoving could call", (Objectives :: any).forgetPlayer == nil)
 check(
 	"the jam is still in force after a departure",
 	bRejoin:submit("board", ACTOR, rejoinLine.answer, T0 + 1).ok == false
 )
 check("and the line is still unsolved", rejoinLine.solved == false)
-check(
-	"the miss count did not reset either",
-	(rejoinLine.misses[ACTOR] or 0) == 3
-)
+check("the miss count did not reset either", (rejoinLine.misses[ACTOR] or 0) == 3)
 local removingCode = removingBody or ""
 check(
 	"PlayerRemoving does not clear the jam tables",
-	string.find(removingCode, "misses", 1, true) == nil
-		and string.find(removingCode, "jammedUntil", 1, true) == nil
+	string.find(removingCode, "misses", 1, true) == nil and string.find(removingCode, "jammedUntil", 1, true) == nil
 )
-
 
 -- FAULT, AND TWO PLAYERS ACTING AT ONCE ------------------------------------
 --

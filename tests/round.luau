@@ -61,15 +61,18 @@ check("the Operator has a greeting", #Round.LINES.greeting > 0)
 check("the round-won line exists", #Round.LINES.completed > 0)
 check("arriving and winning are not the same sentence", Round.LINES.completed ~= Round.LINES.taken)
 for name, line in Round.LINES do
-	check(`line '{name}' is unique among the Operator's lines`, (function()
-		local seen = 0
-		for _, other in Round.LINES do
-			if other == line then
-				seen += 1
+	check(
+		`line '{name}' is unique among the Operator's lines`,
+		(function()
+			local seen = 0
+			for _, other in Round.LINES do
+				if other == line then
+					seen += 1
+				end
 			end
-		end
-		return seen == 1
-	end)())
+			return seen == 1
+		end)()
+	)
 end
 
 -- Stations. The board and the deal used to be two independent lists: the

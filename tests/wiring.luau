@@ -144,7 +144,10 @@ check(
 	"...and it is gated on Keypad.accepts, so a stale station cannot paint",
 	string.find(rejectedBody, "Keypad.accepts", 1, true) ~= nil
 )
-check("the client actually requires Keypad", string.find(clientCode, "require(ReplicatedStorage.Shared.Keypad)", 1, true) ~= nil)
+check(
+	"the client actually requires Keypad",
+	string.find(clientCode, "require(ReplicatedStorage.Shared.Keypad)", 1, true) ~= nil
+)
 
 -- Sweep EVERY write to the keypad status line, not just the ones above, and
 -- require each to sit inside a block allowed to write it. A fourth writer added
@@ -198,10 +201,7 @@ for target in string.gmatch(serverCode, "([%a][%w_]*):FireAllClients") do
 end
 check("broadcasts were found to sweep (guard)", broadcasts >= 3)
 check(`no broadcast is on the Rejected remote ({broadcasts} swept)`, leaks == 0)
-check(
-	"the server fires Rejected at ONE client",
-	string.find(serverCode, "rejectedRemote:FireClient", 1, true) ~= nil
-)
+check("the server fires Rejected at ONE client", string.find(serverCode, "rejectedRemote:FireClient", 1, true) ~= nil)
 -- And the reason must travel on that channel, not stuffed back into the voice.
 local submitReply = string.match(serverCode, "board:submit(.-)\nend%)") or ""
 check("the submit reply block was found", #submitReply > 0)
@@ -336,7 +336,6 @@ check(
 	solvedBody ~= nil and string.find(solvedBody :: string, "LINES.taken", 1, true) == nil
 )
 
-
 -- WHO THE OPERATOR IS ALLOWED TO ACCUSE ------------------------------------
 --
 -- Same family as the keypad channels above, one layer up. `Rejected` is
@@ -372,10 +371,7 @@ check(
 -- by construction (they submitted an id for a keypad they never reached), so it
 -- keeps its voice line -- that is one, and the gated one is two.
 local heardInSubmit = submitBody and select(2, string.gsub(submitBody :: string, "heardRemote:FireClient", ""))
-check(
-	`the submit path speaks in exactly two places, both deliberate ({tostring(heardInSubmit)})`,
-	heardInSubmit == 2
-)
+check(`the submit path speaks in exactly two places, both deliberate ({tostring(heardInSubmit)})`, heardInSubmit == 2)
 
 -- WHAT THE OPERATOR STILL HAS ON FILE --------------------------------------
 --
@@ -473,7 +469,6 @@ table.sort(declaredSorted)
 for _, name in declaredSorted do
 	check(`test.cmd's '{name}' exists as tests/{name}.luau`, fs.isFile(`tests/{name}.luau`))
 end
-
 
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then

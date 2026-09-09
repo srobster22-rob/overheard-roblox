@@ -51,8 +51,7 @@ Backlog, roughly in order. Reorder freely; do not skip the gate.
       inversion; the clip-generating one.
 - [ ] **R8** Entity #7 The Translator — understands only figurative speech.
 - [ ] **R9** Round flow: cutover, three objectives, the call, the escape.
-- [ ] **R10** Being "connected" instead of dying — you become a voice your
-      team can hear but cannot answer.
+- [x] **R10** Being "connected" — DONE in R16.
 
 ---
 
@@ -2186,3 +2185,68 @@ that counts a check" was true for fourteen rounds and is not any more.
   failure mode.
 
 **Commit.** `c0fe17f`
+
+
+## R16 — the Operator can finally take you
+
+**Why this and not a probe round.** R9-R15 were defect hunts on systems that
+already existed. But the arrival handler still read `-- For now it announces and
+settles; catching players is R10`. The monster reaching the room it understood
+did NOTHING. Every other system in the game feeds that moment, and the moment
+was empty — a horror game whose monster cannot get you is not yet a game. That
+outranks another probe.
+
+**Built.** `systems/Connected` — being caught, this game's way. You are not
+killed and not removed: you are put ON THE LINE, where you can be heard but not
+answered. You keep the fact you were holding and can still say it aloud; what
+you lose is the ability to ACT. Removing a player from a co-op horror game
+sends them off to do something else; here, losing turns you into pure voice,
+which is what this game is made of.
+
+Rules asserted rather than assumed (21 checks):
+- Idempotent. The Operator can arrive, be re-sent and arrive again; announcing
+  the same capture twice reads as a bug.
+- It takes EVERYONE in reach, not one victim. Taking one would make huddling
+  safe, and huddling is the opposite of a game about transmitting facts across
+  a building.
+- Leaving clears you, or a rejoin arrives already caught.
+- Both boundary cases pinned (exactly at reach is caught, just outside is not)
+  so a later round does not "fix" it in the other direction by accident.
+- Positions come from `HumanoidRootPart` server-side, never the client's word:
+  the point of being caught is that you cannot talk your way out of having been
+  in the room.
+
+**The bug this round nearly shipped, and the guard that now prevents it.**
+`takeWhoeverIsHere` (line 72) called `pushObjectives` (line 105). Luau closes
+over locals lexically, so a closure written above a `local function` does not
+capture it — the name resolves to a nil global and errors only when that path
+runs. It compiles, `selene` passes, and the headless suite never executes
+`init.server`. So the FIRST TIME the Operator ever arrived — the payoff the
+whole game builds toward — the server would have errored.
+
+Found by reading the file, not by running it. `tests/ordering.luau` now scans
+both entry points for a local function called above its declaration, built on
+the existing `luaucode` code/comment discriminator so a MENTION cannot satisfy
+it. It carries a self-test on synthetic source proving it can actually fail.
+
+**Also caught by an existing guard:** the wiring test refused the round until
+both new test files were registered in `test.cmd`. Working exactly as intended.
+
+**Proven.** Full suite passes: lexicon 14, heuristic 23, objectives 84, pursuit
+36, round 47, config 47, wiring 130, connected 21, ordering 4, plus the operator
+assertions. `selene` 0/0. `rojo build` OK.
+
+**NOT proven.** Still nothing exercised in Studio. Studio is now OPEN with the
+place loaded and rojo is serving, but the MCP toggle is off — Studio
+auto-updated to `version-93202a13414c4131` since it was last enabled, and
+`GlobalSettings_13.xml` has no MCP key. Per Roblox's docs the toggle is
+**Assistant -> "..." -> Manage MCP Servers -> "Enable Studio as MCP server"**,
+NOT Beta Features. Claude cannot click it; there is no desktop automation here.
+
+Specifically unverified in R16: that `HumanoidRootPart` is present when the
+handler runs, that `OperatorReach = 22` is a sane radius against the 48-stud
+rooms, and that the banner does not cover the keypad.
+
+**Next.** The reach constant is a guess and wants a playtest, not another test.
+If Studio stays unavailable, the next best round is R7 (The Supervisor), which
+is pure comprehension logic and fully verifiable headlessly.

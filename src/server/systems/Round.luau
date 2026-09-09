@@ -139,6 +139,9 @@ end
 -- Politeness is the instrument.
 Round.LINES = {
 	greeting = "Number, please.",
+	-- Said to the player it just took. Polite, procedural, and the worst thing
+	-- it could say: you are on the line now, and it is holding it.
+	onTheLine = "Hold the line, please.",
 	understood = "I have that party for you.",
 	connecting = "I'm connecting you now.",
 	busy = "That line is busy.",

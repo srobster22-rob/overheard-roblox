@@ -23,6 +23,7 @@ local objectivesRemote = Remotes.get("Objectives")
 local submitRemote = Remotes.get("Submit")
 local openBoardRemote = Remotes.get("OpenBoard")
 local rejectedRemote = Remotes.get("Rejected")
+local connectedRemote = Remotes.get("Connected")
 
 local player = Players.LocalPlayer
 local gui = Instance.new("ScreenGui")
@@ -238,6 +239,26 @@ local function onOpenBoard(stationId: string, actionText: string?)
 	input:CaptureFocus()
 end
 openBoardRemote.OnClientEvent:Connect(onOpenBoard)
+
+-- ON THE LINE ---------------------------------------------------------------
+-- Being caught does not remove you. It removes your ability to ACT, and says so
+-- plainly, because a player who thinks they are dead stops talking -- and their
+-- voice is the only thing they have left, and the thing their team still needs.
+
+local onLine = panel("On the line", UDim2.fromOffset(300, 74), UDim2.fromScale(0.5, 0.12), Vector2.new(0.5, 0))
+onLine.Visible = false
+onLine.BackgroundColor3 = Color3.fromRGB(38, 14, 14)
+
+local onLineBody = label(onLine, "you can still be heard. you cannot patch.", 12, INK)
+onLineBody.Position = UDim2.fromOffset(8, 34)
+onLineBody.Size = UDim2.new(1, -16, 0, 32)
+
+connectedRemote.OnClientEvent:Connect(function(caught: boolean)
+	onLine.Visible = caught == true
+	if caught then
+		closeBoard()
+	end
+end)
 
 -- THE OPERATOR'S VOICE -----------------------------------------------------
 

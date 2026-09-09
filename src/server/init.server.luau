@@ -15,6 +15,7 @@ local Operator = require(script.systems.Operator)
 local Presence = require(script.systems.Presence)
 local Pursuit = require(script.systems.Pursuit)
 local Round = require(script.systems.Round)
+local Connected = require(script.systems.Connected)
 local Station = require(script.systems.Station)
 local World = require(script.systems.World)
 
@@ -28,6 +29,7 @@ local openBoardRemote = Remotes.get("OpenBoard")
 -- field, a broadcast about one player's speech landed in another player's
 -- error line. FireClient only, and it names its station. See Shared.Keypad.
 local rejectedRemote = Remotes.get("Rejected")
+local connectedRemote = Remotes.get("Connected")
 
 -- Stations are the source of truth: the board and the Operator's secrets are
 -- both derived from `Round.STATIONS`, so an objective can never exist for a
@@ -39,6 +41,9 @@ local board = Objectives.new()
 -- in the CLIENT and the server took its word for the station id on every
 -- submit. See systems/Station.
 local desk = Station.new()
+-- Who the Operator has taken. Being connected costs you the ability to ACT;
+-- it does not cost you your voice. See systems/Connected.
+local line = Connected.new()
 
 for _, station in Round.STATIONS do
 	board:add(station.id, station.concept, station.prompt)
@@ -48,20 +53,6 @@ local built = World.build()
 
 local pursuit = Pursuit.new(built.rooms, built.operatorStart)
 local body = Presence.spawn(pursuit)
-
-pursuit.onStateChanged = function(state: string, targetName: string?)
-	print(`[operator] {state}{if targetName then ` -> {targetName}` else ""}`)
-	if state == "arrived" then
-		-- It reached what it understood. For now it announces and settles;
-		-- catching players is R10 (being "connected").
-		heardRemote:FireAllClients(Round.LINES.taken, targetName or "", 1)
-	end
-end
-
--- Rate limiting. Every remote the client can fire needs one, or an exploiter
--- brute-forces two-digit answers instantly.
-local lastSubmit: { [number]: number } = {}
-local SUBMIT_COOLDOWN = 0.75
 
 local function pushObjectives(player: Player?)
 	if player then
@@ -76,6 +67,54 @@ end
 local function broadcastLexicon()
 	lexiconRemote:FireAllClients(operator:snapshot())
 end
+
+-- Where each player's body actually is, server-side. Never the client's word
+-- for it: the whole point of being caught is that you cannot talk your way out
+-- of having been in the room.
+local function livePositions(): { [number]: Connected.Point }
+	local out: { [number]: Connected.Point } = {}
+	for _, p in Players:GetPlayers() do
+		local character = p.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if root then
+			out[p.UserId] = { x = root.Position.X, z = root.Position.Z }
+		end
+	end
+	return out
+end
+
+local function takeWhoeverIsHere()
+	local caught = line:reached(pursuit.position, livePositions(), Config.OperatorReach)
+	for _, userId in caught do
+		if line:connect(userId, os.clock()) then
+			local victim = Players:GetPlayerByUserId(userId)
+			if victim then
+				heardRemote:FireClient(victim, Round.LINES.onTheLine, "", 1)
+				connectedRemote:FireClient(victim, true)
+			end
+		end
+	end
+
+	if #caught > 0 then
+		-- Everyone sees who is on the line: a caught player is still useful, and
+		-- the others need to know to start listening to them rather than
+		-- waiting for them to act.
+		pushObjectives(nil)
+	end
+end
+
+pursuit.onStateChanged = function(state: string, targetName: string?)
+	print(`[operator] {state}{if targetName then ` -> {targetName}` else ""}`)
+	if state == "arrived" then
+		heardRemote:FireAllClients(Round.LINES.taken, targetName or "", 1)
+		takeWhoeverIsHere()
+	end
+end
+
+-- Rate limiting. Every remote the client can fire needs one, or an exploiter
+-- brute-forces two-digit answers instantly.
+local lastSubmit: { [number]: number } = {}
+local SUBMIT_COOLDOWN = 0.75
 
 operator.onUnderstood = function(concept: string, payload: string, confidence: number)
 	print(`[operator] understood '{concept}' ({string.format("%.2f", confidence)}) -> {payload}`)
@@ -169,6 +208,13 @@ submitRemote.OnServerEvent:Connect(function(player: Player, id: unknown, value: 
 	-- station id the client made up now fails on the same private channel as a
 	-- wrong code, and never touches `misses`, so a probe cannot cost the honest
 	-- actor a jam.
+	-- On the line: you can still be heard, you cannot still act. Checked before
+	-- the station gate so the message names the real reason.
+	if line:isConnected(player.UserId) then
+		rejectedRemote:FireClient(player, id :: string, "you are on the line")
+		return
+	end
+
 	if not desk:accepts(player.UserId, id :: string) then
 		heardRemote:FireClient(player, Round.LINES.busy, "", 0)
 		rejectedRemote:FireClient(player, id :: string, "you are not at that station")
@@ -219,6 +265,7 @@ Players.PlayerRemoving:Connect(function(player: Player)
 	-- `misses`/`jammedUntil` deliberately DO NOT (see Objectives), because a jam
 	-- a player can shed by reconnecting is not a jam.
 	lastSubmit[player.UserId] = nil
+	line:forget(player.UserId)
 	desk:forget(player.UserId)
 	-- The leaver may have been holding a line. Nobody else was ever shown that
 	-- answer, so without this the objective is unsolvable and the round can

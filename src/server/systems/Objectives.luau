@@ -173,13 +173,7 @@ end
 -- the entire game. A wrong answer now jams that line for the player who gave
 -- it, and the jams escalate, so the cost of guessing grows quadratically while
 -- the cost of a typo does not.
-function Objectives.submit(
-	self: Board,
-	id: string,
-	actorUserId: number,
-	value: string,
-	now: number
-): SubmitResult
+function Objectives.submit(self: Board, id: string, actorUserId: number, value: string, now: number): SubmitResult
 	local objective = self:get(id)
 	if not objective then
 		return { ok = false, reason = "no such objective", solved = false, fault = true }
