@@ -1110,3 +1110,141 @@ those depend on what ANOTHER player is doing.
 two-player round actually hits, it is invisible to the entire existing suite
 because the suite exercises one player's path, and the fix is a channel
 separation whose decision can be made pure and hammered headlessly.
+
+**Stage 2 — built.** Two channels where there was one.
+
+- `src/shared/Keypad.luau` (new, pure). `Keypad.accepts(openStation,
+  messageStation)` — may this rejection paint the keypad the player has open?
+  Both must be present and agree. It exists as a module rather than an `if` in
+  the client because the client is the one file no headless test can run, and
+  this is exactly the rule that was wrong.
+- `src/shared/Remotes.luau` — a sixth remote, `Rejected`. `Remotes.get` yields
+  FOREVER on an undeclared name, so a remote used in `src/` and missing from
+  `REMOTE_NAMES` is a silently dead wire, not an error.
+- `src/server/init.server.luau` — on a failed submit the server now fires two
+  things: `heardRemote:FireClient(player, LINES.busy, "")` — the Operator says
+  its line and names no station — and `rejectedRemote:FireClient(player, id,
+  reason)`. `Rejected` is never broadcast.
+- `src/client/init.client.luau` — `onHeard` no longer takes `detail` at all, so
+  the voice cannot reach the keypad even by accident. `onRejected` writes the
+  status line, gated on `Keypad.accepts`. Handlers were also hoisted into named
+  top-level `local function`s and the remotes into named locals: partly because
+  it now reads like the server, and partly because a handler connected inline
+  as `Remotes.get("Heard").OnClientEvent:Connect(function...)` is unfindable
+  once the lexer strips string bodies — the guard could not otherwise tell
+  which handler belonged to which remote.
+- `tests/wiring.luau` (new, 59 checks) and `test.cmd` runs it.
+- `tests/harness.luau` adopts `Keypad`.
+
+**Stage 3 — review.** `test.cmd`: lexicon 14/14, operator all assertions,
+objectives 53/53, pursuit 21/21, round 38/38, config 44/44, wiring 59/59,
+`suite passed`, exit 0. **229 checks, up from R9's 168.** `selene src`: 0
+errors, 0 warnings, 0 parse errors. `rojo build` exit 0.
+
+Sweeps, each with a guard so it fails rather than passing vacuously:
+- Every `(open, message)` pair over three station names plus both nil cases,
+  asserted equal to `open == message` — plus a count of how many the sweep
+  ACCEPTED, which is the check that kills an `accepts` rewritten to return
+  false always (every per-cell check would still pass).
+- Every `Remotes.get("...")` site in `src/` against `REMOTE_NAMES`, both
+  directions. Guard: at least six call sites found.
+- Every write to `status.Text` in the client's LIVE CODE, by character
+  position, required to sit inside one of the three handlers allowed to write
+  it. Guard: at least three writes found, and all three allowed ranges located.
+- Every `:FireAllClients` in the server's live code, none of them on
+  `rejectedRemote`. Guard: at least three broadcasts found (there are five).
+- Every `.luau` in `src/shared/` against the harness's adoption list, so a
+  shared module cannot ship unhammered. Guard: at least five modules on disk.
+
+**Nine plants.** Each reported whether it applied, each failed BY NAME, each
+restored by byte-copy from a backup taken AFTER this round's edits, verified
+byte-identical by sha256. Suite re-run green after.
+
+1. **The shipped defect** — `onHeard` takes `detail` again and writes it to the
+   status line when the panel is visible, i.e. exactly what was live before this
+   round: `FAIL the Heard handler never touches the keypad status` + `FAIL
+   every write to the keypad status sits in an allowed handler (4 found)`.
+2. `Keypad.accepts` always true: 8 red, led by `FAIL a rejection for the other
+   station is dropped`.
+3. `Keypad.accepts` loses its nil guard: `FAIL both nil is dropped` — the case
+   where no keypad is open at all.
+4. The server broadcasts the rejection: `FAIL no broadcast is on the Rejected
+   remote (6 swept)`.
+5. `Rejected` dropped from `REMOTE_NAMES` (the silently dead wire): `FAIL
+   remote 'Rejected' is used and REMOTE_NAMES declares it`, and `config` caught
+   it independently.
+6. `onRejected` loses the station gate: `FAIL ...and it is gated on
+   Keypad.accepts, so a stale station cannot paint`.
+7. The harness stops adopting `Keypad`: `FAIL Shared.Keypad loads (the harness
+   adopts it)`.
+8. A fourth `status.Text` writer planted inside a BROADCAST handler — the exact
+   shape of the original bug, in a new place: caught by position, `4 found`.
+9. The submit failure path stuffs the reason back into the voice: `FAIL the
+   submit failure path fires Rejected`.
+
+Post-restore sha256, byte-identical to the post-edit baselines: `Keypad.luau`
+`8F636C0F...CB67B556`, `Remotes.luau` `49170B95...877415A9`,
+`init.client.luau` `BC3E2565...C365FA22`, `init.server.luau`
+`C20A6128...7721C185`, `harness.luau` `83D4EB50...E89E7FAC`.
+
+**Two traps hit, both worth writing down.**
+- **The plant runner reported nine failures for the wrong reason.**
+  `subprocess.run(["cmd","/c","test.cmd"], cwd=ROOT)` does not resolve a bare
+  script name from `cwd` — every run exited 1 with EMPTY output, so every plant
+  looked killed. The blank tallies were the only thing that gave it away. Fixed
+  with an absolute path AND an assertion that the runner produced more than
+  2000 characters of output, so a silent runner can never again be read as nine
+  dead plants. **A plant harness needs its own control.**
+- **Plant 7 first failed as a CRASH, not by name.** A shared module the harness
+  has not adopted makes `rt.require` throw, which aborted `wiring.luau` with a
+  runtime error. Exit 1, but a crash reads as a broken test rather than a broken
+  game. The require now sits behind a `pcall` with a named check.
+
+**Reached the product.** `rojo build` to a uniquely-named scratch file, grepped
+with python (`Select-String` returns 0 hits on `.rbxlx` for strings that are
+certainly present). Controls known present: `OVERHEARD` x5, `PlayerRemoving`
+x2. New: `Rejected` x9, `Keypad.accepts` x3, `onRejected` x2, `Shared.Keypad`
+x3. Control known absent: `ZZ_NOT_IN_THIS_FILE_ZZ` x0. And the defect's own
+line, `status.Text = detail`, x0.
+
+**Studio-blocked.** Nothing was seen running; no claim here is a playtest
+claim. Specifically unverified: whether the red status line reads right now
+that it only ever carries submit feedback, and whether losing the broadcast
+detail makes the Operator's voice feel thinner (`said.Text` still gets the
+line; only the keypad stopped getting the concept id). What the headless suite
+DID prove: the voice handler cannot reach the keypad — it no longer even
+receives a detail argument; the keypad is written from exactly three places and
+only one of them can show a message; that one is gated on a pure function whose
+whole input matrix is swept; the rejection channel is never broadcast anywhere
+in the server; the new remote is declared, so it is not a wire that yields
+forever; and every shared module is reachable from tests.
+
+**A correction to R9.** R9 logged that "a player who rejoins gets a fresh
+slate" on the jam. That is wrong. Roblox `UserId` is stable across a rejoin and
+the `Board` lives for the life of the SERVER, so `misses` and `jammedUntil`,
+keyed by UserId, survive a rejoin into the same server — a guesser cannot shed
+their lockout by reconnecting. Better than R9 believed, but it was recorded as
+a known gap and somebody would eventually have "fixed" it. Related and real
+though minor: neither table is cleared on `PlayerRemoving`, so they grow by one
+entry per departed player per line, against CLAUDE.md's per-player cleanup
+rule. Two lines, so it is bytes. Noted, not fixed.
+
+**Left open.**
+- `Round.pickSecrets` is still dead and still loaded (the pre-R5 selection that
+  ignores stations). Shortlist #4 this round, #2 the last two.
+- A solved station's ProximityPrompt stays enabled. Runtime-shaped; a poor buy
+  while Studio is blocked.
+- R7's item stands: the shared scanner is a lexer, so `if false and ...` passes
+  any wiring guard.
+- `misses`/`jammedUntil` are not cleaned on `PlayerRemoving` (above).
+- R10's own: `tests/config.luau` and `tests/wiring.luau` now both check remote
+  names, from different angles (created-vs-fetched inside `Remotes.luau`, versus
+  declared-vs-used across `src/`). Both fired on plant 5. Deliberate redundancy,
+  but if a third arrives they should be merged.
+- **Still with the owner, untouched and NOT decided here:** `CoolPerSecond`;
+  the mid-round re-deal on JOIN; the solo-player-cannot-finish question; and
+  R9's question about whether a wrong keypad code should be LOUD (something the
+  Operator hears) rather than a quiet jam timer. **No new owner question this
+  round** — this was a wiring defect with one correct answer, not a design call.
+
+**Commit.** `f65e5c3`

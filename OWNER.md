@@ -59,3 +59,16 @@ Write in plain English. One item per line. Top item goes first.
   the cost of brute-forcing is that it comes looking for you. That is probably
   the better horror game, but it might make the keypad frightening to use even
   when you are doing it honestly. Your call; I did not make it.
+
+- R10 - the keypad had one red line under it, and it was being written by the
+  monster. When the Operator understood somebody, or a word of yours burned, or
+  it arrived somewhere, the server told EVERY player - and whoever happened to
+  be standing at a keypad got that message painted into their error slot, in
+  red, where "that line is jammed" goes. So you would be typing the number
+  your friend just gave you and the keypad would say jack_number at you. You
+  could never see this alone: you cannot be typing at a keypad and be the one
+  talking. With two people it happens on a good round, because the whole game
+  is one of you talking while the other stands at the keypad. The monster's
+  voice and your keypad are now separate channels, and a keypad message is also
+  tagged with which station it is about, so the breaker cannot answer for the
+  switchboard. Nothing to decide here.
