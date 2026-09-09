@@ -64,7 +64,20 @@ function Harness.build()
 	-- A shared module missing from this list cannot be required by any test, so
 	-- it ships unhammered. `tests/wiring.luau` sweeps `src/shared/` against it.
 	for _, name in
-		{ "Lexicon", "Types", "Config", "Remotes", "Heat", "Hud", "Hum", "Keypad", "Readout", "Layout", "Silence" }
+		{
+			"Lexicon",
+			"Types",
+			"Config",
+			"Remotes",
+			"Heat",
+			"Hud",
+			"Hum",
+			"Keypad",
+			"Readout",
+			"Layout",
+			"Silence",
+			"LexiconSave",
+		}
 	do
 		adopt(shared, handle(name, `src/shared/{name}.luau`))
 	end

@@ -7315,3 +7315,93 @@ DataStore work) is close to done — it is not, and the entry says so, pointing
 at the EXPANSION AXIS backlog rather than implying otherwise.
 
 **Commit** `b5364a1`
+
+
+## R73 — the Lexicon's save format, built pure and tested first
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — picking up the axis instead of hardening it again.** The EXPANSION
+AXIS backlog's `R6` item — *"The Lexicon persists across sessions (DataStore),
+per group. This is the retention mechanic, so it needs to be real, not
+cosmetic"* — is the only unbuilt item that is purely mechanical rather than a
+new entity. `GAME.md`'s own escalation section (answered into `DESIGN.md` last
+round) depends on it: a coinage's history has to survive past one server for
+the "friends who have played twenty rounds are formidable" promise to mean
+anything.
+
+Two separate problems live inside R6, and only one of them is mine to build:
+
+- **What counts as "a group" that persists** — Roblox has no login system this
+  game uses, so nothing currently identifies "the same four people" across two
+  separate server instances. That is a design decision (private servers? a
+  shared code? Roblox's friends graph?) with real cost trade-offs, and R59,
+  R62's owner questions were both filed rather than decided for exactly this
+  reason. **Filed here too, explicitly, rather than invented.**
+- **What the save format IS, and whether it round-trips honestly** — this part
+  needs no group-identity decision at all, is pure data, and is exactly the
+  kind of logic this project has learned (the hard way, repeatedly) to build
+  headlessly-testable FIRST and wire to a Roblox-only API second (`Hum.smooth`
+  in R65, `Silence` in R56).
+
+1. *(picked)* **Build the pure encode/decode layer for the Lexicon and prove it
+   round-trips, byte-for-byte, before any `DataStoreService` call exists.**
+2. R63's queued-room drop, R59's corridor number, R62's loss-rate number, and
+   now **R6's group-identity question** — all **filed**, awaiting the owner.
+
+**Stage 2 — the build.** `src/shared/LexiconSave.luau`: `encode(coinages)` drops
+cold coinages (heat <= 0, R14's rule for the live panel, applied here for the
+same reason — a phrase burned to zero carries nothing worth saving), sorts
+strongest-first with a stable tie-break so an identical Lexicon always
+produces an identical file, stamps a `VERSION`, and caps at `MAX_SAVED` (200 —
+a generous backstop, not a design number; R46 measured a real session settling
+around 10). `decode(data)` never errors: it validates every field of every
+entry individually — including `heat ~= heat` to catch NaN, which is a number
+that satisfies no ordering comparison and would otherwise slip past a plain
+range check — and drops what it cannot trust rather than crash the round a
+corrupted or future-format save would otherwise take down.
+
+**Stage 3 — proof.** 26 checks in `tests/lexiconsave.luau`: exact round-trip
+of every field, cold-coinage pruning, order-independence of the save, seven
+deliberately malformed entries (missing fields, out-of-range heat, NaN heat,
+negative sightings, an empty phrase) fed to `decode` in one call with exactly
+the two well-formed ones expected back, and the cap proven to drop the
+**weakest** entries rather than an arbitrary prefix.
+
+Three plants, each failed by name:
+
+| plant | what failed |
+|---|---|
+| `decode` stops checking the version | `the wrong version is refused entirely` |
+| cold coinages get saved anyway | `only the live one is saved` |
+| the NaN guard removed from `validCoinage` | `(guard) seven entries were offered, two are valid (3)` |
+
+Restored; sha256 `9e574781…f3760ce32a8f0` unchanged.
+
+**Verified in the product, not merely the source.** A live `Operator`'s Lexicon
+— two real coinages, credited through the real `hear`/`credit` path — encoded,
+run through Lune's actual JSON serializer (`@lune/serde`, the same encoding
+`DataStoreService` uses under the hood), and decoded back: **6 coinages
+saved, 522 bytes of JSON, 6 restored, byte-exact.**
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green, twenty files now**: lexicon 22, heuristic 49, operator ok,
+objectives 122, pursuit 103, round 59, config 63, wiring **351**, connected 32,
+ordering 4, heat 20, layout 99, lifecycle 90, hud 22, readout 29, soak 42,
+hum 29, log 18, silence 62, lexiconsave **26**.
+
+**FOR THE OWNER, filed rather than decided:** R6 needs a persistent identity
+for "the same group" across separate server instances — Roblox has no login
+system this game currently uses. Candidates: private servers (a code the group
+shares once, reused every session), a manually-typed passphrase, or Roblox's
+friends graph (auto-detect returning friends). Each has a real cost (private
+servers cost the discovery surface a public server gets; a passphrase is
+extra friction at the door; the friends graph needs a permission prompt and
+does not cover strangers who want to keep playing together). The save FORMAT
+this round built does not depend on which answer is picked.
+
+*Not claimed:* that `DataStoreService` has been touched at all. This round is
+deliberately the pure half only — no live save, no live load, no group
+identity. The next step, once the owner picks one, is a thin wiring layer
+around this format, the same shape `Hum.smooth`/`Presence.luau` split settled
+into in R65.
