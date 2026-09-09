@@ -203,7 +203,7 @@ end
 local boardPanel = panel("The board")
 boardPanel.Visible = false
 
-local hint = label(boardPanel, "enter the jack number you were told", 11, DIM)
+local hint = label(boardPanel, "enter what you were told", 11, DIM)
 hint.Position = UDim2.fromOffset(8, 34)
 hint.Size = UDim2.new(1, -16, 0, 16)
 
@@ -254,9 +254,15 @@ local function onOpenBoard(stationId: string, actionText: string?)
 	boardPanel.Visible = true
 	local title = boardPanel:FindFirstChild("Title") :: TextLabel?
 	if title then
-		title.Text = string.upper(actionText or "the board")
+		title.Text = string.upper(actionText or "keypad")
 	end
-	hint.Text = `enter the number you were told for the {stationId}`
+	-- No plain language, and no raw station id. This read "enter the NUMBER you
+	-- were told for the {stationId}", which conveyed `jack_number` at every
+	-- station including the breaker -- a concept that keypad is not about, in
+	-- front of the player working it. The id is the giveaway word too; the
+	-- title above already says which keypad this is, in the station's own verb.
+	hint.Text = "enter what you were told"
+	local _ = stationId
 	status.Text = ""
 	input:CaptureFocus()
 end

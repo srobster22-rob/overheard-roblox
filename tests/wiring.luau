@@ -738,6 +738,109 @@ check(
 )
 check("the release is announced", string.find(tickBody, "LINES.givingUp", 1, true) ~= nil)
 
+print("")
+print("nothing the client DISPLAYS is a giveaway")
+
+-- R43, finishing what R41 and R42 started. Those checked the station prompts and
+-- the panel's exported constants. The client's own inline literals were judged
+-- "coherent" BY EYE — and one was not: the keypad hint read "enter the NUMBER
+-- you were told for the {stationId}", which conveyed `jack_number` at every
+-- station including the breaker, in front of the player working it. It also
+-- showed the raw station id, and `board` and `breaker` ARE the plain terms.
+--
+-- Scoped to text the client puts ON SCREEN: literals passed to `label(...)` and
+-- assigned to `.Text`. An identifier that is never rendered is not a giveaway.
+
+local Round = rt.require(rt.systems.Round)
+local Heuristic = rt.require(rt.systems.Heuristic)
+local livePool = Round.dealSecrets(99)
+
+local function saidAloud(text: string): { string }
+	local out: { string } = {}
+	for _, reading in Heuristic.conveyed({ speaker = { UserId = 1 } :: any, text = text, at = 1 }, livePool, {}) do
+		table.insert(out, reading.concept :: string)
+	end
+	return out
+end
+
+-- Text the game shows only while the Operator is NOT listening. R32 gates the
+-- chat feed on the round being live, and `tests/wiring.luau` asserts that gate,
+-- so this exemption is earned rather than asserted.
+local AFTER_THE_ROUND: { [string]: boolean } = {
+	["The board was restored."] = true,
+}
+
+-- Three shapes, because the client displays text three ways. The first draft
+-- collected only two and found THREE strings while the client shows six -- the
+-- coverage guard below caught that rather than letting a narrow sweep pass.
+local clientRaw = fs.readFile("src/client/init.client.luau")
+local displayed: { [string]: boolean } = {}
+for text in string.gmatch(clientRaw, 'label%([%w_.]+, "([^"]+)"') do
+	displayed[text] = true
+end
+for text in string.gmatch(clientRaw, '%.Text = "([^"]+)"') do
+	displayed[text] = true
+end
+-- Sentences, wherever they sit: a lookup table, an `or` fallback, an argument.
+-- Anchoring on `= "` missed `or "The round is over."` and the coverage guard
+-- caught that too.
+for text in string.gmatch(clientRaw, '"([%u][^"]*%.)"') do
+	displayed[text] = true
+end
+
+-- BACKTICK strings, with their interpolation spans removed. The defect this
+-- guard exists to catch was written as
+-- `enter the number you were told for the {stationId}` -- and the first version
+-- of this sweep read only double-quoted text, so planting that exact wording
+-- back PASSED. A guard blind to the form of its own defect is worse than none.
+-- The `{...}` spans are code, not words, so they are stripped and what remains
+-- is the sentence a player reads.
+-- Comment lines are skipped: a comment may quote a concept id in backticks and
+-- would otherwise be reported as text the client displays. R37 hit the same
+-- false positive from the other direction, where a comment invented a field.
+for line in string.gmatch(clientRaw .. NL, "([^" .. NL .. "]*)" .. NL) do
+	if not string.match(line, "^%s*%-%-") then
+		for template in string.gmatch(line, "`([^`]+)`") do
+			local words = string.gsub(template, "{[^}]*}", " ")
+			if string.find(words, "%a") then
+				displayed[words] = true
+			end
+		end
+	end
+end
+
+local shown = 0
+for _ in displayed do
+	shown += 1
+end
+check(`(guard) found text the client displays ({shown} strings)`, shown >= 6)
+
+local leaked = 0
+for text in displayed do
+	if AFTER_THE_ROUND[text] then
+		continue
+	end
+	local gives = saidAloud(text)
+	if #gives > 0 then
+		leaked += 1
+		print(`    "{text}" -> {table.concat(gives, ", ")}`)
+	end
+end
+check(`no displayed string gives a concept away ({leaked})`, leaked == 0)
+
+-- The exemption must be real: the string it covers has to actually leak, or it
+-- is hiding nothing and should not exist.
+for text in AFTER_THE_ROUND do
+	check(`the exemption for "{text}" covers a real leak`, #saidAloud(text) > 0)
+	check(`...and that string is actually in the client`, string.find(clientRaw, text, 1, true) ~= nil)
+end
+
+-- The control: the sweep is not passing because the reader went deaf.
+check("(control) a plain giveaway is still heard", #saidAloud("enter the jack number") > 0)
+
+-- And the specific defect, named, so a regression says which.
+check("the keypad hint no longer names the jack", #saidAloud("enter what you were told") == 0)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)
