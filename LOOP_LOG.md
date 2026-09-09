@@ -282,3 +282,152 @@ should move.
 **Next.** R2b (second station), and take #3 with it.
 
 **Commit.** `e7a1ac4`
+
+## R5 — the board and the deal were two lists that never had to agree (2026-09-08)
+
+**Stage 0.** `OWNER.md` still has nothing under `## Next`, so this round ideates
+and picks for itself again.
+
+**Stage 1 — shortlist.** R4's lesson was "a dial that is declared, documented
+and never wired", found by auditing `Config`. Applying the same audit to
+something OTHER than Config — remotes, exported functions, fields written but
+never read, and *two lists that must agree with nothing checking it*:
+
+1. *(picked)* **The only objective's concept is usually not a secret the
+   Operator is listening for.** `init.server` hardcodes
+   `board:add("board", "jack_number", ...)` while `Round.pickSecrets(3)`
+   Fisher-Yates-shuffles 3 out of a 5-secret pool. Nothing anywhere requires
+   the two to overlap. Measured, not inferred, over 2000 deals through the real
+   module: `jack_number` is absent from the deal in **792/2000 = 39.6%** of
+   servers. On such a server, fed to a real `Operator`, the plainest possible
+   giveaway — "patch the switchboard jack forty seven" — fires `onUnderstood`
+   **0 times**: saying the answer out loud is completely safe, and the monster
+   never moves for the one thing players must actually talk about. Worse,
+   `operator:credit("jack_number", ...)` still runs on solve and built **10
+   lexicon entries** (`jack`, `switchboard`, `forty seven`, …) at heat 0.2375
+   for a concept no secret carries — so the panel burns words red that can
+   never be acted on. Same shape as R4: a declared thing wired to nothing.
+2. **R2b, the second station.** On the backlog, and #1's fix makes it nearly
+   free: once the stations table is the thing that drives the deal, a second
+   objective is one entry. Folded into the pick rather than run separately.
+3. **`credit` does not consume its observations,** so one utterance can teach
+   two concepts if two objectives are solved inside the same 20s window. R4
+   filed it as unreachable with one objective and said "R2b should fix it in
+   the same round". #2 lands here, so it becomes reachable here, so it is fixed
+   here. Folded in.
+4. **`board:deal` re-deals on every `PlayerAdded`.** Still could not
+   demonstrate harm headlessly, and with a real second objective the re-deal is
+   arguably correct (it spreads holders as people join). Left open again, now
+   with a reason rather than a shrug.
+5. **`Objectives.get` / `Round.LINES` audit.** Ran the "only test callers"
+   sweep over every exported function: clean this time. `LINES.busy`,
+   `greeting`, `understood`, `connecting`, `taken` are all fired. No second
+   instance of R4's exact bug — which is itself worth recording, so the next
+   round does not re-run this sweep.
+
+**Pick: #1**, taken as a class fix. Deleting the hardcoded `board:add` alone
+would fix today's mismatch and leave the next one free to appear the moment
+someone adds a station. So the round makes the stations table the single source
+that the deal is derived FROM, and adds a derived test that fails if a station's
+concept is not guaranteed into every deal, or if a station has no physical
+prompt in `World`.
+
+**Stage 2 — built.**
+
+- `Round.STATIONS` — the new source of truth for a round: `{id, concept,
+  prompt, actionText}`. Both the objective board and the Operator's secrets are
+  now derived from it, so the two lists cannot disagree.
+- `Round.dealSecrets(count)` — every station's concept is dealt FIRST and
+  unconditionally; `count` is a floor that ambient extras are shuffled up to,
+  never a cap that can squeeze a station's concept out. It errors loudly if a
+  station names a concept the pool does not carry. `pickSecrets` stays as the
+  pure shuffler the tests enumerate the pool with.
+- **R2b, the second station.** `breaker` is now a real objective with a real
+  Breaker prompt in the world — placed in the RECORDS room, opposite the
+  switchboard, because two act-stations in one room lets the group camp and the
+  corridor stops costing anything. `allSolved` now needs two objectives and two
+  different rooms. The `breaker` secret's payload moved `board` -> `archive` so
+  understanding sends the Operator where the breaker actually is.
+- `init.server` loops `Round.STATIONS` to build the board and to wire prompts,
+  and errors if `World` built no prompt for a station (an unreachable objective
+  makes `allSolved` unreachable, so the round could never end).
+- `World.build` returns `stations: {[id]: ProximityPrompt}` instead of a single
+  hardcoded `boardPrompt`.
+- Client: `OpenBoard` now carries the station id and verb, the keypad remembers
+  which station it is standing in for, and it submits against THAT id. Before,
+  every answer was submitted against `"board"` — a breaker code typed at the
+  breaker would have come back "that line is dead", which reads as a bug.
+- **Shortlist #3 fixed here as promised:** `Operator.credit` now CONSUMES its
+  observations. An utterance teaches at most one concept. With two stations,
+  solving both inside the 20s window would otherwise burn every word said
+  beforehand twice, into two concepts, at double speed.
+- Tests: `tests/round.luau` grows a derived `stations` block (14 -> 32 checks)
+  that reads `Round.STATIONS` and `World.luau`'s source, so a station added
+  later cannot slip past it; `TestOperator` gains assertion 8 for consumption.
+
+**Stage 3 — review.**
+
+Full suite via `test.cmd`, real output: lexicon 14/14, operator all assertions,
+objectives 15/15, pursuit 21/21, round 32/32, config 11/11, `suite passed`,
+exit 0. **93 checks, up from R4's 75.** `selene src`: 0 errors, 0 warnings, 0
+parse errors. `rojo build ... -o <scratchpad>/check.rbxlx` exit 0, and the built
+place was grepped and confirmed to carry `Round.STATIONS`, `dealSecrets`,
+`breakerPrompt`, `openStation` and `id = "breaker"` — the change reached the
+product.
+
+Plant-and-restore, all three new guards:
+
+1. Deleted `breaker = breakerPrompt` from `World`'s stations map. `tests/round`
+   failed by name: `FAIL  World builds a prompt for station 'breaker'`, 31/32,
+   exit 1.
+2. Made `dealSecrets` iterate an empty station list (i.e. restored the pre-R5
+   world). Failed by name on `dealSecrets(0|1|2) still deals every station's
+   concept`, 29/32, exit 1. Worth noting: counts 3, 4 and 5 PASSED under the
+   plant, by luck — that is exactly the 60%-of-the-time flakiness that hid the
+   original bug for four rounds, which is why the check sweeps every count from
+   0 rather than only the count the server happens to use.
+3. Restored observation retention in `Operator.credit`. `tests/operator` failed
+   by name: `one utterance must not also be credited to a second concept`,
+   exit 1.
+
+All three restored; sha256 re-checked against the pre-plant baselines and
+byte-identical: World `8798cb77…690aab77`, Round `4a515e72…203f0803`, Operator
+`9fd947f0…13d4c325e`. Suite re-run green afterwards.
+
+Measured, through the real modules rather than by reading code:
+
+| | before | after |
+|---|---|---|
+| servers dealt without the board's concept (2000 trials) | 792 (39.6%) | 0 |
+| `onUnderstood` for "patch the switchboard jack forty seven" | 0 | fires `jack_number -> board` |
+| `onUnderstood` for "the fuse box breaker tripped" | n/a (no station) | fires `breaker -> archive` |
+| lexicon entries built for an unlistened concept | 10 | 0 |
+
+**Studio-blocked.** Roblox Studio is device-blocked on this machine, so nothing
+here was seen running. Specifically unverified: that the Breaker part is
+reachable and not embedded in a wall (it is placed by arithmetic at
+`recordsOrigin + (18, 4, 0)` and the room half-width is 24, so it should clear,
+but that is geometry reasoning, not a playtest), that the keypad title/hint
+swap reads well, and whether two objectives is the right number for a session.
+What the headless suite DID prove: every station's concept is dealt at every
+count, every station has a prompt in `World`'s source, one utterance is
+credited to exactly one concept, both giveaways now produce an understanding
+routed to the right room, and the built `.rbxlx` carries all of it.
+
+**Left open, deliberately.**
+- Shortlist #4 — `board:deal` re-deals on every `PlayerAdded`. Now genuinely
+  ambiguous rather than merely unproven: with two objectives the re-deal is
+  what keeps holders spread as players join. It needs a design decision (does a
+  mid-round join reshuffle who knows what?), not a bug fix. **Owner question.**
+- The decay rate (`CoolPerSecond = 0.01`) is still an untuned guess — a
+  playtest number, and Studio is blocked.
+- `Objectives.deal` gives each objective a holder but nothing stops one player
+  holding BOTH lines in a 2-player game, which makes the second objective
+  unsolvable by the other player alone... it is solvable (the non-holder acts
+  on both), but the holder does all the talking. Noticed while wiring; not
+  demonstrated. Candidate for R6.
+- `Round.LINES` has no line for a station that is not the switchboard; the
+  Operator says the same thing for both.
+
+**Next.** Either the LLM backend (R5 on the backlog) or DataStore persistence
+(R6). The station work that was blocking a fuller round is done.

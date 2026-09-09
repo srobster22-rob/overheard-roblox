@@ -95,7 +95,10 @@ end
 
 export type Built = {
 	readerPrompt: ProximityPrompt,
-	boardPrompt: ProximityPrompt,
+	-- One prompt per Round.STATIONS entry, keyed by station id. Every station
+	-- MUST appear here or its objective can never be solved; tests/round.luau
+	-- reads this file and fails if one is missing.
+	stations: { [string]: ProximityPrompt },
 	spawn: Vector3,
 	-- Payload name -> room centre, for Pursuit. Payloads with no room here are
 	-- refused rather than guessed at; see Pursuit.sendTo.
@@ -132,6 +135,10 @@ function World.build(): Built
 
 	local readerPrompt = station("Directory", "Read", recordsOrigin + Vector3.new(0, 4, -18), folder)
 	local boardPrompt = station("Switchboard", "Patch", boardOrigin + Vector3.new(0, 4, -18), folder)
+	-- The breaker sits in the RECORDS room, deliberately opposite the board.
+	-- With both act-stations in one room the whole group just camps there and
+	-- the corridor stops being a cost; one at each end forces the walk.
+	local breakerPrompt = station("Breaker", "Throw", recordsOrigin + Vector3.new(18, 4, 0), folder)
 
 	-- The exchange is dark. Players get just enough to move.
 	Lighting.Ambient = Color3.fromRGB(18, 16, 14)
@@ -143,7 +150,10 @@ function World.build(): Built
 
 	return {
 		readerPrompt = readerPrompt,
-		boardPrompt = boardPrompt,
+		stations = {
+			board = boardPrompt,
+			breaker = breakerPrompt,
+		},
 		spawn = Vector3.new(0, FLOOR_Y + 4, 0),
 		-- Must cover every name in Config.Rooms.
 		rooms = {

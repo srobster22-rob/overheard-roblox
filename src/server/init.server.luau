@@ -23,13 +23,16 @@ local objectivesRemote = Remotes.get("Objectives")
 local submitRemote = Remotes.get("Submit")
 local openBoardRemote = Remotes.get("OpenBoard")
 
-local secrets = Round.pickSecrets(3)
+-- Stations are the source of truth: the board and the Operator's secrets are
+-- both derived from `Round.STATIONS`, so an objective can never exist for a
+-- concept the Operator was not dealt (it used to, on 39.6% of servers).
+local secrets = Round.dealSecrets(3)
 local operator = Operator.new(secrets)
 local board = Objectives.new()
 
--- One objective, one station. Do not add an objective without a station to
--- solve it at, or `allSolved` can never be reached.
-board:add("board", "jack_number", "Line is out. Patch it to jack %s.")
+for _, station in Round.STATIONS do
+	board:add(station.id, station.concept, station.prompt)
+end
 
 local built = World.build()
 
@@ -114,9 +117,20 @@ built.readerPrompt.Triggered:Connect(function(player: Player)
 	heardRemote:FireClient(player, Round.LINES.greeting, "", 0)
 end)
 
-built.boardPrompt.Triggered:Connect(function(player: Player)
-	openBoardRemote:FireClient(player)
-end)
+for _, station in Round.STATIONS do
+	local prompt = built.stations[station.id]
+	if not prompt then
+		-- A station with no physical prompt is an objective nobody can reach,
+		-- which makes `allSolved` unreachable. Fail loudly rather than ship a
+		-- round that cannot end.
+		error(`World built no prompt for station '{station.id}'`)
+	end
+	prompt.Triggered:Connect(function(player: Player)
+		-- The client needs to know WHICH keypad it opened, or it submits every
+		-- answer against the switchboard.
+		openBoardRemote:FireClient(player, station.id, station.actionText)
+	end)
+end
 
 submitRemote.OnServerEvent:Connect(function(player: Player, id: unknown, value: unknown)
 	-- Never trust the client.

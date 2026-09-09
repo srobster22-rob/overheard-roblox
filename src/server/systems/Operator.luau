@@ -97,15 +97,20 @@ end
 -- linguistic: the Operator learns from consequences, not from grammar. That is
 -- why it cannot be fooled by simply using a weird word - the word has to
 -- actually precede the group succeeding.
+--
+-- An utterance is credited to at most ONE concept: what you said just before
+-- the lights came back on taught the Operator about the lights, not about
+-- everything else the group happened to finish in the same twenty seconds.
+-- Observations are therefore CONSUMED here. While only one objective existed
+-- this was unobservable; with two stations, solving both inside the credit
+-- window would otherwise burn every word said beforehand twice, into two
+-- different concepts, at double speed.
 function Operator.credit(self: Operator, concept: string, now: number)
-	local kept: { Observation } = {}
-
 	for _, obs in self.observations do
 		local age = now - obs.at
 		if age > Config.CreditWindow then
 			continue -- too old to be related; drop it
 		end
-		kept[#kept + 1] = obs
 
 		-- Recency weighting: something said one second before the action is far
 		-- more suspicious than something said fifteen seconds before.
@@ -135,7 +140,9 @@ function Operator.credit(self: Operator, concept: string, now: number)
 		end
 	end
 
-	self.observations = kept
+	-- Everything in the window was just spent on `concept`; everything outside
+	-- it was too old to matter. Either way nothing survives this call.
+	self.observations = {}
 end
 
 -- Terms cool off. It forgets, a little, which is what keeps a long-running

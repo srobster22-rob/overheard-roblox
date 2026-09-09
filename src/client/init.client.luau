@@ -191,8 +191,14 @@ local status = label(boardPanel, "", 11, Color3.fromRGB(206, 62, 52))
 status.Position = UDim2.fromOffset(8, 96)
 status.Size = UDim2.new(1, -16, 0, 16)
 
+-- Which station this keypad is currently standing in for. There is more than
+-- one now (switchboard, breaker), and submitting a breaker code against the
+-- switchboard fails silently as a wrong answer, which reads as a bug.
+local openStation: string? = nil
+
 local function closeBoard()
 	boardPanel.Visible = false
+	openStation = nil
 	input.Text = ""
 	status.Text = ""
 end
@@ -202,16 +208,22 @@ input.FocusLost:Connect(function(enterPressed: boolean)
 		return
 	end
 	local value = input.Text
-	if #value == 0 then
+	if #value == 0 or not openStation then
 		closeBoard()
 		return
 	end
-	Remotes.get("Submit"):FireServer("board", value)
+	Remotes.get("Submit"):FireServer(openStation, value)
 	input.Text = ""
 end)
 
-Remotes.get("OpenBoard").OnClientEvent:Connect(function()
+Remotes.get("OpenBoard").OnClientEvent:Connect(function(stationId: string, actionText: string?)
+	openStation = stationId
 	boardPanel.Visible = true
+	local title = boardPanel:FindFirstChild("Title") :: TextLabel?
+	if title then
+		title.Text = string.upper(actionText or "the board")
+	end
+	hint.Text = `enter the number you were told for the {stationId}`
 	status.Text = ""
 	input:CaptureFocus()
 end)
@@ -245,9 +257,11 @@ end)
 
 Remotes.get("Objectives").OnClientEvent:Connect(function(entries: { any })
 	renderObjectives(entries)
-	-- A solved board closes itself rather than leaving a stale keypad open.
+	-- A solved station closes its own keypad rather than leaving a stale one
+	-- open. Only the station actually in front of the player, now that there
+	-- is more than one.
 	for _, entry in entries do
-		if entry.id == "board" and entry.solved then
+		if entry.id == openStation and entry.solved then
 			closeBoard()
 		end
 	end

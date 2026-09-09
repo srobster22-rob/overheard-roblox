@@ -27,7 +27,10 @@ local SECRET_POOL: { Secret } = {
 	{
 		concept = "breaker",
 		plain = { "breaker", "fuse", "fusebox", "power", "electric", "switch", "lever" },
-		payload = "board",
+		-- The Operator goes where the thing IS. The breaker panel is in the
+		-- records room, so understanding "breaker" sends it there — which is
+		-- also the room the reader is standing in.
+		payload = "archive",
 	},
 	{
 		concept = "exit",
@@ -45,6 +48,84 @@ local SECRET_POOL: { Secret } = {
 		payload = "archive",
 	},
 }
+
+-- THE STATIONS. A physical place an objective can be solved, and the concept
+-- players have to get across to solve it.
+--
+-- This table is the source of truth for a round. The secrets dealt to the
+-- Operator are DERIVED from it (see `dealSecrets`), because the two used to be
+-- independent: `init.server` hardcoded one objective while `pickSecrets`
+-- shuffled 3 of 5 secrets, so 39.6% of servers ran an objective whose concept
+-- the Operator was not listening for at all. Saying the answer out loud was
+-- free, and the monster never moved for the one thing players had to discuss.
+-- Never add a station without a secret whose `concept` matches; never add an
+-- objective without a station (R2's rule). `tests/round.luau` enforces both.
+export type Station = {
+	id: string,
+	concept: Types.ConceptId,
+	-- Shown to the holder only. Takes the answer via string.format.
+	prompt: string,
+	-- The ProximityPrompt verb at the physical station.
+	actionText: string,
+}
+
+local STATIONS: { Station } = {
+	{
+		id = "board",
+		concept = "jack_number",
+		prompt = "Line is out. Patch it to jack %s.",
+		actionText = "Patch",
+	},
+	{
+		id = "breaker",
+		concept = "breaker",
+		prompt = "Breaker %s tripped. Someone has to throw it.",
+		actionText = "Throw",
+	},
+}
+
+Round.STATIONS = STATIONS
+
+-- What the Operator is listening for this round. Every station's concept is
+-- guaranteed in; `count` is a FLOOR that ambient extras are shuffled up to, not
+-- a cap that can squeeze a station's concept out.
+function Round.dealSecrets(count: number): { Secret }
+	local byConcept: { [string]: Secret } = {}
+	for _, secret in SECRET_POOL do
+		byConcept[secret.concept] = secret
+	end
+
+	local out: { Secret } = {}
+	local taken: { [string]: boolean } = {}
+	for _, station in STATIONS do
+		local secret = byConcept[station.concept]
+		if not secret then
+			error(`station '{station.id}' wants concept '{station.concept}', which no secret carries`)
+		end
+		table.insert(out, secret)
+		taken[station.concept] = true
+	end
+
+	-- Then ambient secrets: things it understands that no objective needs, so
+	-- the safe vocabulary is not simply "everything except two words".
+	local rest: { Secret } = {}
+	for _, secret in SECRET_POOL do
+		if not taken[secret.concept] then
+			table.insert(rest, secret)
+		end
+	end
+	for i = #rest, 2, -1 do
+		local j = math.random(i)
+		rest[i], rest[j] = rest[j], rest[i]
+	end
+	for _, secret in rest do
+		if #out >= count then
+			break
+		end
+		table.insert(out, secret)
+	end
+	return out
+end
 
 function Round.pickSecrets(count: number): { Secret }
 	local pool = table.clone(SECRET_POOL)

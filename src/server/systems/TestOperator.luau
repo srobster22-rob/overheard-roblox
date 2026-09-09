@@ -103,6 +103,24 @@ return function()
 	fresh:credit("exit", Config.CreditWindow + 10)
 	assert(#fresh:snapshot() == 0, "evidence older than the credit window must be dropped")
 
+	-- 8. An utterance teaches at most ONE concept. Two stations exist now, and
+	-- both can be solved inside the same credit window; if `credit` did not
+	-- consume its observations, everything said beforehand would be burned
+	-- twice, into two different concepts, at double speed.
+	local two = Operator.new({
+		{ concept = "exit", plain = { "exit" }, payload = "archive" },
+		{ concept = "breaker", plain = { "breaker" }, payload = "archive" },
+	} :: any)
+	two:hear({ speaker = fakeSpeaker, text = "purple lantern", at = 0 })
+	two:credit("exit", 1)
+	two:credit("breaker", 2)
+	local creditedTo: { [string]: boolean } = {}
+	for _, c in two:snapshot() do
+		creditedTo[c.concept] = true
+	end
+	assert(creditedTo.exit == true, "the solve inside the window must be credited")
+	assert(creditedTo.breaker == nil, "one utterance must not also be credited to a second concept")
+
 	print("[TestOperator] all assertions passed")
 	return true
 end
