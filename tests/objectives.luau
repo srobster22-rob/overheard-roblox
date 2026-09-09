@@ -453,6 +453,69 @@ local late = lateBoard:submit("board", THIRD, "11", T0)
 check("a wrong answer arriving after the solve is blameless too", late.fault == false)
 check("and costs the late player no miss", lateLine.misses[THIRD] == nil)
 
+print("")
+print("having SEEN an answer disqualifies you, whoever holds it now")
+
+-- R38. `submit` refused only the CURRENT holder. `PlayerAdded` re-deals the
+-- whole board, so a join moved the line off the player who had just read the
+-- number out — and the keypad then accepted it from them. `ok=true,
+-- solved=true`, in two of three probe runs. The invariant this game is built on
+-- is "the player who can SEE an answer may never be the player who ENTERS it",
+-- and it was written as "is not the current holder", which is a different claim.
+
+local joinBoard = Objectives.new()
+local joinLine = joinBoard:add("board", "jack_number", "jack %s")
+
+-- Deal to exactly one player so the reader is known, then re-deal to somebody
+-- else, which is what a join does.
+joinBoard:deal({ 7 })
+check("(guard) player 7 was dealt the line", joinLine.holder == 7)
+check("(guard) and is recorded as having seen it", joinLine.seenBy[7] == true)
+local answer = joinLine.answer
+
+joinLine.holder = 8
+check("(guard) the line has moved to somebody else", joinLine.holder == 8)
+
+local reader = joinBoard:submit("board", 7, answer, 1)
+check("the player who read it cannot enter it", reader.ok == false)
+check("...and is told why, not left guessing", reader.reason ~= nil and #(reader.reason :: string) > 0)
+check("...and the line is not solved", joinLine.solved == false)
+
+-- A wrong answer from a disqualified player must not cost them a jam either:
+-- they are refused for who they are, not for what they typed.
+check("...and it costs them no miss", (joinLine.misses[7] or 0) == 0)
+
+-- The keep side. Somebody who never saw it can still solve it, or the fix has
+-- simply broken the game.
+local fresh = joinBoard:submit("board", 9, answer, 2)
+check("a player who never saw the answer can still patch it", fresh.ok == true)
+check("...and the line is solved", joinLine.solved == true)
+
+-- Every player a re-deal has shown the line to accumulates, rather than the set
+-- being overwritten by the latest holder.
+local many = Objectives.new()
+local manyLine = many:add("board", "jack_number", "jack %s")
+many:deal({ 1 })
+manyLine.solved = false
+many:deal({ 2 })
+manyLine.solved = false
+many:deal({ 3 })
+check("(guard) three players have been dealt it in turn", manyLine.holder == 3)
+local seen = 0
+for _ in manyLine.seenBy do
+	seen += 1
+end
+check(`every reader is remembered, not just the last ({seen})`, seen == 3)
+check("the first reader is still disqualified", many:submit("board", 1, manyLine.answer, 3).ok == false)
+check("and the second", many:submit("board", 2, manyLine.answer, 4).ok == false)
+
+-- And it is per ROUND: a new round re-rolls the answer, so last round's readers
+-- are strangers to it again.
+many:reset()
+many:deal({ 4 })
+check("(guard) a new round dealt it to somebody", manyLine.holder == 4)
+check("last round's reader is no longer disqualified", many:submit("board", 1, manyLine.answer, 5).ok == true)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

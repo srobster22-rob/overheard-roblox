@@ -27,6 +27,12 @@ export type Objective = {
 	-- that actor's attempts on it are jammed. Per (line, actor) on purpose: one
 	-- player guessing must not lock a line for the player who was actually told
 	-- the number, and must not lock them out of the OTHER line either.
+	-- Everyone who has been dealt this line THIS ROUND, and therefore had its
+	-- answer on their screen. Not the same thing as the current holder: a
+	-- mid-round join re-deals the board, and until R38 the previous holder --
+	-- who had just read the number out — was free to type it in themselves.
+	-- The invariant is about having SEEN the answer, so that is what is stored.
+	seenBy: { [number]: boolean },
 	misses: { [number]: number },
 	jammedUntil: { [number]: number },
 }
@@ -79,6 +85,7 @@ function Objectives.add(self: Board, id: string, concept: ConceptId, prompt: str
 		holder = nil,
 		solved = false,
 		prompt = prompt,
+		seenBy = {},
 		misses = {},
 		jammedUntil = {},
 	}
@@ -104,7 +111,10 @@ function Objectives.deal(self: Board, userIds: { number })
 	local i = math.random(#userIds)
 	for _, o in self.list do
 		if not o.solved then
-			o.holder = userIds[((i - 1) % #userIds) + 1]
+			local to = userIds[((i - 1) % #userIds) + 1]
+			o.holder = to
+			-- Being dealt a line is what puts its answer on your screen.
+			o.seenBy[to] = true
 			i += 1
 		end
 	end
@@ -135,7 +145,9 @@ function Objectives.redealOrphans(self: Board, userIds: { number }): number
 	for _, o in self.list do
 		local holder = o.holder
 		if not o.solved and (holder == nil or not present[holder]) then
-			o.holder = userIds[((i - 1) % #userIds) + 1]
+			local to = userIds[((i - 1) % #userIds) + 1]
+			o.holder = to
+			o.seenBy[to] = true
 			i += 1
 			moved += 1
 		end
@@ -181,6 +193,14 @@ function Objectives.submit(self: Board, id: string, actorUserId: number, value: 
 	if objective.solved then
 		-- Somebody else got there first. NOT this player's fault; see `fault`.
 		return { ok = false, reason = "already restored", solved = true, fault = false }
+	end
+
+	-- The invariant, stated as what it actually is: you may not enter an answer
+	-- you have SEEN. Checking only the current holder let a mid-round re-deal
+	-- move the line off the person who had just read the number, after which
+	-- the keypad accepted it from them.
+	if objective.seenBy[actorUserId] then
+		return { ok = false, reason = "you were told this one - somebody else has to patch it", solved = false }
 	end
 
 	-- The invariant. The holder cannot solve their own objective.
@@ -246,6 +266,7 @@ function Objectives.reset(self: Board)
 		-- line in one round was refused the CORRECT answer in the next -- and
 		-- since the answers are re-rolled here, the jam punished them for
 		-- guesses at a number that no longer exists.
+		objective.seenBy = {}
 		objective.misses = {}
 		objective.jammedUntil = {}
 	end
