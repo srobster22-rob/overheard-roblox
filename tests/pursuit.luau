@@ -415,6 +415,91 @@ across:sendTo("board")
 check("being sent again does NOT arrive instantly", across.state ~= "arrived")
 check("and you hear it coming", across:isAudible())
 
+print("")
+print("it finishes the call it started")
+
+-- R36. `sendTo` retargeted unconditionally, so with two concepts in play the
+-- two plain words cancelled each other: alternating them once a second held the
+-- Operator 40 studs from either room for FIVE MINUTES, audible throughout and
+-- able to capture nobody, because capture requires `arrived`. The counterplay to
+-- a monster that hunts what you say became saying more of it.
+
+local function alternate(seconds: number)
+	local t = tracker()
+	local dt = 0.5
+	local flip = false
+	t:sendTo("board")
+	for step = 1, math.floor(seconds / dt) do
+		t:step(dt)
+		if t.state == "arrived" then
+			return t, true
+		end
+		if step % 2 == 0 then
+			flip = not flip
+			t:sendTo(if flip then "archive" else "board")
+		end
+	end
+	return t, false
+end
+
+local spammed, reached = alternate(60)
+check("alternating both giveaways no longer stops it arriving", reached)
+check("(guard) and it really did arrive somewhere", spammed.state == "arrived")
+
+-- The queued room is not lost, it is deferred.
+local queued = tracker()
+queued:sendTo("board")
+queued:step(0.5)
+check("(guard) it is on its way to the board", queued.targetName == "board")
+check("a second room is accepted", queued:sendTo("archive") == true)
+check("...but does not steal the current call", queued.targetName == "board")
+check("...and is remembered", queued.pending == "archive")
+
+for _ = 1, 200 do
+	queued:step(0.5)
+	if queued.state == "arrived" then
+		break
+	end
+end
+check("it still finishes the first call", queued.state == "arrived" and queued.targetName == "board")
+check("the queued room is not taken while it stands there", queued:takePending() == false)
+
+queued:withdrawTo({ x = 0, z = 0 })
+for _ = 1, 400 do
+	queued:step(0.5)
+	if queued.state == "idle" then
+		break
+	end
+end
+check("(guard) it walked home", queued.state == "idle")
+check("now it answers the queued room", queued:takePending() == true)
+check("...and is heading there", queued.targetName == "archive")
+check("...with nothing left queued", queued.pending == nil)
+
+-- Saying the SAME room again must not queue a pointless second trip.
+local same = tracker()
+same:sendTo("board")
+same:step(0.5)
+same:sendTo("board")
+check("re-saying the room it is already going to queues nothing", same.pending == nil)
+
+-- A queue must not survive a reset, or a new round starts by chasing something
+-- somebody said in the last one.
+local reset = tracker()
+reset:sendTo("board")
+reset:step(0.5)
+reset:sendTo("archive")
+check("(guard) something is queued", reset.pending == "archive")
+reset:sendHome({ x = 0, z = 0 })
+check("going home clears the queue", reset.pending == nil)
+
+local stopped = tracker()
+stopped:sendTo("board")
+stopped:step(0.5)
+stopped:sendTo("archive")
+stopped:stop()
+check("stopping clears it too", stopped.pending == nil)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

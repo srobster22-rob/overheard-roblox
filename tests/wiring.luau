@@ -563,6 +563,10 @@ check("decay keeps its own slower beat", string.find(tickBody, "Config.DecaySeco
 -- R25. The room must be RELEASED, or capture-while-arrived (R24) becomes a
 -- permanent softlock: one plain word parks the Operator on an objective and
 -- nobody can ever finish that station.
+-- R36. A queued room is only taken up when the Operator is idle, so the server
+-- has to ask. Without this the queue fills and nothing ever drains it.
+check("the tick takes up a queued room", string.find(tickBody, "pursuit:takePending()", 1, true) ~= nil)
+
 check("the tick asks whether it should leave", string.find(tickBody, "shouldLeave", 1, true) ~= nil)
 check("the linger is a dial, not a literal", string.find(tickBody, "Config.LingerSeconds", 1, true) ~= nil)
 -- R26: it WALKS out rather than switching off in place, and says so. `stop()`

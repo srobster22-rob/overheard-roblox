@@ -26,6 +26,9 @@ export type Tracker = typeof(setmetatable(
 		position: Point,
 		target: Point?,
 		targetName: string?,
+		-- A room it heard about while already on its way. It finishes the call
+		-- it started before taking the next one.
+		pending: string?,
 		state: State,
 		-- Seconds spent standing in the room it arrived at. Reset the moment it
 		-- is anything other than `arrived`.
@@ -53,6 +56,7 @@ function Pursuit.new(rooms: { [string]: Point }, start: Point): Tracker
 		position = { x = start.x, z = start.z },
 		target = nil,
 		targetName = nil,
+		pending = nil,
 		state = "idle" :: State,
 		dwell = 0,
 		speed = Config.PursuitSpeed,
@@ -101,10 +105,29 @@ end
 -- Called when the Operator understands something. `payload` names a room.
 -- An unknown payload is ignored rather than guessed at: sending it to the wrong
 -- room on a misunderstanding would read as the monster cheating.
+-- IT FINISHES THE CALL IT STARTED. A different room heard mid-approach is
+-- QUEUED, not switched to.
+--
+-- `sendTo` used to retarget unconditionally, and with two concepts in play that
+-- is a livelock: alternating the two plain words once a second held the
+-- Operator 40 studs from either room for five minutes, audible the whole time
+-- and able to capture nobody, because capture requires `arrived`. The
+-- counterplay to a monster that hunts what you say became saying MORE of it,
+-- which inverts the design. It needs no coordination either — two players
+-- panicking and both blurting giveaways produce it by accident.
+--
+-- Being called back out of a RETREAT is still allowed: that is R26's rule and a
+-- retreat is not a call in progress.
 function Pursuit.sendTo(self: Tracker, payload: string): boolean
 	local room = self.rooms[payload]
 	if not room then
 		return false
+	end
+
+	local busy = self.state == "approaching" or self.state == "closing"
+	if busy and self.targetName ~= payload then
+		self.pending = payload
+		return true
 	end
 	local target = { x = room.x, z = room.z }
 	self.target = target
@@ -119,6 +142,7 @@ end
 function Pursuit.stop(self: Tracker)
 	self.target = nil
 	self.targetName = nil
+	self.pending = nil
 	self:setState("idle")
 end
 
@@ -202,8 +226,21 @@ function Pursuit.sendHome(self: Tracker, point: Point)
 	self.position = { x = point.x, z = point.z }
 	self.target = nil
 	self.targetName = nil
+	self.pending = nil
 	self.dwell = 0
 	self:setState("idle")
+end
+
+-- Take up a room heard while it was busy. Only once it is idle: it finishes the
+-- call, holds the room, walks home, and then answers the next one. Returns true
+-- if it actually set off.
+function Pursuit.takePending(self: Tracker): boolean
+	local next_ = self.pending
+	if next_ == nil or self.state ~= "idle" then
+		return false
+	end
+	self.pending = nil
+	return self:sendTo(next_)
 end
 
 -- Has it stood in this room long enough to lose interest?

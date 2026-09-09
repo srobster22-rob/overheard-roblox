@@ -427,6 +427,11 @@ task.spawn(function()
 		-- ...but not forever. Nothing except the loss ever released it before
 		-- R25, so a single plain word parked it on an objective for the rest of
 		-- the round and nobody could ever finish that station.
+		-- A room it heard about while it was busy. Taken up only once it is idle
+		-- again, so it finishes one call before answering the next -- see
+		-- Pursuit.sendTo, and the livelock that made commitment necessary.
+		pursuit:takePending()
+
 		if pursuit:shouldLeave(Config.LingerSeconds) then
 			-- It WALKS out, audibly, rather than switching off where it stands.
 			-- `stop()` released the room in silence with the body motionless, so
