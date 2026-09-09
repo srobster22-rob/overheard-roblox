@@ -233,9 +233,23 @@ local function putThroughTheSilentLine()
 		for _, room in Config.Rooms do
 			local centre = built.rooms[room]
 			if centre and Layout.inRoom(centre, standing) then
+				-- Was it ALREADY coming here? Then this silence is already being
+				-- answered by the trip in progress: the player is forgiven
+				-- because they are about to be visited, but nothing new is
+				-- announced, because nothing new happened.
+				local alreadyComing = pursuit.targetName == room
+				local _, onItsWay = pursuit:sendTo(room)
+				if not onItsWay then
+					-- Committed elsewhere. The request is sitting in `pending`,
+					-- where the next one will overwrite it, so NOTHING has
+					-- happened: say nothing and leave the player overdue. They
+					-- are still silent, and the tick will ask again.
+					return
+				end
 				supervisor:called(userId, os.clock())
-				pursuit:sendTo(room)
-				heardRemote:FireAllClients(Round.LINES.traced, "", 1)
+				if not alreadyComing then
+					heardRemote:FireAllClients(Round.LINES.traced, "", 1)
+				end
 				return
 			end
 		end
@@ -470,6 +484,7 @@ Players.PlayerRemoving:Connect(function(player: Player)
 	-- `misses`/`jammedUntil` deliberately DO NOT (see Objectives), because a jam
 	-- a player can shed by reconnecting is not a jam.
 	lastSubmit[player.UserId] = nil
+	warned[player.UserId] = nil
 	supervisor:forget(player.UserId)
 	line:forget(player.UserId)
 	desk:forget(player.UserId)

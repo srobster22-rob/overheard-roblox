@@ -692,6 +692,93 @@ for _, name in holders do
 	check(`a new round resets '{name}'`, string.find(beginBody, name .. ":", 1, true) ~= nil)
 end
 
+-- R55, and this is the CLASS rather than the instance. `CLAUDE.md` requires
+-- per-player state to be cleaned on `PlayerRemoving` or it leaks across rounds.
+-- R53 swept `init.server.luau` against that rule BY HAND and found it clean --
+-- and R54, the very next round, added `warned` beside `lastSubmit` with no
+-- cleanup at all. A rule checked by reading is a rule checked once.
+--
+-- The list is DERIVED from the server source, so the next per-player table
+-- added has to be handled or this fails. A hand-kept list would have passed
+-- while the new one leaked, which is exactly what happened.
+print("")
+print("every per-player table is cleaned when a player leaves")
+
+local leavingBody = string.match(serverCode, "Players.PlayerRemoving:Connect.-" .. NL .. "end%)") or ""
+check("(guard) found the PlayerRemoving handler", #leavingBody > 0)
+
+-- Read from the comment-stripped source, line by line. `stripNonCode` blanks
+-- table braces, so the declaration reads `local warned:   [number]: boolean`
+-- there. Anchored at the start of a line so locals INSIDE a function -- the
+-- `out` accumulator in `livePositions`, which is a temporary and has nothing to
+-- clean -- are not swept in.
+local perPlayer: { string } = {}
+for line in string.gmatch(serverCode, "[^" .. NL .. "]+") do
+	local name = string.match(line, "^local ([%a][%w_]*):%s+%[number%]:")
+	if name then
+		table.insert(perPlayer, name)
+	end
+end
+check(`(guard) found the per-player tables ({table.concat(perPlayer, ", ")})`, #perPlayer >= 2)
+
+for _, name in perPlayer do
+	check(
+		`a player who leaves is cleared from '{name}'`,
+		string.find(leavingBody, name .. "[player.UserId] = nil", 1, true) ~= nil
+	)
+end
+
+-- (control) the reader must actually be able to fail. A table name that is not
+-- cleared anywhere must not be reported as clean.
+check(
+	"(control) a table nobody clears would be caught",
+	string.find(leavingBody, "notATable[player.UserId] = nil", 1, true) == nil
+)
+
+-- R55's fix, checked in the PRODUCT rather than in the module.
+--
+-- `tests/pursuit.luau` proves `sendTo` reports whether the call really went
+-- through. That is not the same as the server ASKING. R48 and R49 were both
+-- this exact mistake -- a guard that checked the call existed, not that its
+-- answer was used -- and the first version of this round's proof repeated it:
+-- disabling the early return in the dispatch left the whole suite green.
+--
+-- So this reads the dispatch and requires the ORDER: ask, bail out if the call
+-- was only queued, and only then forgive the player and say the line.
+print("")
+print("the Supervisor only speaks when the call really went through")
+
+local dispatchBody = string.match(serverCode, "local function putThroughTheSilentLine%(%).-" .. NL .. "end") or ""
+check("(guard) found the dispatch", #dispatchBody > 0)
+
+local askedAt = string.find(dispatchBody, "onItsWay = pursuit:sendTo", 1, true)
+check("it asks whether the call went through", askedAt ~= nil)
+
+local bailedAt = string.find(dispatchBody, "if not onItsWay then", 1, true)
+check("...and bails out when it did not", bailedAt ~= nil)
+
+local forgaveAt = string.find(dispatchBody, "supervisor:called", 1, true)
+local saidAt = string.find(dispatchBody, "Round.LINES.traced", 1, true)
+check("(guard) it does forgive the player somewhere", forgaveAt ~= nil)
+check("(guard) ...and does say the line somewhere", saidAt ~= nil)
+
+if askedAt and bailedAt and forgaveAt and saidAt then
+	check("the bail-out comes after the question", bailedAt > askedAt)
+	check("a queued call never forgives the player", forgaveAt > bailedAt)
+	check("...and is never announced", saidAt > bailedAt)
+	-- And the announcement is gated a second time, so a trip already under way
+	-- to that room punishes the silence without saying it twice.
+	local alreadyAt = string.find(dispatchBody, "if not alreadyComing then", 1, true)
+	check("a trip already under way is not announced again", alreadyAt ~= nil and alreadyAt < saidAt)
+end
+
+-- (control) the reader must be able to fail: a phrase that is not in the
+-- dispatch must not be found in it.
+check(
+	"(control) the reader is not matching everything",
+	string.find(dispatchBody, "if not neverWritten then", 1, true) == nil
+)
+
 -- Winning must stop the monster. Until R29 it did not, so a group finished the
 -- board and was then taken by something that had no idea the round was over.
 -- NL built with string.char, never an escape: this repo's patching has turned

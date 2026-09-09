@@ -5672,3 +5672,114 @@ log 18, silence **40**.
 which is device-blocked.
 
 **Commit** `db1e4e8`
+
+
+## R55 — the Supervisor announces a call it does not make
+
+**Stage 0.** `OWNER.md` `## Next` still empty. R54's three filed questions
+untouched, and they stay filed.
+
+**Stage 1 — the seam R54 left.** R53 swept `init.server.luau` against
+`CLAUDE.md`'s hard rules and found the wiring clean. R54 then wrote new wiring
+across that seam, so this round read the new code against the old contracts it
+now depends on.
+
+`Pursuit.sendTo` returns `true` in two completely different situations: when it
+actually turns the Operator toward a room, and when it is already committed to
+another room and merely stashes the request in `pending` — which the very next
+request overwrites. R54's dispatch cannot tell those apart, so it announces the
+call and starts the player's 25-second cooldown either way.
+
+Measured. Four players, 4,000 ticks, one of them talking constantly so the
+Operator is kept busy — the shape of a real round, where the group is trying to
+work:
+
+| | |
+|---|---|
+| announced *"I have a silent line. Putting you through."* | **117** |
+| the Operator actually turned toward that room | **1** |
+| queued into `pending`, overwritten by the next request | 77 |
+| it was already on its way there anyway | 39 |
+
+So the line is a lie 116 times out of 117, and each one forgives the silent
+player for 25 seconds. This is R11's lesson in a new place — *a hum that
+sometimes means nothing is worse than no hum* — and `CLAUDE.md`'s rule that the
+monster must be legible or the scare reads as unfair.
+
+1. *(picked)* **A call that did not go through must not be announced, and must
+   not be forgiven.**
+2. `warned` (R54, `init.server.luau:252`) is a per-player table with no
+   `PlayerRemoving` cleanup, while `lastSubmit` beside it has one — the exact
+   class R53 swept for, reintroduced by the very next round. It leaks a boolean
+   per player and self-heals on the next tick after a rejoin, so it is **a leak,
+   not a behaviour change.** Fixed in passing, and swept properly below.
+3. The `%` in a server prompt, geometry-blind movement, no player light, the
+   stemming pair, R46's learning gap, `anyFinishable`'s margin, R21's corner
+   fairness, R36's patience — **all still filed.**
+
+**Stage 2 — the fix.** `Pursuit.sendTo` now returns `accepted, onItsWay`.
+`accepted` is whether the room exists; `onItsWay` is whether the Operator is
+actually heading there *now*. The two differ exactly when it is committed
+elsewhere and the request lands in `pending`.
+
+The dispatch asks, and:
+
+- **queued** — says nothing, forgives nothing, leaves the player overdue. They
+  are still silent and the next tick will ask again.
+- **already on its way there** — forgives the player, because the trip in
+  progress is going to visit them, but does **not** announce a second time.
+- **a new trip** — forgives and announces. Only here is the line true.
+
+Also fixed in passing: `warned` is now cleared on `PlayerRemoving`.
+
+**Stage 3 — proof.** 13 new checks in `tests/pursuit.luau` for the contract,
+including a 60-call sweep asserting that `onItsWay` true always means the target
+really moved there and false always means it did not. 15 in `tests/wiring.luau`
+across two new sweeps.
+
+*The first version of this round's proof made R48's and R49's mistake again.*
+I tested that `sendTo` reports honestly and stopped there — and disabling the
+early return in the dispatch left the whole suite green, 252/252. Proving the
+module is not proving the product. The wiring sweep now reads the dispatch and
+requires the **order**: ask, bail out if it was only queued, and only then
+forgive the player and say the line.
+
+The second sweep is the CLASS behind the `warned` leak, derived from the server
+source rather than a hand-kept list: every top-level `local x: { [number]: … }`
+must be cleared in `PlayerRemoving`. R53 checked that rule by reading and found
+the file clean; R54 broke it the very next round. A rule checked by reading is a
+rule checked once.
+
+Three plants, each failed by name:
+
+| plant | what failed |
+|---|---|
+| `sendTo` claims a queued call is on its way | `...but it is NOT on its way`, and `'on its way' always means the target really moved there (29 wrong)` |
+| the dispatch stops checking `onItsWay` | `...and bails out when it did not` |
+| `warned` not cleared on `PlayerRemoving` (R54's actual bug) | `a player who leaves is cleared from 'warned'` |
+
+Restored from byte-copy backups; sha256 `84f88365…526db576` and
+`356f64cd…1fe22211` after each.
+
+**Verified in the product, not the source.** The same 4,000-tick run, with the
+Operator kept busy, counting only calls that were announced:
+
+| | announced | of which real |
+|---|---|---|
+| before | 59 | **20** |
+| after | 74 | **74** |
+
+Every announcement is now true — and *real* dispatches more than tripled,
+because forgiving a player for a call that never happened was the thing
+suppressing the pressure the Supervisor exists to apply.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon 22, heuristic 40, operator ok, objectives 122,
+pursuit **103**, round 58, config 61, wiring **262**, connected 32, ordering 4,
+heat 20, layout 91, lifecycle 75, hud 16, readout 29, soak 19, hum 21, log 18,
+silence 40.
+
+*Not claimed:* whether the Supervisor now fires too often. Real dispatches went
+from 20 to 74 in the same window, which is the fix working, but whether that is
+*pressure* or *harassment* is a feel question and needs Studio. It joins R54's
+three filed questions rather than being answered here.

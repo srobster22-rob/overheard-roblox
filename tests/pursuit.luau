@@ -500,6 +500,71 @@ stopped:sendTo("archive")
 stopped:stop()
 check("stopping clears it too", stopped.pending == nil)
 
+print("")
+print("it says whether the call was actually placed")
+
+-- R55. `sendTo` returned a bare `true` whether it turned the Operator toward a
+-- room or merely stashed the request in `pending`, where the next request
+-- overwrites it. R54's Supervisor believed that `true`: measured over 4,000
+-- ticks with the Operator kept busy, it announced 117 silence calls, ONE of
+-- which turned it toward the room -- 77 swallowed into `pending`, 39 where it
+-- was already going. Every one of the other 116 told every player a line about
+-- a call that was never placed, and forgave the silent player for 25 seconds.
+--
+-- R11's lesson in a new place: a hum that sometimes means nothing is worse than
+-- no hum, and a sentence is no different.
+
+local idle = tracker()
+local accepted, onItsWay = idle:sendTo("board")
+check("an idle Operator takes the call", accepted)
+check("...and is on its way", onItsWay)
+check("(guard) ...which the state agrees with", idle.state == "approaching" or idle.state == "closing")
+
+-- Now it is committed. A call to the OTHER room is only a note in `pending`.
+local queuedAccepted, queuedOnItsWay = idle:sendTo("archive")
+check("a call while it is committed is still accepted", queuedAccepted)
+check("...but it is NOT on its way", not queuedOnItsWay)
+check("(guard) ...because the request went into pending", idle.pending == "archive")
+check("(guard) ...and it is still heading where it was", idle.targetName == "board")
+
+-- And the note is overwritten, which is why a caller must not treat it as done.
+idle:sendTo("board")
+check("a queued room is replaced by the next request", idle.pending ~= "archive" or idle.targetName == "board")
+
+-- Re-sending it where it is already going is on its way, not a new trip.
+local again = tracker()
+again:sendTo("board")
+local _, stillGoing = again:sendTo("board")
+check("re-sending it where it already goes is on its way", stillGoing)
+
+-- A room that does not exist is neither.
+local nowhere = tracker()
+local badAccepted, badOnItsWay = nowhere:sendTo("boiler room")
+check("an unknown room is refused", not badAccepted)
+check("...and is certainly not on its way", not badOnItsWay)
+
+-- The property, swept: whenever `onItsWay` is true the Operator's target really
+-- is that room, and whenever it is false the target is unchanged. This is the
+-- whole contract the Supervisor now leans on.
+local swept, wrong = 0, 0
+local mixed = tracker()
+for step = 1, 60 do
+	local room = if step % 2 == 0 then "board" else "archive"
+	local before = mixed.targetName
+	local _, went = mixed:sendTo(room)
+	swept += 1
+	if went then
+		if mixed.targetName ~= room then
+			wrong += 1
+		end
+	elseif mixed.targetName ~= before then
+		wrong += 1
+	end
+	mixed:step(0.25)
+end
+check(`(guard) the contract was swept ({swept} calls)`, swept >= 50)
+check(`'on its way' always means the target really moved there ({wrong} wrong)`, wrong == 0)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

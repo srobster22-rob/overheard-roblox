@@ -118,16 +118,30 @@ end
 --
 -- Being called back out of a RETREAT is still allowed: that is R26's rule and a
 -- retreat is not a call in progress.
-function Pursuit.sendTo(self: Tracker, payload: string): boolean
+-- Returns `accepted, onItsWay`.
+--
+-- `accepted` is whether the room exists. `onItsWay` is whether the Operator
+-- is ACTUALLY heading there now, and the two differ whenever it is already
+-- committed elsewhere: the request goes into `pending`, where the next one
+-- overwrites it.
+--
+-- This used to return a bare `true` for both, and R54's Supervisor believed
+-- it. Measured over 4,000 ticks with the Operator kept busy: 117 silence
+-- calls announced, ONE that turned it toward the room, 77 swallowed into
+-- `pending` and 39 where it was already going. Every one of the 116 told
+-- every player a line about a call that was not placed, and forgave the
+-- silent player for 25 seconds. A hum that sometimes means nothing is worse
+-- than no hum (R11), and the same is true of a sentence.
+function Pursuit.sendTo(self: Tracker, payload: string): (boolean, boolean)
 	local room = self.rooms[payload]
 	if not room then
-		return false
+		return false, false
 	end
 
 	local busy = self.state == "approaching" or self.state == "closing"
 	if busy and self.targetName ~= payload then
 		self.pending = payload
-		return true
+		return true, false
 	end
 	local target = { x = room.x, z = room.z }
 	self.target = target
@@ -136,7 +150,7 @@ function Pursuit.sendTo(self: Tracker, payload: string): boolean
 	-- must not make it loud again, and re-sending it where it already stands
 	-- must not re-fire `arrived`.
 	self:setState(self:classify(distance(self.position, target)))
-	return true
+	return true, true
 end
 
 function Pursuit.stop(self: Tracker)
