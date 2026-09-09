@@ -2419,7 +2419,7 @@ line's presence in the built artifact. Unproven and needing a human at a
 keyboard: whether losing FEELS like an ending, and whether `OperatorReach = 22`
 takes a whole team too easily now that being taken actually ends the round.
 
-**Commit** `%%HASH%%`.
+**Commit** `6a0b7ae`.
 
 **Next round.** With the loss wired, the honest next gap is R9 round flow — a
 timer (`RoundLength` is still read by nothing) and what happens after either
