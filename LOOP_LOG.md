@@ -2250,3 +2250,103 @@ rooms, and that the banner does not cover the keypad.
 **Next.** The reach constant is a guess and wants a playtest, not another test.
 If Studio stays unavailable, the next best round is R7 (The Supervisor), which
 is pure comprehension logic and fully verifiable headlessly.
+
+
+## R17 — the stopword list is bypassed by the stemmer
+
+**Stage 0.** `OWNER.md` has nothing under `## Next`, so this round picks for
+itself. The four owner questions (`CoolPerSecond`, mid-round re-deal on join,
+solo-player-cannot-finish, loud-vs-quiet wrong keypad code) stay filed and were
+NOT decided here.
+
+Sole writer on this repo from this round on; a peer supervisor stood its
+background agents down after R16 landed mid-read. Its probe findings were taken
+as input but RE-PROBED against current HEAD before being trusted, per Stage 1's
+preference for a demonstrated defect over an inherited one.
+
+**Stage 1 — shortlist.** Every line below is live output from this round's own
+probe, not a read.
+
+1. *(picked)* **The stopword list is bypassed by the stemmer.**
+   `Heuristic.understand` gates novel terms with `Lexicon.isStopword(s)` where
+   `s` is the STEM. Swept all 67 stopwords parsed from `Lexicon.luau` itself:
+   exactly two stem into non-stopwords — `this -> thi`, `guys -> guy` — and both
+   clear the `#s > 2` filter, so both get offered, credited and burned.
+   End to end through a real `Operator` (five utterances of "guys the wire is
+   over here" plus a credit): `guy` and `guy the` both reach **heat 1.00**,
+   after which `"guys stop"`, `"hey guys"` and `"that guy"` all return
+   **confidence 1.00**. `Lexicon.luau`'s own comment states the contract this
+   breaks: *"If 'the' could burn, every phrase would burn."* Once `guy` reads as
+   contentful, the both-words-are-stopwords bigram rejection stops firing too.
+   Picked because it is player-facing (the monster moves on a phrase nobody
+   coined, and "guys" is ordinary Roblox chat), demonstrated, and admits a CLASS
+   fix — one guard inside `stem` protects every consumer at once — with a test
+   list DERIVED from source so future stopwords are covered without maintenance.
+
+2. **Plain language in the plural is not understood at all.** Same probe:
+   `"check the fuse"` -> breaker 1.00 but `"check the fuses"` -> nil **0.00**;
+   `"find the escapes"` -> nil 0.00. `stem("fuses") = "fus"` while
+   `stem("fuse") = "fuse"`. `fuse`, `name` and `escape` are live plain terms, so
+   saying them in the plural is free — a real hole in "plain speech is always
+   punished". NOT picked: the honest fix is genuinely ambiguous in English
+   (`fuses` = `fuse`+s or `fus`+es, exactly like `buses`/`bus`), and every
+   candidate rule I can write regresses some other word. Reordering the suffix
+   table to try `s` before `es` fixes `fuses`/`names`/`escapes` and breaks
+   `boxes`/`buses`. **FILED with the analysis, not built** — it wants a decision
+   about which way to be wrong, and that is a design call.
+
+3. **A burned coinage dies in the plural.** `'blue wire'` at heat 1.0 matches
+   "the blue wire" 1.00 but "the blue wires" 0.00. Same root cause as 2.
+   **Filed with it**; fixing one without the other would be incoherent.
+
+4. **Coinage phrases are stored already-stemmed and re-stemmed at match time.**
+   "the gathering spot" mints `gather spot`, which re-stems to `gath spot` and
+   can never match. Real, but masked in play because the unigram `spot` from the
+   same sentence carries the match. **Filed** — lower impact than 1, and it
+   touches the same stemming area 2 and 3 want redesigned.
+
+**Stage 2 — built.** One guard at the top of `Lexicon.stem`: a stopword is
+returned unchanged. Placed inside `stem` rather than at the call site, so every
+consumer is protected at once instead of the one that happened to be caught,
+and the stopword table's own promise is kept where the next person will read it.
+
+The test's word list is DERIVED from `src/shared/Lexicon.luau` at run time, the
+way `tests/config.luau` derives its dials. A hand-copied list would pass while a
+stopword added tomorrow went unchecked — the exact failure mode that lets this
+defect back in. It carries a `(guard) parsed the stopword list from source`
+check, because a sweep over an empty list passes vacuously.
+
+**Stage 3 — review.**
+- Full suite green: lexicon 22, heuristic 23, objectives 84, pursuit 36,
+  round 47, config 47, wiring 130, connected 21, ordering 4, plus the operator
+  assertions. `suite passed`.
+- **Proved the test can fail.** Backup taken AFTER the fix
+  (sha256 `98aaf05d...a41`), guard deleted, suite re-run. Five failures, all by
+  name and all the right ones:
+  `no stopword stems into a non-stopword (this -> thi, guys -> guy)`,
+  `'guys' is not stemmed into the contentful 'guy'`,
+  `'this' is not stemmed into the contentful 'thi'`,
+  `saying 'guys' five times does not burn it`, and the end-to-end
+  `"hey guys" gives nothing away (conf 1.00)` — 17/22. Restored from that
+  backup; sha256 re-checked and byte-identical.
+- **Checked the guard did not turn the stemmer off**: `keys -> key` and
+  `hiding -> hid` still assert, so the fix is narrow rather than a mute button.
+- **Verified it reached the PRODUCT, not just the source**: `STOPWORDS[word]`
+  appears in the Rojo-built place file, not only in `src/`.
+
+**Stage 4 — shipped.** `selene src` 0/0. `rojo build default.project.json`
+built `check.rbxlx` clean. Studio itself is DEVICE-BLOCKED, so nothing here is a
+visual or playtest claim: what is proven is the headless suite, the lint, the
+build, and the guard's presence in the built artifact.
+
+**Filed, not built** (see shortlist 2-4): the `es` over-strip that makes plain
+plurals free and kills burned coinages in the plural, and the already-stemmed
+coinage storage. All three live in the same stemming redesign and item 2 needs
+an owner decision about which way to be wrong, so bundling them into a fix I
+picked unilaterally would be worse than filing them together.
+
+**Commit** `%%HASH%%`.
+
+**Next round.** The stemming cluster (2-4) is the biggest remaining known
+defect area but wants direction. Absent that, R7 (The Supervisor — punishes
+silence) is pure comprehension logic and fully verifiable headlessly.
