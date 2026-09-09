@@ -1,6 +1,13 @@
 # OVERHEARD — co-op horror, Roblox
 
 **Read `LOOP_LOG.md` first — it outranks every other doc here.**
+It is APPEND-ONLY. Never rewrite it in place: for thirty-three rounds the last
+step of each round wrote a `%%HASH%%` placeholder into the entry and then
+substituted the real commit hash into it, and the substitution wrote an empty
+file -- 2,509 lines and the CHARTER, GATE and EXPANSION AXIS went with the first
+one. Write the hash into the entry BEFORE committing, or leave it out.
+`tests/log.luau` fails the ship gate if a round has no entry, if an entry names
+no commit, or if a placeholder survives.
 `GAME.md` is the design bible, `RESEARCH.md` the platform limits.
 
 Luau on Roblox, synced to Studio with Rojo. Filesystem is the source of truth;
