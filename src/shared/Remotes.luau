@@ -18,6 +18,15 @@ local RunService = game:GetService("RunService")
 -- the player's own clock, so it is fired at ONE client, never broadcast: how
 -- long everyone else has been quiet is not yours to see.
 --
+-- `Objectives`, `OpenBoard`, `Rejected` and `Connected` are private for the
+-- same reason `Silence` is, and the most serious of the four: `Objectives`
+-- carries the actual two-digit ANSWERS players are supposed to relay by
+-- talking, not read off someone else's screen (see `Objectives.viewFor`'s own
+-- comment -- "the answer is included ONLY for the holder"). A future
+-- "simplify pushObjectives into one FireAllClients call" would leak every
+-- held answer to every player in the server. `tests/wiring.luau` guards all
+-- four against ever being broadcast.
+--
 -- `Rejected` is deliberately separate from `Heard`. `Heard` is the Operator's
 -- voice and is broadcast; `Rejected` is why YOUR submit at THAT station failed
 -- and is only ever fired at one client. They were the same remote until R10,

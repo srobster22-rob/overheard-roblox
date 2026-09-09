@@ -1153,6 +1153,41 @@ if ifCaughtAt and hideAt then
 	check("...inside the caught branch, not unconditionally", hideAt > ifCaughtAt)
 end
 
+-- R71, and this is the CLASS. R56 built this guard for ONE remote: "the
+-- server fires Silence at one client, never everyone", because a player's own
+-- clock is not everyone's business. This is the same guard for the three other
+-- remotes that carry something private, generalised rather than repeated --
+-- and the most serious of the four is `Objectives`, which carries the actual
+-- two-digit answers players are supposed to relay by talking, not read off
+-- someone else's screen. Nothing checked any of the three before this.
+--
+-- The local variable each remote is bound to is DERIVED from the source
+-- (`local xRemote = Remotes.get("Name")`), never typed here, so a rename does
+-- not silently blind the sweep.
+print("")
+print("private remotes are never broadcast")
+
+local PRIVATE_REMOTES = { "Objectives", "OpenBoard", "Rejected", "Connected" }
+for _, name in PRIVATE_REMOTES do
+	local var = string.match(serverSource, `local ([%a][%w_]*) = Remotes%.get%("{name}"%)`)
+	check(`(guard) found the local '{name}' is bound to`, var ~= nil)
+	if var then
+		check(
+			`'{name}' (as {var}) never fires FireAllClients`,
+			string.find(serverCode, var .. ":FireAllClients", 1, true) == nil
+		)
+	end
+end
+
+-- (control) a remote that DOES broadcast (Phase, meant for everyone) must not
+-- be reported as private-and-clean by a reader that is not actually looking.
+local phaseVar = string.match(serverSource, 'local ([%a][%w_]*) = Remotes%.get%("Phase"%)')
+check("(guard) found Phase's local", phaseVar ~= nil)
+check(
+	"(control) Phase really does broadcast, so the sweep is not vacuous",
+	phaseVar ~= nil and string.find(serverCode, phaseVar .. ":FireAllClients", 1, true) ~= nil
+)
+
 -- R57, and this is the CLASS. `Hud.EXCLUSIVE` is a list of promises about what
 -- the CLIENT will do, held in a shared module the client does not have to obey.
 -- R56 added `{ "Round over", "Supervisor" }` and used it to justify placing the

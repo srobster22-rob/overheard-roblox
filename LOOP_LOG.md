@@ -7199,3 +7199,71 @@ feel question and Studio is device-blocked; the panel is proved gone from the
 model, not proved to look right leaving.
 
 **Commit** `d283555`
+
+
+## R71 — nothing guards the objectives remote against ever being broadcast
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — the security-relevant channel with no regression guard.**
+`Objectives.viewFor(userId)` builds a per-player view where the `answer` field
+is populated ONLY for that player's own held lines — the module's own comment
+calls this out explicitly: "the answer is included ONLY for the holder;
+everyone else gets the same shape with the answer withheld." `pushObjectives`
+respects that today, firing `objectivesRemote:FireClient` once per player, each
+with their own view.
+
+Nothing checks that this stays true. R56 built exactly this guard for
+`Silence` — *"the server fires it at ONE client, never everyone"* — because a
+clock is only that player's business. `objectivesRemote` carries something far
+more sensitive: **the actual two-digit answers players are supposed to relay by
+talking**, not read off someone else's screen. A future round "simplifying"
+`pushObjectives` into one `objectivesRemote:FireAllClients(shared)` call would
+leak every held answer to every player in the server, and nothing in the suite
+would notice — the same shape as every broadcast-vs-private defect this
+project has already found (R10, R13, R51, R56), except here the leak is of the
+one thing `Objectives.viewFor`'s own comment says must never be shared.
+
+1. *(picked)* **Guard it: `objectivesRemote:FireAllClients` must never appear
+   in `init.server.luau`.**
+2. R63's queued-room drop, R59's corridor number, R62's loss-rate number — all
+   **still filed**, awaiting the owner.
+
+**Stage 2 — the fix.** `Remotes.luau`'s own comment now names all four private
+remotes beside `Silence`'s existing note, with `Objectives` singled out as the
+most serious: it carries the actual answers. A guard in `tests/wiring.luau`
+generalises R56's single-remote check: for each of `Objectives`, `OpenBoard`,
+`Rejected`, `Connected`, the local variable it is bound to is **derived** from
+the raw server source (`local xRemote = Remotes.get("Name")`), then that
+variable is required never to appear beside `:FireAllClients` in the code.
+
+*One real mistake along the way, caught before shipping.* The first version of
+the pattern matched against the **stripped** source (`serverCode`), which
+blanks string bodies by design — so the string literal `"Objectives"` inside
+`Remotes.get("Objectives")` was invisible to it, and every check failed with
+"guard not found" before a single defect could be planted. Reading the name
+from the raw `serverSource` and only the `:FireAllClients` search from the
+stripped code fixed it; this is the fourth time this exact split has mattered
+in this suite (R56, R59, R60).
+
+**Stage 3 — proof.** A `(control)` first: `Phase`, which is genuinely meant for
+everyone, is confirmed to actually broadcast — so the sweep is proven to be
+looking, not merely finding nothing because it is blind. Two plants, each
+failed by name:
+
+| plant | what failed |
+|---|---|
+| `pushObjectives` broadcasts one player's answers to everyone | `'Objectives' (as objectivesRemote) never fires FireAllClients` |
+| capture broadcasts `Connected` instead of firing it privately | `'Connected' (as connectedRemote) never fires FireAllClients` |
+
+Restored from byte-copy backup; sha256 `aa338e61…75fc66d64` unchanged.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon 22, heuristic 49, operator ok, objectives 122,
+pursuit 103, round 59, config 63, wiring **348**, connected 32, ordering 4,
+heat 20, layout 99, lifecycle 90, hud 22, readout 29, soak 42, hum 29, log 18,
+silence 62.
+
+*Not claimed:* that `Submit` needs the same guard — it only ever travels
+client-to-server, so `FireAllClients` on it is not a category this defect can
+occur in, and adding the check would be testing something that cannot happen.
