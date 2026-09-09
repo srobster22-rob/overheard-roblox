@@ -22,6 +22,11 @@ local lexiconRemote = Remotes.get("LexiconUpdated")
 local objectivesRemote = Remotes.get("Objectives")
 local submitRemote = Remotes.get("Submit")
 local openBoardRemote = Remotes.get("OpenBoard")
+-- Keypad feedback. Separate from `heardRemote` on purpose: `Heard` is the
+-- Operator's voice and goes to everyone, and while the keypad read its detail
+-- field, a broadcast about one player's speech landed in another player's
+-- error line. FireClient only, and it names its station. See Shared.Keypad.
+local rejectedRemote = Remotes.get("Rejected")
 
 -- Stations are the source of truth: the board and the Operator's secrets are
 -- both derived from `Round.STATIONS`, so an objective can never exist for a
@@ -151,7 +156,12 @@ submitRemote.OnServerEvent:Connect(function(player: Player, id: unknown, value: 
 	-- jam inside `submit` is what makes guessing the answer not worth doing.
 	local result = board:submit(id :: string, player.UserId, value :: string, now)
 	if not result.ok and result.reason then
-		heardRemote:FireClient(player, Round.LINES.busy, result.reason, 0)
+		-- Two channels, on purpose. The Operator says its line to this player
+		-- and says nothing that identifies the station; the REASON goes down
+		-- the private keypad channel tagged with the station it is about, so it
+		-- cannot paint the other keypad and cannot be confused with narration.
+		heardRemote:FireClient(player, Round.LINES.busy, "", 0)
+		rejectedRemote:FireClient(player, id :: string, result.reason)
 	end
 end)
 

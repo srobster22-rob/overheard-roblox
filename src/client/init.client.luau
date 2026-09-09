@@ -12,7 +12,17 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Keypad = require(ReplicatedStorage.Shared.Keypad)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+-- Named up front rather than fetched inline, so both sides read the same way
+-- and `tests/wiring.luau` can tell which handler belongs to which remote.
+local heardRemote = Remotes.get("Heard")
+local lexiconRemote = Remotes.get("LexiconUpdated")
+local objectivesRemote = Remotes.get("Objectives")
+local submitRemote = Remotes.get("Submit")
+local openBoardRemote = Remotes.get("OpenBoard")
+local rejectedRemote = Remotes.get("Rejected")
 
 local player = Players.LocalPlayer
 local gui = Instance.new("ScreenGui")
@@ -212,11 +222,11 @@ input.FocusLost:Connect(function(enterPressed: boolean)
 		closeBoard()
 		return
 	end
-	Remotes.get("Submit"):FireServer(openStation, value)
+	submitRemote:FireServer(openStation, value)
 	input.Text = ""
 end)
 
-Remotes.get("OpenBoard").OnClientEvent:Connect(function(stationId: string, actionText: string?)
+local function onOpenBoard(stationId: string, actionText: string?)
 	openStation = stationId
 	boardPanel.Visible = true
 	local title = boardPanel:FindFirstChild("Title") :: TextLabel?
@@ -226,7 +236,8 @@ Remotes.get("OpenBoard").OnClientEvent:Connect(function(stationId: string, actio
 	hint.Text = `enter the number you were told for the {stationId}`
 	status.Text = ""
 	input:CaptureFocus()
-end)
+end
+openBoardRemote.OnClientEvent:Connect(onOpenBoard)
 
 -- THE OPERATOR'S VOICE -----------------------------------------------------
 
@@ -242,20 +253,22 @@ said.TextTransparency = 1
 said.Text = ""
 said.Parent = gui
 
-Remotes.get("Heard").OnClientEvent:Connect(function(line: string, detail: string?)
+-- The Operator's voice, and ONLY the voice. This handler used to also write the
+-- keypad's error line from its detail field, which is broadcast: one player
+-- speaking painted a red `jack_number` into another player's keypad, in the
+-- slot that says "that line is jammed". Keypad feedback arrives on `Rejected`.
+local function onHeard(line: string)
 	said.Text = line
 	said.TextTransparency = 0
-	if detail and #detail > 0 and boardPanel.Visible then
-		status.Text = detail
-	end
 	task.delay(2.5, function()
 		if said.Text == line then
 			said.TextTransparency = 1
 		end
 	end)
-end)
+end
+heardRemote.OnClientEvent:Connect(onHeard)
 
-Remotes.get("Objectives").OnClientEvent:Connect(function(entries: { any })
+local function onObjectives(entries: { any })
 	renderObjectives(entries)
 	-- A solved station closes its own keypad rather than leaving a stale one
 	-- open. Only the station actually in front of the player, now that there
@@ -265,9 +278,20 @@ Remotes.get("Objectives").OnClientEvent:Connect(function(entries: { any })
 			closeBoard()
 		end
 	end
-end)
+end
+objectivesRemote.OnClientEvent:Connect(onObjectives)
 
-Remotes.get("LexiconUpdated").OnClientEvent:Connect(renderLexicon)
+-- Why YOUR submit at THAT station failed. Private, and dropped unless the
+-- player is still looking at the keypad it is about — `Keypad.accepts` owns
+-- that rule so it can be tested without a running client.
+local function onRejected(stationId: string, reason: string)
+	if Keypad.accepts(openStation, stationId) then
+		status.Text = reason
+	end
+end
+rejectedRemote.OnClientEvent:Connect(onRejected)
+
+lexiconRemote.OnClientEvent:Connect(renderLexicon)
 
 renderLexicon({})
 renderObjectives({})

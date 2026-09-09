@@ -4,7 +4,17 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local REMOTE_NAMES = { "Heard", "LexiconUpdated", "Objectives", "Submit", "OpenBoard" }
+-- `Remotes.get` yields forever on a name that is not in this list, so a remote
+-- used anywhere in `src/` and missing here is a silently dead wire, not an
+-- error. `tests/wiring.luau` sweeps every `Remotes.get("...")` in the source
+-- against this table in both directions.
+--
+-- `Rejected` is deliberately separate from `Heard`. `Heard` is the Operator's
+-- voice and is broadcast; `Rejected` is why YOUR submit at THAT station failed
+-- and is only ever fired at one client. They were the same remote until R10,
+-- which meant one player speaking painted another player's keypad with a red
+-- concept id. See `Shared.Keypad`.
+local REMOTE_NAMES = { "Heard", "LexiconUpdated", "Objectives", "Submit", "OpenBoard", "Rejected" }
 
 local Remotes = {}
 

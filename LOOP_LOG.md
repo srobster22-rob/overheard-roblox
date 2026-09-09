@@ -1062,3 +1062,51 @@ and a silent brute-forcer now needs 2123 seconds instead of 33.
   fix and left the question open.
 
 **Commit.** `7064739`
+
+---
+
+## R10 — the keypad's error line is written by a BROADCAST
+
+**Stage 1 — shortlist.** The seam this round was the one the sibling project
+proved this hour: *what is only wrong with more than one player, or only wrong
+when two things land in the same tick?* Swept every `for ... in` site and every
+remote call in `src/`, asking which reach player-visible output and which of
+those depend on what ANOTHER player is doing.
+
+1. **The keypad's red status line is painted by a broadcast.** `heardRemote` is
+   the Operator's voice AND, on the client, the only writer of the keypad's
+   error slot: `if detail and #detail > 0 and boardPanel.Visible then
+   status.Text = detail end`. The server broadcasts `Heard` with a non-empty
+   `detail` in three places — `onUnderstood` sends the raw concept id,
+   `onBurned` sends the concept id, and Pursuit's `arrived` sends the room name.
+   So a player standing at a keypad sees `jack_number` or `archive` appear in
+   red, in the exact slot that says "that line is jammed - wait 20s", because
+   somebody ELSE spoke. Solo this is unreachable: you cannot be typing at the
+   keypad and be the one talking. With two players it is not an edge case, it
+   is the main path — the whole loop is one player talking while the other
+   stands at the keypad. Every good round runs it. It also mislabels R9's work:
+   the jam message and a piece of monster narration are the same red text.
+2. **The private submit reply is not scoped to a station either.** Same fix,
+   found while writing it. `heardRemote:FireClient(player, LINES.busy, reason)`
+   is correctly private, but the client paints it on whatever keypad happens to
+   be open. There are two stations now: submit at the breaker, walk away, open
+   the switchboard, and the breaker's refusal lands on the switchboard. Folded
+   into #1 rather than listed as a rival, because one remote fixes both.
+3. **Parallel guessing weakens R9's jam.** The jam is per-(line, actor), so four
+   players brute-forcing the same line each get their own jam and the wall-clock
+   cost falls roughly 4x. **Rejected, deliberately.** Per-actor keying was R9's
+   whole point: a global jam lets one player lock out the person who was
+   actually told the number. Making guessing 4x faster requires four players
+   choosing to hold Enter for nine minutes instead of playing, and the fix for
+   it is strictly worse than the disease. Not relitigating a good tradeoff.
+4. **`Round.pickSecrets` still dead and still loaded** (R8's and R9's #2). Still
+   true, still unreachable from the product, so still no player hits it.
+5. **A solved station's ProximityPrompt stays enabled** (R8's and R9's #3).
+   Real, but it is a `prompt.Enabled` claim — a Roblox runtime property. With
+   Studio device-blocked, shipping it would mean shipping a change whose only
+   evidence is that the source says so. Poor round to spend on it.
+
+**Pick: 1 (with 2 folded in).** It is the only candidate that every successful
+two-player round actually hits, it is invisible to the entire existing suite
+because the suite exercises one player's path, and the fix is a channel
+separation whose decision can be made pure and hammered headlessly.
