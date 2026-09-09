@@ -12,11 +12,17 @@ local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 
+local Layout = require(game:GetService("ReplicatedStorage").Shared.Layout)
+
 local World = {}
 
-local FLOOR_Y = 0
-local ROOM = 48 -- room footprint, studs
-local SEPARATION = 120 -- distance between the two work rooms
+-- Dimensions live in Shared.Layout so they can be swept headlessly and so the
+-- Operator's reach can be DERIVED from the room rather than restated. This file
+-- needs Roblox instances to load, which is what put those numbers out of reach
+-- of every test until R21.
+local FLOOR_Y = Layout.Floor
+local ROOM = Layout.Room
+local SEPARATION = Layout.Separation
 
 local function part(name: string, size: Vector3, cf: CFrame, color: Color3, parent: Instance): Part
 	local p = Instance.new("Part")
