@@ -7695,3 +7695,74 @@ at all. The next round to file a new owner question should add it here too,
 not let this list go another sixty-two rounds stale.
 
 **Commit** `f4793fa`
+
+
+## R79 — "geometry-blind movement" is real, has no owner-only half, and was buildable
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — checking a filed item that R78 could not fully describe.** R78's
+consolidation could not confidently explain what "geometry-blind movement"
+actually was, beyond the terse name carried across ~40 round headers since
+R29. Tracing it properly: `Pursuit.step` moves the Operator in a genuine
+straight line — `distance(self.position, target)`, then interpolated toward it
+— from wherever it currently is to `self.target`, with **no wall awareness at
+all**. `Layout.walkIsClear` and `Layout.routeIsClear` exist for exactly this
+kind of check and have **zero production callers** — confirmed by grep. They
+are used only by `tests/layout.luau`, against the PLAYER's walk from spawn to
+each station, never against the Operator's own path.
+
+R52's own entry names the risk directly: repositioning `operatorPost()`
+briefly left it one stud outside the corridor walls, which "would have made
+the filed geometry-blind-movement defect reachable." It was caught by luck —
+a human (well, a prior round) noticed the number looked wrong — not by any
+test built for this, because R52's 20 new checks are a bespoke sweep of
+corridor-wall bounds, not a use of `walkIsClear`/`routeIsClear` against the
+Operator's real waypoints.
+
+Unlike "no player light" (needs an aesthetic decision) or the stemming pair
+(needs a balance decision), this one needs neither: it is a pure geometric
+invariant — every straight line the Operator might actually walk must not
+cross a wall — checkable today with the primitives that already exist for it.
+It was filed alongside genuinely owner-only questions for forty rounds not
+because it needed the owner, but because no round had picked it.
+
+1. *(picked)* **Build the general invariant, derived from the Operator's real
+   waypoints, using the primitive that already exists for exactly this.**
+2. R78's still-open list is otherwise unchanged.
+
+**Stage 2 — the fix.** A general invariant in `tests/layout.luau`: every
+ordered pair among the Operator's real waypoints — its post, plus every room
+in `Config.Rooms` (derived, not hardcoded, so a third room is covered the day
+it exists) — must have a clear straight-line walk between them via
+`Layout.walkIsClear`, the actual primitive built for this and never called
+from `src/` before now.
+
+**Stage 3 — proof.** A `(control)` reconstructs R52's exact near-miss
+placement (`operatorPost` one stud outside the walls, derived from the
+FLOOR's width instead of the walkable width) and confirms it fails
+`walkIsClear` on its own — so the check is proven to notice the specific risk
+it exists for. Planted the same near-miss for real: 4 of 6 ordered pairs came
+back blocked (`post -> board`, `post -> archive`, and both reverses), caught
+by name alongside R52's own bespoke corridor-bounds checks, which failed
+alongside it. Restored from byte-copy backup; sha256 `11cb3262…957abaef21b95`
+unchanged.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon 22, heuristic 49, operator ok, objectives 122,
+pursuit 104, round 59, config 63, wiring 354, connected 32, ordering 4,
+heat 20, layout **110**, lifecycle 90, hud 26, readout 29, soak 42, hum 29,
+log 18, silence 62, lexiconsave 28.
+
+**Filed item closed, not re-filed.** "Geometry-blind movement" drops out of
+the carried-forward filed-items list for good — R78's consolidation had
+already left it out of `OWNER.md`'s open-questions section, unable to
+confidently describe it. It never needed an owner decision, it needed a round
+to pick it up, and this round did.
+
+*Not claimed:* that `Pursuit.step` itself now checks geometry at runtime — it
+still does not, and still moves in a straight line blind to walls. What is
+proven is that every waypoint the game currently sends it between happens to
+have a clear line, and the next round that repositions any of them will be
+told immediately if that stops being true, rather than finding out by luck the
+way R52 did.

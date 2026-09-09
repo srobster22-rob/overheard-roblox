@@ -672,6 +672,64 @@ check(
 -- proving the check above is not simply always false.
 check("(control) dropping the blocked leg reads clear again", Layout.routeIsClear({ clearA, clearB }))
 
+print("")
+print("the Operator's own path is geometry-aware, not geometry-blind")
+
+-- R79. "Geometry-blind movement" has been filed since R29: Pursuit.step moves
+-- in a genuine straight line -- distance(self.position, target), then
+-- interpolated toward it -- with no wall awareness at all. Layout.walkIsClear
+-- and routeIsClear exist for exactly this and had ZERO production callers;
+-- only tests/layout.luau used them, and only against the PLAYER's walk from
+-- spawn to a station, never against the Operator's own path.
+--
+-- R52 nearly proved the risk live: repositioning operatorPost() briefly left
+-- it one stud outside the corridor walls, "which would have made the filed
+-- geometry-blind-movement defect reachable." Caught by a human noticing a
+-- number looked wrong, not by any test built for this -- R52's own 20 checks
+-- are a bespoke corridor-wall sweep, not a use of the shared primitive.
+--
+-- The waypoints are DERIVED from Config.Rooms and Layout.operatorPost(), never
+-- hand-typed, so a third room (R9's future work) is covered automatically
+-- rather than needing this test rewritten to notice it exists.
+local waypoints = { { name = "post", at = Layout.operatorPost() } }
+for _, room in Config.Rooms do
+	local centre = if room == "board"
+		then Layout.boardCentre()
+		elseif room == "archive" then Layout.archiveCentre()
+		else nil
+	check(`(guard) '{room}' has a known centre`, centre ~= nil)
+	if centre then
+		table.insert(waypoints, { name = room, at = centre })
+	end
+end
+check(`(guard) there is more than one waypoint to route between ({#waypoints})`, #waypoints >= 2)
+
+local blocked: { string } = {}
+local checked = 0
+for _, from in waypoints do
+	for _, to in waypoints do
+		if from.name ~= to.name then
+			checked += 1
+			if not Layout.walkIsClear(from.at, to.at) then
+				table.insert(blocked, `{from.name} -> {to.name}`)
+			end
+		end
+	end
+end
+check(`(guard) every ordered pair was checked ({checked})`, checked == #waypoints * (#waypoints - 1))
+check(`every straight line the Operator can walk is clear ({#blocked} blocked)`, #blocked == 0)
+if #blocked > 0 then
+	print(`        blocked: {table.concat(blocked, ", ")}`)
+end
+
+-- (control) a post placed OUTSIDE the walls -- R52's exact near-miss -- must
+-- be caught by this same sweep, or it is not measuring what it claims to.
+local outsidePost = { x = 0, z = -(Layout.corridorWidth() / 2 - 1) }
+check(
+	"(control) R52's near-miss placement is caught by this check",
+	not Layout.walkIsClear(outsidePost, Layout.boardCentre())
+)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)
