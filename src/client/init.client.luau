@@ -14,6 +14,7 @@ local Players = game:GetService("Players")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Heat = require(ReplicatedStorage.Shared.Heat)
 local Hud = require(ReplicatedStorage.Shared.Hud)
+local Readout = require(ReplicatedStorage.Shared.Readout)
 local Keypad = require(ReplicatedStorage.Shared.Keypad)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
@@ -173,6 +174,13 @@ lineLayout.Padding = UDim.new(0, 4)
 lineLayout.SortOrder = Enum.SortOrder.LayoutOrder
 lineLayout.Parent = lineList
 
+local ROW_STYLE: { [string]: { size: number, color: Color3 } } = {
+	line = { size = 13, color = INK },
+	note = { size = 10, color = DIM },
+	count = { size = 11, color = BRASS },
+	empty = { size = 11, color = DIM },
+}
+
 local function renderObjectives(entries: { any })
 	for _, child in lineList:GetChildren() do
 		if child:IsA("TextLabel") then
@@ -180,26 +188,13 @@ local function renderObjectives(entries: { any })
 		end
 	end
 
-	local holdingAny = false
-	for i, entry in entries do
-		if entry.holding and not entry.solved and entry.prompt and entry.answer then
-			holdingAny = true
-			local text = string.format(entry.prompt, entry.answer)
-			label(lineList, text, 13, INK).LayoutOrder = i
-			label(lineList, "only you can see this", 10, DIM).LayoutOrder = i + 100
-		end
-	end
-
-	local solved, total = 0, #entries
-	for _, entry in entries do
-		if entry.solved then
-			solved += 1
-		end
-	end
-	label(lineList, `restored {solved}/{total}`, 11, BRASS).LayoutOrder = 900
-
-	if not holdingAny then
-		label(lineList, "nothing on your line - someone else has a number for you", 11, DIM).LayoutOrder = 950
+	-- Rows arrive already ordered from Shared.Readout. This used to build them
+	-- from two number series -- `i` for a line and `i + 100` for its note --
+	-- which put every note below every line once a player held two of them, so
+	-- "only you can see this" sat under a line it was not about.
+	for index, row in Readout.lineRows(entries) do
+		local style = ROW_STYLE[row.kind] or ROW_STYLE.note
+		label(lineList, row.text, style.size, style.color).LayoutOrder = index
 	end
 end
 

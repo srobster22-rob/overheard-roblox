@@ -667,6 +667,22 @@ check("the client listens for the phase", string.find(clientSource, 'Remotes.get
 -- R34. The layout module is only worth having if the client reads it. A
 -- `Shared.Hud` nobody consults is decoration, and the sweep in tests/hud.luau
 -- would go on passing against a client full of hand-typed rects.
+-- R35. The row list is only worth having if the client renders it in the order
+-- it comes back. Rebuilding an order at render time is how the notes came adrift
+-- from their lines in the first place.
+check(
+	"the client requires Shared.Readout",
+	string.find(clientCode, "require(ReplicatedStorage.Shared.Readout)", 1, true) ~= nil
+)
+check("...and renders the rows it returns", string.find(clientCode, "Readout.lineRows(entries)", 1, true) ~= nil)
+
+local renderBody = string.match(clientCode, "local function renderObjectives%(.-" .. NL .. "end") or ""
+check("(guard) found renderObjectives", #renderBody > 0)
+check(
+	"the panel does not invent an order of its own",
+	string.find(renderBody, "+ 100", 1, true) == nil and string.find(renderBody, "900", 1, true) == nil
+)
+
 check(
 	"the client requires Shared.Hud",
 	string.find(clientCode, "require(ReplicatedStorage.Shared.Hud)", 1, true) ~= nil
