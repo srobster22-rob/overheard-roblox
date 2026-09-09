@@ -299,6 +299,106 @@ check("a new round forgets the jam", (jammedLine.jammedUntil[2] or 0) == 0)
 check("...and the miss count", (jammedLine.misses[2] or 0) == 0)
 check("...so the right answer is accepted again", jammed:submit("board", 2, jammedLine.answer, at + 1).ok == true)
 
+print("")
+print("the numbers the comments quote are measured, not asserted")
+
+-- R45. Two dial comments made arithmetic claims that nothing checked.
+-- `HeatPerCredit` said "roughly four uses burns a term" -- true only when
+-- success is instant; the credit is recency-weighted, so a real group needs 5
+-- to 8. `CoolPerSecond` quoted 40s to fall under the threshold and 100s to go
+-- cold, which turned out to be exactly right -- but it was arithmetic in a
+-- comment, and R21, R41 and R44 have all now found a promise in prose about a
+-- number nothing derives.
+--
+-- These are measured through the real Operator so the comments cannot drift.
+
+local secrets = { { concept = "exit", plain = { "exit" }, payload = "archive" } }
+local talker = { UserId = 1 } :: any
+
+local function usesToBurn(gap: number): number
+	local op = Operator.new(secrets)
+	for use = 1, 40 do
+		op:hear({ speaker = talker, text = "head for the purple lantern", at = use })
+		op:credit("exit", use + gap)
+		for _, coinage in op:snapshot() do
+			if coinage.heat >= 1 then
+				return use
+			end
+		end
+	end
+	return -1
+end
+
+local instant = usesToBurn(0)
+check(`(guard) a term burns at all when success is instant ({instant} uses)`, instant > 0)
+check(`instant success burns in 1/HeatPerCredit uses ({instant})`, instant == math.ceil(1 / Config.HeatPerCredit))
+
+-- The claim the comment used to get wrong: a delay costs MORE uses, and the
+-- cost rises with the delay.
+local slow = usesToBurn(5)
+local slower = usesToBurn(10)
+check(`(guard) a delayed group still burns terms ({slow}, {slower})`, slow > 0 and slower > 0)
+check(`a five-second gap costs more uses than none ({slow} > {instant})`, slow > instant)
+check(`and ten seconds costs more still ({slower} > {slow})`, slower > slow)
+
+-- Cooling, measured rather than divided in a comment.
+local hot = Operator.new(secrets)
+for use = 1, 8 do
+	hot:hear({ speaker = talker, text = "head for the purple lantern", at = use })
+	hot:credit("exit", use + 0.1)
+end
+local peak = 0
+for _, coinage in hot:snapshot() do
+	if coinage.heat > peak then
+		peak = coinage.heat
+	end
+end
+check(`(guard) something is fully burned to start from ({string.format("%.2f", peak)})`, peak >= 1)
+
+-- The BOUNDARY, measured. 1.0 - 40 * 0.01 lands exactly ON the threshold, and
+-- `Heat.isUnderstood` is `>=`, so at exactly 40 seconds the term is still
+-- understood. The comment said it "falls back under ActThreshold after 40s of
+-- disuse"; it does so a moment later. That is the whole point of measuring a
+-- number instead of dividing it in prose.
+hot:cool(40 * Config.CoolPerSecond)
+local atForty = 0
+for _, coinage in hot:snapshot() do
+	if coinage.heat > atForty then
+		atForty = coinage.heat
+	end
+end
+check(
+	`at exactly 40s it is ON the threshold, still understood ({string.format("%.2f", atForty)})`,
+	atForty >= Config.ActThreshold
+)
+
+hot:cool(Config.CoolPerSecond)
+local pastForty = 0
+for _, coinage in hot:snapshot() do
+	if coinage.heat > pastForty then
+		pastForty = coinage.heat
+	end
+end
+check(
+	`one second later it is under it ({string.format("%.2f", pastForty)} < {Config.ActThreshold})`,
+	pastForty < Config.ActThreshold
+)
+
+hot:cool(59 * Config.CoolPerSecond)
+local afterHundred = 0
+for _, coinage in hot:snapshot() do
+	if coinage.heat > afterHundred then
+		afterHundred = coinage.heat
+	end
+end
+check(`100s of disuse leaves nothing at all ({string.format("%.2f", afterHundred)})`, afterHundred <= 0)
+
+-- The relationship the comment rests on, stated so a dial change moves both.
+check(
+	`a burned term outlives one intermission ({Config.IntermissionSeconds * Config.CoolPerSecond} lost)`,
+	Config.IntermissionSeconds * Config.CoolPerSecond < 1
+)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

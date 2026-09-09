@@ -106,7 +106,14 @@ reason to come back tomorrow with the same four people is that you *share
 something they don't have with anyone else*. It also matches how Roblox
 discovery now works, which weights players returning within 24-48 hours.
 
-Burned terms cool slowly over real days. The Operator forgets, a little.
+Burned terms cool over time — the Operator forgets, a little.
+
+**As built it forgets fast.** At `Config.CoolPerSecond` a term burned to 1.0
+falls under the threshold after 40 seconds of disuse and is fully cold after
+100. So the decay is real, but nothing accumulates across a session yet, and the
+escalation described above cannot build. Cooling "over real days" would also
+need the Lexicon to outlive the server — the DataStore work that has not been
+done. Both are open questions rather than descriptions of the game today.
 
 ## Tone
 

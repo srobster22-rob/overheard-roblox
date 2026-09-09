@@ -28,17 +28,35 @@ local Config = {
 	-- unfamiliar phrase for a concept the players just acted on.
 	CreditWindow = 20, -- seconds
 
-	-- How much heat one credited sighting adds, at maximum recency.
-	-- 0.25 means roughly four uses burns a term - fast enough that players feel
-	-- the decay inside a single session, slow enough to be worth coining.
+	-- How much heat one credited sighting adds, AT MAXIMUM RECENCY. The credit is
+	-- weighted by how soon success followed the phrase, so the uses needed to
+	-- burn a term depend on that gap. Measured against the real Operator: 4 uses
+	-- when success is instant, 5 at a one-second gap, 6 at five seconds, 8 at
+	-- ten. This said "roughly four uses", which is only the best case — and it
+	-- is the number a reader would plan around.
 	HeatPerCredit = 0.25,
 
 	-- Forgetting. Heat bleeds off in REAL TIME, not per round, so a phrase the
 	-- group stops using becomes safe to say again without waiting for a round
-	-- boundary (there is no round flow yet — see R9). At 0.01/s a term burned
-	-- to 1.0 falls back under ActThreshold after 40s of disuse and is fully
-	-- cold after 100s. This is what keeps a long-running group from ending up
-	-- unable to say anything at all.
+	-- boundary. At 0.01/s a term burned to 1.0 sits EXACTLY on ActThreshold after
+	-- 40s of disuse — still understood, since the test is `>=` — and is under it
+	-- a second later, fully cold after 100s. Measured in `tests/lifecycle.luau`,
+	-- not divided here: this comment said "falls back under ActThreshold after
+	-- 40s", and the boundary second is precisely the sort of thing prose gets
+	-- wrong. This is what keeps a long-running group from ending up mute.
+	--
+	-- (The parenthetical here used to read "there is no round flow yet — see
+	-- R9". R29 built it: rounds now end, wait out an intermission and begin
+	-- again. A stale note like that is worse than none — it sends the next
+	-- reader off to build something that already exists.)
+	--
+	-- NOT RECONCILED, and left for the owner: GAME.md says burned terms "cool
+	-- slowly over real days", which would need about 0.0000116 — some 860x
+	-- slower than this. At the rate above nothing accumulates across a session,
+	-- so the escalation GAME.md is built on (a coinage that works for several
+	-- rounds and then one night does not) cannot happen. Cooling over days also
+	-- needs the Lexicon to outlive the server, which is the unbuilt DataStore
+	-- work. Both are balance and scope calls, not defects to fix unilaterally.
 	CoolPerSecond = 0.01,
 
 	-- The server clock. Capture is asked every tick, because occupancy is a
