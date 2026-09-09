@@ -1,8 +1,8 @@
 --!strict
 -- OVERHEARD - server entry point.
 --
--- Wires chat into the Operator, and the Operator's reactions back out to
--- clients. Deliberately thin: the thinking lives in systems/.
+-- Wires chat into the Operator, objectives into the world, and success back
+-- into the Operator's learning. Deliberately thin: thinking lives in systems/.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TextChatService = game:GetService("TextChatService")
@@ -10,22 +10,47 @@ local Players = game:GetService("Players")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Objectives = require(script.systems.Objectives)
 local Operator = require(script.systems.Operator)
 local Round = require(script.systems.Round)
+local World = require(script.systems.World)
 
 local heardRemote = Remotes.get("Heard")
 local lexiconRemote = Remotes.get("LexiconUpdated")
+local objectivesRemote = Remotes.get("Objectives")
+local submitRemote = Remotes.get("Submit")
+local openBoardRemote = Remotes.get("OpenBoard")
 
 local secrets = Round.pickSecrets(3)
 local operator = Operator.new(secrets)
+local board = Objectives.new()
+
+-- One objective, one station. Do not add an objective without a station to
+-- solve it at, or `allSolved` can never be reached.
+board:add("board", "jack_number", "Line is out. Patch it to jack %s.")
+
+local built = World.build()
+
+-- Rate limiting. Every remote the client can fire needs one, or an exploiter
+-- brute-forces two-digit answers instantly.
+local lastSubmit: { [number]: number } = {}
+local SUBMIT_COOLDOWN = 0.75
+
+local function pushObjectives(player: Player?)
+	if player then
+		objectivesRemote:FireClient(player, board:viewFor(player.UserId))
+		return
+	end
+	for _, p in Players:GetPlayers() do
+		objectivesRemote:FireClient(p, board:viewFor(p.UserId))
+	end
+end
 
 local function broadcastLexicon()
 	lexiconRemote:FireAllClients(operator:snapshot())
 end
 
 operator.onUnderstood = function(concept: string, payload: string, confidence: number)
-	-- The Operator has understood something. In the full game this drives its
-	-- movement; for now it announces, which is what we need to feel the loop.
 	print(`[operator] understood '{concept}' ({string.format("%.2f", confidence)}) -> {payload}`)
 	heardRemote:FireAllClients(Round.LINES.understood, concept, confidence)
 end
@@ -36,8 +61,19 @@ operator.onBurned = function(coinage)
 	broadcastLexicon()
 end
 
--- Everything a player says is evidence. TextChatService is the modern path;
--- this callback sees every message before it is delivered.
+-- Success is what teaches the Operator. Solving an objective credits whatever
+-- unfamiliar phrases were said just beforehand.
+board.onSolved = function(objective, _actor: number)
+	print(`[objective] {objective.id} restored`)
+	operator:credit(objective.concept, os.clock())
+	pushObjectives(nil)
+	broadcastLexicon()
+	if board:allSolved() then
+		heardRemote:FireAllClients(Round.LINES.taken, "", 1)
+	end
+end
+
+-- Everything a player says is evidence.
 TextChatService.OnIncomingMessage = function(message: TextChatMessage)
 	local source = message.TextSource
 	if not source then
@@ -47,7 +83,6 @@ TextChatService.OnIncomingMessage = function(message: TextChatMessage)
 	if not player then
 		return nil
 	end
-
 	operator:hear({
 		speaker = player,
 		text = message.Text,
@@ -56,19 +91,53 @@ TextChatService.OnIncomingMessage = function(message: TextChatMessage)
 	return nil
 end
 
--- Temporary: a player firing this stands in for "the group demonstrably acted
--- on a concept". Real objectives will call operator:credit directly.
-Remotes.get("Acted").OnServerEvent:Connect(function(_player: Player, concept: unknown)
-	if typeof(concept) ~= "string" then
-		return -- never trust the client
+built.readerPrompt.Triggered:Connect(function(player: Player)
+	-- Reading is private. The holder sees their own line; nobody else does.
+	pushObjectives(player)
+	heardRemote:FireClient(player, Round.LINES.greeting, "", 0)
+end)
+
+built.boardPrompt.Triggered:Connect(function(player: Player)
+	openBoardRemote:FireClient(player)
+end)
+
+submitRemote.OnServerEvent:Connect(function(player: Player, id: unknown, value: unknown)
+	-- Never trust the client.
+	if typeof(id) ~= "string" or typeof(value) ~= "string" then
+		return
 	end
-	operator:credit(concept :: string, os.clock())
-	broadcastLexicon()
+	if #(value :: string) > 8 then
+		return
+	end
+
+	local now = os.clock()
+	if now - (lastSubmit[player.UserId] or 0) < SUBMIT_COOLDOWN then
+		return
+	end
+	lastSubmit[player.UserId] = now
+
+	local result = board:submit(id :: string, player.UserId, value :: string)
+	if not result.ok and result.reason then
+		heardRemote:FireClient(player, Round.LINES.busy, result.reason, 0)
+	end
 end)
 
 Players.PlayerAdded:Connect(function(player: Player)
 	print(`[server] {player.Name} connected to the exchange`)
-	task.defer(broadcastLexicon)
+	-- Re-deal across everyone present, so holders stay spread as people join.
+	local userIds: { number } = {}
+	for _, p in Players:GetPlayers() do
+		table.insert(userIds, p.UserId)
+	end
+	board:deal(userIds)
+	task.defer(function()
+		pushObjectives(nil)
+		broadcastLexicon()
+	end)
+end)
+
+Players.PlayerRemoving:Connect(function(player: Player)
+	lastSubmit[player.UserId] = nil
 end)
 
 print(`[server] {Config.GameName} - {#secrets} secrets this round`)

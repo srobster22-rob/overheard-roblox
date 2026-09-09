@@ -34,9 +34,7 @@ new listener re-teaches players a habit and then punishes it.
 
 Backlog, roughly in order. Reorder freely; do not skip the gate.
 
-- [ ] **R2** Objectives that force transfer. One real objective (the jack
-      board): one player reads a number, another patches it, different rooms.
-      Wire it to `Operator:credit` so success actually teaches the Operator.
+- [x] **R2** Objectives that force transfer. DONE.
 - [ ] **R3** The Operator as a physical thing. Movement toward `payload`
       rooms on understanding. Sound before sight; silence is the tell.
 - [ ] **R4** Speech-to-Text. Route voice through `AudioSpeechToText` into the
@@ -45,6 +43,8 @@ Backlog, roughly in order. Reorder freely; do not skip the gate.
 - [ ] **R5** LLM comprehension backend behind the existing
       `ComprehensionBackend` interface, A/B against the heuristic. Harden the
       prompt against injection; players WILL try to talk it out of character.
+- [ ] **R2b** Second station (the breaker) so a second objective is reachable.
+      Rule learned: never add an objective without a station to solve it at.
 - [ ] **R6** The Lexicon persists across sessions (DataStore), per group.
       This is the retention mechanic, so it needs to be real, not cosmetic.
 - [ ] **R7** Entity #4 The Supervisor — punishes silence. The first true
@@ -82,3 +82,41 @@ it needs a Roblox runtime and MCP tools were registered but require a session
 restart. **Round 2 must run it first** and treat any failure as the ticket.
 
 **Next.** R2, and run TestOperator before anything else.
+
+## R2 — objectives that force you to speak (2026-09-08)
+
+**Unblocked the gate first.** `TestOperator` could not run without a Roblox
+runtime, so rather than wait on Studio I built `tests/harness.luau`: a fake
+Roblox environment using Lune's `luau.load` with a custom environment, big
+enough to satisfy `game:GetService` and `require(script.Parent.X)`. The
+acquisition assertions now run headlessly in under a second. **Every future
+round can verify without Studio**, which is the single biggest speedup
+available to this loop.
+
+**Built.**
+- `systems/Objectives` — the invariant: the player who can SEE an answer may
+  never be the player who ENTERS it, enforced server-side in `submit`. If that
+  ever regresses, nobody needs to talk and the game stops existing.
+- `systems/World` — code-generated blockout. Two rooms 120 studs apart with a
+  corridor, one weak lamp each, heavy fog, ambient near black. Layout is a
+  design variable we tune every round, so it stays in code where it is
+  diffable rather than modelled by hand.
+- Server wiring: chat feeds the Operator; solving an objective calls
+  `Operator:credit`, so **success is what teaches it**. Submit is rate-limited
+  (0.75s) and type-checked — a two-digit answer is brute-forceable otherwise.
+- Client: three panels — LEXICON (heat), YOUR LINE (the fact only you can see),
+  THE BOARD (where you enter what someone told you).
+
+**Proven.** `lexicon` 14/14, `objectives` 15/15, `operator` all assertions,
+`selene` 0/0, `rojo build` OK.
+
+**Caught and fixed mid-round.** Added a `power` objective with no station to
+solve it at, making `allSolved` unreachable. Removed it; noted the rule in code.
+
+**NOT proven.** Nothing has been run in Studio. The blockout, prompts, lighting
+and the three panels are compile-verified only. Also: with ONE player the
+invariant means no objective is solvable — correct behaviour, but it means solo
+playtesting cannot complete a round. **R3 must open a 2-player playtest.**
+
+**Next.** R3, and open Test > Clients and Servers with 2 players before
+anything else.
