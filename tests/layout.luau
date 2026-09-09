@@ -15,7 +15,10 @@
 
 local process = require("@lune/process")
 
+local fs = require("@lune/fs")
+
 local Harness = require("./harness")
+local LuauCode = require("./luaucode")
 
 local rt = Harness.build()
 local Layout = rt.require(rt.shared.Layout)
@@ -370,6 +373,66 @@ for step = 0, 35 do
 end
 check(`every point just inside the reach is accepted ({inside}/36)`, inside == 36)
 check(`every point just outside it is refused ({outside}/36)`, outside == 36)
+
+print("")
+print("you can only open a keypad where it will take your answer")
+
+-- R44. `StationReach`'s comment claimed it was "slightly wider than the prompt's
+-- own activation distance", and that distance was a bare `10` in World.luau
+-- derived from nothing. The relationship held by coincidence of two hand-typed
+-- numbers in different files.
+--
+-- If the prompt distance ever passed the reach, a player could TRIGGER a keypad
+-- at a distance where every answer is refused -- and be told "you are not at
+-- that station" while standing exactly where the game let them open it.
+
+check(
+	`the prompt opens no further out than the answer is accepted ({Config.PromptReach} <= {Config.StationReach})`,
+	Config.PromptReach <= Config.StationReach
+)
+check(
+	`(guard) both are real distances ({Config.PromptReach}, {Config.StationReach})`,
+	Config.PromptReach > 0 and Config.StationReach > 0
+)
+
+-- The band between them is the drift allowance the comment promises. It must
+-- exist -- equal values would refuse a player standing exactly where they
+-- triggered it, on any rounding.
+check(
+	`there is room for a stud of drift ({Config.StationReach - Config.PromptReach})`,
+	Config.StationReach > Config.PromptReach
+)
+
+-- And the world must USE the dial rather than carry its own copy, or the two
+-- can drift apart again while this file goes on passing.
+local worldSource = fs.readFile("src/server/systems/World.luau")
+local worldCode = LuauCode.stripNonCode(worldSource)
+check(
+	"World sets the prompt distance from the dial",
+	string.find(worldCode, "MaxActivationDistance = Config.PromptReach", 1, true) ~= nil
+)
+
+-- Sweep the band: everywhere the prompt can be triggered, an answer must be
+-- accepted. This is the property, not the two numbers.
+local station = { x = 0, z = 0 }
+local refusedInsidePrompt = 0
+for step = 0, 40 do
+	local d = Config.PromptReach * (step / 40)
+	if not Layout.within(station, { x = d, z = 0 }, Config.StationReach) then
+		refusedInsidePrompt += 1
+	end
+end
+check(
+	`every distance the prompt allows is a distance submit accepts ({refusedInsidePrompt} refused)`,
+	refusedInsidePrompt == 0
+)
+
+-- The keep side: reach must not be so much wider that "at the station" stops
+-- meaning anything. One room's half-width is the outer bound R39 established.
+check(
+	`the drift allowance stays small ({Config.StationReach - Config.PromptReach} <= {Layout.halfRoom()})`,
+	Config.StationReach - Config.PromptReach <= Layout.halfRoom()
+)
 
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then

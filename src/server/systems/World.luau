@@ -102,7 +102,10 @@ local function station(name: string, label: string, position: Vector3, parent: I
 	prompt.ActionText = label
 	prompt.ObjectText = name
 	prompt.HoldDuration = 0.2
-	prompt.MaxActivationDistance = 10
+	-- DERIVED, not typed. This was a bare 10 while Config claimed StationReach
+	-- was "slightly wider than the prompt's own activation distance" -- a
+	-- promise about a number in another file with nothing between them.
+	prompt.MaxActivationDistance = Config.PromptReach
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = p
 

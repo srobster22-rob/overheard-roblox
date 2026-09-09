@@ -11,8 +11,17 @@ local Config = {
 	GameName = "OVERHEARD",
 
 	-- Comprehension. How sure the Operator must be before it acts.
-	-- Low enough that plain speech is always punished, high enough that a
-	-- half-learned coinage is a gamble rather than a certainty.
+	--
+	-- Low enough that plain speech is always punished. This used to add "high
+	-- enough that a half-learned coinage is a gamble rather than a certainty",
+	-- which was never true: comprehension is a HARD threshold, so a coinage at
+	-- or above this heat is understood every single time and one below it never
+	-- is. There is no gamble anywhere in the code.
+	--
+	-- Left deterministic on purpose. R20 built the Lexicon panel on it -- red
+	-- above the threshold, no gradient, and the row says "understood" as a fact
+	-- -- so making comprehension random would make that panel lie. Whether the
+	-- game WANTS the gamble is an owner's call, not a comment's.
 	ActThreshold = 0.6,
 
 	-- Acquisition. How far back the Operator will look when crediting an
@@ -76,9 +85,18 @@ local Config = {
 	LockoutSeconds = 20,
 
 	-- How close you must be to a station to submit at it, checked at SUBMIT
-	-- time. Slightly wider than the prompt's own activation distance so a player
-	-- standing where they triggered it is never refused by a stud of drift.
+	-- time. It must be WIDER than `PromptReach` below, so a player standing
+	-- where the game let them open the keypad is never refused by a stud of
+	-- drift. That relationship used to be a sentence in this comment about a
+	-- bare `10` in World.luau, with nothing between them: if the prompt distance
+	-- were raised past this, a player could open a keypad at a distance where
+	-- every answer is refused, and be told "you are not at that station" while
+	-- standing exactly where the game let them open it.
 	StationReach = 14,
+
+	-- How close you must be for a station's prompt to appear at all. Strictly
+	-- smaller than `StationReach`; `tests/config.luau` holds them in that order.
+	PromptReach = 10,
 
 	-- There is no OperatorReach dial any more. R21 made it a radius derived from
 	-- the room; R23 found that the smallest circle containing a square also
