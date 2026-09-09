@@ -7405,3 +7405,5 @@ deliberately the pure half only — no live save, no live load, no group
 identity. The next step, once the owner picks one, is a thin wiring layer
 around this format, the same shape `Hum.smooth`/`Presence.luau` split settled
 into in R65.
+
+**Commit** `c10291b`
