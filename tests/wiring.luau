@@ -1639,6 +1639,44 @@ for text in displayed do
 end
 check(`no displayed string gives a concept away ({leaked})`, leaked == 0)
 
+-- R121. The scan above reads the CLIENT's literals. Players also read text
+-- that lives in shared modules: every HUD panel title, the reader's notes in
+-- Readout, and the Supervisor's band notes in Silence. None of it was scanned.
+-- Measured when added: 12 strings, ONE conveys a secret -- the keypad panel's
+-- title "The board" (jack) -- and it is never shown: the panel starts hidden
+-- and onOpenBoard replaces its title on every open. That exemption is kept
+-- honest by the check below it.
+local ReadoutModule = rt.require(rt.shared.Readout)
+local SilenceModule = rt.require(rt.shared.Silence)
+local TITLE_NEVER_SHOWN: { [string]: boolean } = { ["The board"] = true }
+local sharedShown: { string } = {
+	ReadoutModule.PRIVATE_NOTE,
+	ReadoutModule.NOTHING_HELD,
+	SilenceModule.note("clear"),
+	SilenceModule.note("warned"),
+	SilenceModule.note("overdue"),
+}
+for _, spec in HudModule.panels() do
+	if not TITLE_NEVER_SHOWN[spec.name] then
+		table.insert(sharedShown, spec.name)
+	end
+end
+local sharedLeaks: { string } = {}
+for _, text in sharedShown do
+	if #saidAloud(text) > 0 then
+		table.insert(sharedLeaks, text)
+	end
+end
+check(`(guard) scanned the shared display text ({#sharedShown} strings)`, #sharedShown >= 10)
+check(`no shared display text gives a concept away ({table.concat(sharedLeaks, " | ")})`, #sharedLeaks == 0)
+for name in TITLE_NEVER_SHOWN do
+	check(`the exempt title '{name}' really does convey something (or drop the exemption)`, #saidAloud(name) > 0)
+end
+check(
+	"...and the keypad's title really is replaced on every open",
+	string.find(clientSource, 'title.Text = string.upper(actionText or "keypad")', 1, true) ~= nil
+)
+
 -- The exemption must be real: the string it covers has to actually leak, or it
 -- is hiding nothing and should not exist.
 for text in AFTER_THE_ROUND do
