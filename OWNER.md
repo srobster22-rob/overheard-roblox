@@ -253,3 +253,13 @@ both sides. Full detail for each is in LOOP_LOG.md at the round named.
   them (e.g. "Go ahead, please." / "I'll try again later."). A test pins these
   two as the ONLY lines that give anything away, so no new line can add one
   unnoticed.
+
+- **R122: the stations are labelled with the words you must not say.** The
+  prompt over each station reads "Directory", "Switchboard" and "Breaker", and
+  each of those is plain language for its own secret: a player who reads the
+  label aloud gives that secret away. It may be the point (the game names the
+  thing and dares you not to say it) or an oversight; the verbs ("Read",
+  "Patch", "Throw") are clean. Keep the labels, or rename them to something
+  that does not give the secret away? A test pins these three as the only
+  labels that convey anything, so no new one can add a giveaway unnoticed.
+  Same family as R93 (the Operator saying "number").
