@@ -159,6 +159,28 @@ Write in plain English. One item per line. Top item goes first.
   Full detail for any of this is in LOOP_LOG.md, which outranks this file and
   is searched by round number (e.g. "## R54").
 
+- R78-R116 (summary) - catching this file up again. Nothing here needs you
+  except where it says so.
+  - R83-R92: players can no longer dodge the monster by respelling a word
+    (leetspeak, s-t-r-e-t-c-h-i-n-g, spaced letters), or by switching between
+    singular/plural/past tense ("wires", "knives", "stopped", "batteries").
+    Ordinary chat was re-checked after every widening: 0 of 45 everyday lines
+    trip a secret (a standing test, R91).
+  - R93-R94: every line of text a player can read was scanned for giveaways.
+    Two of the Operator's own lines say "number" -- filed below as a question.
+  - R95: those matching rules had made a worst-case chat line cost 120 ms on
+    the server; now 4.6 ms (faster than before they were added).
+  - R97-R103: planted-bug sweeps of every module. About 20 places where a bug
+    could hide unnoticed now have tests. No game bugs were found.
+  - R104-R116: the server script held logic no test could run -- the loss
+    condition, the silence punishment, capture, keypad rules, room positions.
+    All of it moved into testable modules. Doing so exposed that the soak
+    simulation had been measuring hand-copied versions that had drifted
+    (R111, R112); the corrected figure is filed under the R54 question below.
+  Still owed and only possible in Roblox Studio (blocked on this machine): a
+  first playtest -- parts anchored, the world builds without error, and how
+  any of it FEELS.
+
 ## Open questions — filed by the loop, waiting on you
 
 Nothing below blocks the build; each is either a feel question Studio would
