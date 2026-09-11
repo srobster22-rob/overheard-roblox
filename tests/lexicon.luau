@@ -163,6 +163,22 @@ check(
 	toks("meet me by the purple lantern") == "meet|me|by|the|purple|lantern"
 )
 
+print("")
+print("mixed respellings tokenize as the word they spell")
+
+-- R84: a leet digit inside a spelled-out run, and @ / $ standing in for letters.
+check("a leet digit inside a spelled-out run is joined", toks("the j 4 c k") == "the|jack")
+check("...dotted too", toks("the j.4.c.k") == "the|jack")
+check("@ touching a letter reads as a", toks("the j@ck") == "the|jack")
+check("$ touching a letter reads as s", toks("bre$k") == "bresk")
+-- What must NOT change: an answer spelled out digit by digit has no letters,
+-- so it is never joined into a word or un-leeted.
+-- Every digit here is a LEET digit, so the run genuinely reaches the letters
+-- rule. The first version used "4 2 7" -- 2 is not in the table, the run broke
+-- before the rule was reached, and a plant removing the rule passed.
+check("an answer spelled out digit by digit is left alone", toks("type 4 3 7") == "type|4|3|7")
+check("a lone @ or $ is not turned into a letter", toks("look @ it for $ 5") == "look|it|for|5")
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

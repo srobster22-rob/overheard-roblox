@@ -8035,3 +8035,82 @@ per-letter substitution beyond the six digits all still get through. This
 closes the five that need no skill at all.
 
 **Commit** `abd51f0`
+
+
+## R84 — mixed respellings: `j 4 c k`, `j@ck`, `ja ck`
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — the forms R83 said it did not close.** Sixteen variants of `jack`
+against the real reader after R83:
+
+| caught | missed |
+|---|---|
+| `J A C K`, `j4ckkk`, `j_a_c_k`, `j/a/c/k`, `jack's`, `j a c k s`, `j  a  c  k` | `j 4 c k`, `j.4.c.k`, `j@ck`, `j*ck`, `ja ck`, `j a ck`, `j4 ck`, `jacc`, `jak` |
+
+Four causes:
+1. A leet digit inside a spelled-out run (`j 4 c k`) breaks the run, because
+   R83 only joins single LETTERS.
+2. `@` and `$` stand in for letters but are separators to the tokenizer, so
+   `j@ck` arrives as `j` + `ck`.
+3. A word split into chunks (`ja ck`, `j4 ck`) is two tokens that each match
+   nothing.
+4. Misspellings and sound-alikes (`jacc`, `jak`) — fuzzy matching.
+
+1. *(picked)* **Close 1–3.** They are mechanical, like R83's five.
+2. **4 is not attempted.** Edit-distance tolerance is exactly where a reader
+   starts hearing giveaways nobody said, and "how close is close enough" is a
+   tuning call, not a defect. `j*ck` (a censor star, where the reader has to
+   guess the letter) goes with it.
+3. R78's list and R83's reversal question are otherwise unchanged.
+
+**Stage 2 — the fix.**
+- `Lexicon.tokenize`: a spelled-out run may now include single LEET digits, as
+  long as it holds at least two real letters, so an answer spelled out digit by
+  digit is never joined or un-leeted. `@` and `$` become `a` and `s` only where
+  they touch a letter, so `@bob` and `$5` are not turned into words.
+- `Heuristic`: every two and three ADJACENT tokens are glued and stemmed, and
+  consulted for SINGLE-word terms only. Multi-word coinages still need their
+  words in order on word boundaries (R15), and gluing cannot satisfy that.
+
+**Stage 3 — proof.** 6 checks in `tests/lexicon.luau`, 9 in
+`tests/heuristic.luau`: each mixed form understood, 21 lines of ordinary chat
+with **0** new false giveaways, and two `(control)`s that R15's rule still
+holds with gluing on (`check the bluetooth` does not match the coinage
+`the blue`; `it is the blue one` still does).
+
+False positives were checked against the pre-R84 code rather than assumed. On a
+47-line corpus three sentences hit (`key board`, `note book`, `ab out time`),
+and **the same three hit before R84** — `board`, `book` and `out` are plain
+giveaway words on their own. Gluing added none.
+
+*Two of my first plants did not fire, and both taught something.*
+- The letters-rule test used `type 4 2 7`. `2` is not a LEET digit, so the run
+  broke before the rule was reached and removing the rule changed nothing. The
+  test now uses `4 3 7`, every digit in the table.
+- The `@` rule is two lines (letter before, letter after), and `j@ck` is
+  covered by either, so removing one is an equivalent mutant. The plant now
+  removes both.
+
+| plant | what failed |
+|---|---|
+| gluing removed | `'the ja ck'`, `'the j a ck'`, `'the j4 ck' is understood` |
+| the two-letter rule dropped from the run | `an answer spelled out digit by digit is left alone` |
+| both `@` lines removed | `@ touching a letter reads as a`, `'the j@ck' is understood` |
+
+Restored from byte-copy backups; sha256 `ee48c668…4938c790` and
+`1ecdf733…bf37a130`.
+
+**Verified in the product.** The sixteen variants re-run: `j 4 c k`, `j.4.c.k`,
+`ja ck`, `j a ck`, `j@ck`, `j4 ck` now caught; `j*ck`, `jacc`, `jak` still
+missed, as scoped. `glued` and the `@` rule are both in the Rojo-built place.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon **37**, heuristic **65**, operator ok, objectives 122,
+pursuit 104, round 61, config 63, wiring 354, connected 32, ordering 4,
+heat 20, layout 110, lifecycle 90, hud 26, readout 36, soak 42, hum 29, log 18,
+silence 62, lexiconsave 28.
+
+*Not claimed:* that respelling is closed. Misspellings, sound-alikes and a
+censor star still get through, deliberately; how forgiving the reader should
+be is a tuning question with false positives on the other side of it.

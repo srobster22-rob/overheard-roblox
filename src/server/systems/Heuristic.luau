@@ -55,7 +55,18 @@ end
 -- Fixed here rather than in `Lexicon.stem`: `gather -> gath` is the `er` rule
 -- working as written, and telling "gather" from "gath"+"er" needs real
 -- morphology. The bug is the DOUBLE stemming, not the stemmer.
-local function matchesAny(stems: { string }, joined: string, candidates: { string }, alreadyStemmed: boolean?): boolean
+-- `glued` holds the stems of every two and three ADJACENT tokens run together
+-- ("ja ck" -> "jack", "out side" -> "outside"). R84: a word split into chunks
+-- arrived as tokens that each matched nothing. Consulted for SINGLE-word terms
+-- only; multi-word phrases still need their words in order on word boundaries
+-- (R15), and gluing must never be able to satisfy that.
+local function matchesAny(
+	stems: { string },
+	joined: string,
+	candidates: { string },
+	alreadyStemmed: boolean?,
+	glued: { string }?
+): boolean
 	for _, candidate in candidates do
 		local candidateStems = if alreadyStemmed
 			then Lexicon.tokenize(candidate)
@@ -65,6 +76,9 @@ local function matchesAny(stems: { string }, joined: string, candidates: { strin
 		end
 		if #candidateStems == 1 then
 			if Lexicon.contains(stems, candidateStems[1]) then
+				return true
+			end
+			if glued and Lexicon.contains(glued, candidateStems[1]) then
 				return true
 			end
 		else
@@ -92,13 +106,25 @@ function Heuristic.conveyed(utterance: Utterance, secrets: { Secret }, lexicon: 
 	local stems = Lexicon.stemAll(words)
 	local joined = table.concat(stems, " ")
 
+	local glued: { string } = {}
+	for i = 1, #words - 1 do
+		for span = 2, 3 do
+			if i + span - 1 <= #words then
+				local whole = table.concat(words, "", i, i + span - 1)
+				if #whole >= 3 then
+					table.insert(glued, Lexicon.stem(whole))
+				end
+			end
+		end
+	end
+
 	local found: { Understanding } = {}
 
 	for _, secret in secrets do
 		local confidence = 0
 
 		-- Plain language is always understood.
-		if matchesAny(stems, joined, secret.plain) then
+		if matchesAny(stems, joined, secret.plain, false, glued) then
 			confidence = 1
 		end
 
@@ -108,7 +134,7 @@ function Heuristic.conveyed(utterance: Utterance, secrets: { Secret }, lexicon: 
 				continue
 			end
 			-- Already a stem; see `alreadyStemmed` above.
-			if matchesAny(stems, joined, { coinage.phrase }, true) then
+			if matchesAny(stems, joined, { coinage.phrase }, true, glued) then
 				local learned = math.clamp(coinage.heat / BURNED_AT, 0, 1)
 				confidence = math.max(confidence, learned)
 			end

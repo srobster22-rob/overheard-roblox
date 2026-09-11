@@ -151,8 +151,18 @@ end
 -- Normalised HERE, in the one function every reader goes through, so plain
 -- matching, coinages and novel terms all see the same word.
 function Lexicon.tokenize(text: string): { string }
+	-- R84. `@` and `$` stand in for `a` and `s` ("j@ck", "bre$k"), but the
+	-- token class below treats them as separators, so "j@ck" arrived as "j" and
+	-- "ck". Rewritten only where they touch a letter, so "@bob" or "$5" are not
+	-- turned into words.
+	local lowered = string.lower(text)
+	lowered = string.gsub(lowered, "(%a)@", "%1a")
+	lowered = string.gsub(lowered, "@(%a)", "a%1")
+	lowered = string.gsub(lowered, "(%a)%$", "%1s")
+	lowered = string.gsub(lowered, "%$(%a)", "s%1")
+
 	local raw: { string } = {}
-	for piece in string.gmatch(string.lower(text), "[%a%d']+") do
+	for piece in string.gmatch(lowered, "[%a%d']+") do
 		local word = string.gsub(piece, "'", "")
 		if #word > 0 then
 			table.insert(raw, word)
@@ -164,12 +174,21 @@ function Lexicon.tokenize(text: string): { string }
 	while i <= #raw do
 		-- A run of three or more single letters is one word spelled out. Two
 		-- is left alone: "u r" and "i a" are ordinary chat, not a spelling.
+		--
+		-- R84: a run may include a single LEET digit ("j 4 c k"), which R83's
+		-- letters-only run broke on. It must still hold at least two real
+		-- letters, so an answer spelled out digit by digit ("4 2") is never
+		-- joined and never un-leeted.
 		local j = i
-		while j <= #raw and string.match(raw[j], "^%a$") do
+		local letters = 0
+		while j <= #raw and (string.match(raw[j], "^%a$") or LEET[raw[j]] ~= nil) do
+			if string.match(raw[j], "^%a$") then
+				letters += 1
+			end
 			j += 1
 		end
-		if j - i >= 3 then
-			table.insert(out, unstretch(table.concat(raw, "", i, j - 1)))
+		if j - i >= 3 and letters >= 2 then
+			table.insert(out, unstretch(unleet(table.concat(raw, "", i, j - 1))))
 			i = j
 		else
 			table.insert(out, unstretch(unleet(raw[i])))

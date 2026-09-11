@@ -393,6 +393,79 @@ if #falseHits > 0 then
 	print(`        misheard: {table.concat(falseHits, " / ")}`)
 end
 
+print("")
+print("a word split into chunks is still the word")
+
+-- R84: "ja ck", "j a ck", "j4 ck" arrived as tokens that each matched nothing.
+-- Adjacent tokens are glued for SINGLE-word terms only.
+local chunkPool = Round.dealSecrets(99)
+local jackSecret
+for _, secret in chunkPool do
+	if secret.concept == "jack_number" then
+		jackSecret = secret
+	end
+end
+check("(guard) the jack secret is in the pool", jackSecret ~= nil)
+if jackSecret then
+	for _, text in { "the ja ck", "the j a ck", "the j4 ck", "the j 4 c k", "the j@ck" } do
+		check(`'{text}' is understood`, #Heuristic.conveyed(utterance(text), { jackSecret }, {}) > 0)
+	end
+end
+
+-- Gluing must never let two words satisfy a MULTI-word coinage out of order,
+-- or turn ordinary neighbours into a giveaway nobody said.
+local gluedChat = {
+	"come on guys hurry",
+	"no way thats crazy",
+	"can you hear me",
+	"where are you",
+	"run run run",
+	"is anyone there",
+	"the code is 4 2",
+	"type 7 3",
+	"on my way",
+	"be right back",
+	"a sub way",
+	"in side the room",
+	"no body move",
+	"the red one",
+	"go go go",
+	"my mic is broken",
+	"email me @ home",
+	"that costs $5",
+	"look @ that",
+	"the a b c song",
+	"x y z",
+}
+local gluedHits: { string } = {}
+for _, text in gluedChat do
+	if #Heuristic.conveyed(utterance(text), chunkPool, {}) > 0 then
+		table.insert(gluedHits, text)
+	end
+end
+check(`gluing neighbours adds no false giveaways ({#gluedHits} of {#gluedChat})`, #gluedHits == 0)
+if #gluedHits > 0 then
+	print(`        misheard: {table.concat(gluedHits, " / ")}`)
+end
+
+-- (control) R15's rule still holds with gluing on: a burned two-word coinage is
+-- not understood inside a longer word.
+local blue = {
+	phrase = "the blue",
+	concept = jackSecret and jackSecret.concept or "jack_number",
+	heat = 1,
+	sightings = 9,
+	coinedBy = 1,
+}
+check(
+	"(control) 'check the bluetooth' still does not match the coinage 'the blue'",
+	#Heuristic.conveyed(utterance("check the bluetooth"), { jackSecret }, { blue }) == 0
+)
+check(
+	"(control) ...while 'the blue' itself still does",
+	#Heuristic.conveyed(utterance("it is the blue one"), { jackSecret }, { blue }) > 0
+)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)
