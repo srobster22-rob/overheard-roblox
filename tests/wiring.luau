@@ -753,8 +753,25 @@ for line in string.gmatch(serverCode, "[^" .. NL .. "]+") do
 	end
 end
 -- R115: `shown` moved into the Supervisor (its forget clears it; run in
--- tests/silence), so the server keeps one per-player table of its own.
-check(`(guard) found the per-player tables ({table.concat(perPlayer, ", ")})`, #perPlayer >= 1)
+-- tests/silence); R116 moved `lastSubmit` into the Station desk. The server
+-- now keeps NO per-player table of its own -- that state lives in modules whose
+-- `forget` clears it (run in tests/silence and tests/objectives). The loop below
+-- still demands that any table added later is cleared on leave, and the
+-- parser is proven on a synthetic line so an empty list cannot mean "blind".
+check(
+	"(guard) the per-player table reader recognises one",
+	string.match(
+		LuauCode.stripNonCode("local probe: { [number]: number } = {}" .. NL),
+		"^local ([%a][%w_]*):%s+%[number%]:"
+	) == "probe"
+)
+check(`the server keeps no per-player table of its own ({table.concat(perPlayer, ", ")})`, #perPlayer == 0)
+for _, owner in { "supervisor", "line", "desk" } do
+	check(
+		`a player who leaves is forgotten by '{owner}'`,
+		string.find(leavingBody, owner .. ":forget(player.UserId)", 1, true) ~= nil
+	)
+end
 
 for _, name in perPlayer do
 	check(

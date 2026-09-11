@@ -31,12 +31,14 @@ export type Desk = typeof(setmetatable(
 	{} :: {
 		-- userId -> the station id that player most recently reached.
 		at: { [number]: string },
+		-- userId -> when that player last submitted (R116; was init.server's lastSubmit).
+		lastSubmit: { [number]: number },
 	},
 	Station
 ))
 
 function Station.new(): Desk
-	return setmetatable({ at = {} }, Station)
+	return setmetatable({ at = {}, lastSubmit = {} }, Station)
 end
 
 -- The player triggered a station's prompt. ONE slot per player on purpose:
@@ -72,6 +74,23 @@ end
 
 function Station.forget(self: Desk, userId: number)
 	self.at[userId] = nil
+	self.lastSubmit[userId] = nil
+end
+
+-- Rate limiting. Every remote the client can fire needs one, or an exploiter
+-- brute-forces two-digit answers instantly. Submit is the only remote a client
+-- fires (the prompts are proximity-gated by Roblox; chat is TextChatService).
+Station.SUBMIT_COOLDOWN = 0.75
+
+-- May this player submit at all right now? Records the attempt if so. R116
+-- moved this from init.server so `forget` (on leave) clears it by construction
+-- and the suite can run it.
+function Station.tryPace(self: Desk, userId: number, now: number): boolean
+	if now - (self.lastSubmit[userId] or 0) < Station.SUBMIT_COOLDOWN then
+		return false
+	end
+	self.lastSubmit[userId] = now
+	return true
 end
 
 -- May this player enter a code at this station RIGHT NOW? nil if so; otherwise

@@ -267,10 +267,7 @@ local function showEveryoneTheirClock()
 	end
 end
 
--- Rate limiting. Every remote the client can fire needs one, or an exploiter
--- brute-forces two-digit answers instantly.
-local lastSubmit: { [number]: number } = {}
-local SUBMIT_COOLDOWN = 0.75
+-- Rate limiting: Station.tryPace (R116).
 
 operator.onUnderstood = function(concept: string, payload: string, confidence: number)
 	print(`[operator] understood '{concept}' ({string.format("%.2f", confidence)}) -> {payload}`)
@@ -374,10 +371,9 @@ submitRemote.OnServerEvent:Connect(function(player: Player, id: unknown, value: 
 	end
 
 	local now = os.clock()
-	if now - (lastSubmit[player.UserId] or 0) < SUBMIT_COOLDOWN then
+	if not desk:tryPace(player.UserId, now) then
 		return
 	end
-	lastSubmit[player.UserId] = now
 
 	-- You must have reached that station. Checked here rather than inside
 	-- `submit` because it is about the player's body, not about the line: a
@@ -453,7 +449,6 @@ Players.PlayerRemoving:Connect(function(player: Player)
 	-- Per-player slots. `lastSubmit` and the desk are session state and go;
 	-- `misses`/`jammedUntil` deliberately DO NOT (see Objectives), because a jam
 	-- a player can shed by reconnecting is not a jam.
-	lastSubmit[player.UserId] = nil
 	supervisor:forget(player.UserId)
 	line:forget(player.UserId)
 	desk:forget(player.UserId)

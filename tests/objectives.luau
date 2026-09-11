@@ -777,6 +777,23 @@ do
 	check("the round being over is said first", order ~= nil and order.reason == "the round is over")
 end
 
+print("")
+print("the Submit cooldown (R116)")
+do
+	local Station = rt.require(rt.systems.Station)
+	local desk = Station.new()
+	local t = 100
+	check("a first submission is paced through", desk:tryPace(1, t))
+	check("a second inside the cooldown is refused", not desk:tryPace(1, t + Station.SUBMIT_COOLDOWN / 2))
+	check("(control) another player is not held up by it", desk:tryPace(2, t + 0.1))
+	check("after the cooldown it goes through", desk:tryPace(1, t + Station.SUBMIT_COOLDOWN))
+	desk:forget(1)
+	check(
+		"a player who left and came back is not still cooling down",
+		desk:tryPace(1, t + Station.SUBMIT_COOLDOWN + 0.1)
+	)
+end
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)
