@@ -8553,3 +8553,5 @@ about that panel lying to the people who read it.
 ## R117
 
 **Stage 0.** The OWNER.md Next list is empty. **Stage 1 IDEATE.** Shortlist: (a) OWNER.md's Done summary stops at R77, 39 rounds behind; (b) the remaining init.server event wiring (Studio-only); (c) the un- prefix (owner). Pick (a). The owner reads this file first. **Build:** a plain-language R78-R116 summary appended under Done, pointing to the open questions and the owed Studio playtest. Doc-only; no src/test change, so no plant applies. tests/log guards the log.
+
+**Commit** `8796e77`
