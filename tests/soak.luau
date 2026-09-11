@@ -158,8 +158,9 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 	--
 	-- `takeAllButOne` used to be an index trick. It is now a PLACE: everybody but
 	-- the last player stands in the board room, so one arrival takes all of them
-	-- and strands whatever line the survivor is holding. That is R48's shape,
-	-- produced by where people are rather than by arithmetic on an array.
+	-- but one. (R111: it does NOT strand the survivor's line -- a caught reader can
+	-- still talk -- so this is R48's capture shape, not a stranding; see the
+	-- recorded check at the end.)
 	local standing: { [number]: { x: number, z: number } } = {}
 	local function placeEveryone()
 		for index, userId in present do
@@ -185,6 +186,7 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 		rounds = 0,
 		won = 0,
 		lost = 0,
+		strandedLost = 0,
 		unfinishableTicks = 0,
 		worstSeen = 0,
 		worstLexicon = 0,
@@ -262,10 +264,14 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 			for _, userId in line:reachedInRoom(pursuit.position, standing, Layout.halfRoom()) do
 				line:connect(userId, now)
 			end
-			local able = ableNow()
-			local stranded = #present > 0 and not board:allSolved() and not board:anyFinishable(able)
-			if (line:allTaken(present) or stranded) and round:finish("lost", now) then
+			-- R111: the server's own loss rule, not a copy (this one had drifted:
+			-- it lacked the line:count() > 0 clause).
+			local allTakenNow = line:allTaken(present)
+			if Lifecycle.nobodyCanWin(present, board, line) and round:finish("lost", now) then
 				report.lost += 1
+				if not allTakenNow then
+					report.strandedLost += 1
+				end
 				-- The server stops it hunting once there is nobody left to hunt;
 				-- leaving it travelling would keep the hum going over a finished
 				-- round. The soak cannot hear a hum, but it must not model a
@@ -279,13 +285,13 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 
 		-- The server asks on every beat now, not only on arrival (R49).
 		if round:isPlaying() then
-			local able = ableNow()
-			local strandedNow = #present > 0
-				and not board:allSolved()
-				and line:count() > 0
-				and not board:anyFinishable(able)
-			if (line:allTaken(present) or strandedNow) and round:finish("lost", now) then
+			-- R111: the server's own loss rule, not a copy.
+			local allTakenNow = line:allTaken(present)
+			if Lifecycle.nobodyCanWin(present, board, line) and round:finish("lost", now) then
 				report.lost += 1
+				if not allTakenNow then
+					report.strandedLost += 1
+				end
 			end
 		end
 
@@ -405,6 +411,7 @@ local function acrossSeeds(ticks: number, rejoinEvery: number, takeAllButOne: bo
 		rounds = 0,
 		won = 0,
 		lost = 0,
+		strandedLost = 0,
 		unfinishableTicks = 0,
 		worstSeen = 0,
 		worstLexicon = 0,
@@ -423,6 +430,7 @@ local function acrossSeeds(ticks: number, rejoinEvery: number, takeAllButOne: bo
 		total.rounds += one.rounds
 		total.won += one.won
 		total.lost += one.lost
+		total.strandedLost += one.strandedLost
 		total.stuckRejoins += one.stuckRejoins
 		total.silenceCalls += one.silenceCalls
 		total.solved += one.solved
@@ -770,7 +778,19 @@ print("the Operator takes everyone but one")
 -- of this file passed with the stranded-loss rule deleted for that reason.
 local harsh = acrossSeeds(1200, 0, true)
 check(`(guard) the harsh soak played rounds ({harsh.rounds})`, harsh.rounds >= 3)
-check(`(guard) and it really did strand people ({harsh.lost} rounds lost)`, harsh.lost >= 1)
+-- R111: this guard was named "it really did strand people", but it counted
+-- every loss. Measured: 0 of 28 harsh losses are strandings with anyone still
+-- free. By the game's own rule that is correct -- a caught reader can still TALK,
+-- so a survivor who has not seen the other line can still finish it -- and a
+-- stranding needs the survivor to have seen every unsolved line, which this model
+-- never produces (it solves on a 260-tick beat, longer than a round lasts).
+-- Planting `nobodyCanWin`'s stranded clause to `false` left this file green;
+-- that rule is carried by the behaviour checks in tests/lifecycle (R108).
+check(`(guard) the harsh soak loses rounds ({harsh.lost})`, harsh.lost >= 1)
+check(
+	`(recorded, R111) losses by stranding with someone free ({harsh.strandedLost} of {harsh.lost})`,
+	harsh.strandedLost >= 0
+)
 -- At most ONE tick of lag per stranded round: the capture strands it, and the
 -- next beat of the server clock ends it. That is the granularity of asking on a
 -- tick, not slack in the rule -- which is why the bound is expressed in rounds
