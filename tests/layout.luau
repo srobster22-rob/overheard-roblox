@@ -179,6 +179,17 @@ local behind = { x = board.x + half + 10, z = board.z }
 local inside = { x = board.x, z = board.z }
 check("you cannot walk in through the back wall", not Layout.walkIsClear(behind, inside))
 
+-- R97. The corner walk above also crosses the side wall, so deleting a room's
+-- whole south wall passed the entire suite. Straight in through north and
+-- south, for BOTH rooms.
+for name, centre in { board = Layout.boardCentre(), archive = Layout.archiveCentre() } do
+	local middle = { x = centre.x, z = centre.z }
+	for side, dz in { north = -1, south = 1 } do
+		local out = { x = centre.x, z = centre.z + dz * (half + 6) }
+		check(`you cannot walk into the {name} room through its {side} wall`, not Layout.walkIsClear(out, middle))
+	end
+end
+
 -- The doorway is where the corridor is, not somewhere unreachable.
 local doorApproach = { x = board.x - half - 6, z = board.z }
 check("the doorway faces the corridor", Layout.walkIsClear(doorApproach, inside))

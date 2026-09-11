@@ -712,16 +712,13 @@ local words =
 local costLex = {}
 for i = 1, 200 do
 	local phrase = words[(i % 10) + 1] .. " " .. words[((i * 7) % 10) + 1] .. tostring(i)
-	table.insert(
-		costLex,
-		{
-			phrase = table.concat(Lexicon.stemAll(Lexicon.tokenize(phrase)), " "),
-			concept = costPool[(i % 5) + 1].concept,
-			heat = 0.5,
-			sightings = 3,
-			coinedBy = 1,
-		}
-	)
+	table.insert(costLex, {
+		phrase = table.concat(Lexicon.stemAll(Lexicon.tokenize(phrase)), " "),
+		concept = costPool[(i % 5) + 1].concept,
+		heat = 0.5,
+		sightings = 3,
+		coinedBy = 1,
+	})
 end
 local costLine = string.rep("stopped running hurried batteries ", 6)
 costLine = string.sub(costLine, 1, 200)
