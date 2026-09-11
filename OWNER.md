@@ -187,6 +187,12 @@ both sides. Full detail for each is in LOOP_LOG.md at the round named.
   corridor should be a place silence goes unpunished (it currently is, by
   omission); whether `SpeakEvery` (45s) is the right pressure; whether the
   Supervisor needs a body distinct from the Operator's.
+  *R112 correction for the pressure question:* the soak had been counting 28
+  Supervisor calls in a normal session; 7 of those chased players already
+  caught (its copy of the capture step never told the Supervisor to forget
+  them; the real server always did). The true figure is **21**. The other
+  numbers here (225 corridor misses, 21 of 28 rounds lost) re-measured the
+  same after R110-R112.
 - **R59/R62 - two numbers, not decisions:** a silent player standing in the
   corridor is unreachable by the Supervisor 225 times in one measured
   session; a group with one quiet member in four loses 21 of 28 simulated
