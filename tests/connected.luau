@@ -186,6 +186,37 @@ for _ = 1, 20 do
 end
 check("a player who comes after it has gone is safe", occupancy:isConnected(afterwards) == false)
 
+print("")
+print("taking a room: connect AND forget (R112)")
+
+-- R112. The soak ran a copy of this that connected but never told the
+-- Supervisor to forget -- 7 of its 28 normal-session calls chased players
+-- already on the line. Now there is one function, and it is run here.
+do
+	local Supervisor_ = rt.require(rt.systems.Supervisor)
+	local Layout_ = rt.require(rt.shared.Layout)
+	local centre = Layout_.boardCentre()
+	local half = Layout_.halfRoom()
+	local sup = Supervisor_.new()
+	sup:watch(1, 0)
+	sup:watch(2, 0)
+	local l = Connected.new()
+	local positions = { [1] = { x = centre.x, z = centre.z }, [2] = Layout_.spawn() }
+	local reached, newly = l:takeInRoom(centre, positions, half, 5, sup)
+	check(
+		"the player in the room is reached and newly connected",
+		#reached == 1 and reached[1] == 1 and #newly == 1 and newly[1] == 1
+	)
+	check("...and put on the line", l:isConnected(1))
+	check("...and FORGOTTEN by the Supervisor", sup:quietFor(1, 10) == nil)
+	check(
+		"(control) the player outside is neither taken nor forgotten",
+		not l:isConnected(2) and sup:quietFor(2, 10) ~= nil
+	)
+	local again, newAgain = l:takeInRoom(centre, positions, half, 6, sup)
+	check("taking the room again takes and tells nobody twice", #again == 0 and #newAgain == 0)
+end
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

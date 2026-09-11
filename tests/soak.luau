@@ -260,10 +260,8 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 		end
 
 		if round:isPlaying() and pursuit.state == "arrived" then
-			-- `takeWhoeverIsHere`, as the server runs it.
-			for _, userId in line:reachedInRoom(pursuit.position, standing, Layout.halfRoom()) do
-				line:connect(userId, now)
-			end
+			-- R112: the server's own capture (connect AND forget), not a copy.
+			line:takeInRoom(pursuit.position, standing, Layout.halfRoom(), now, supervisor)
 			-- R111: the server's own loss rule, not a copy (this one had drifted:
 			-- it lacked the line:count() > 0 clause).
 			local allTakenNow = line:allTaken(present)

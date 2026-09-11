@@ -1067,8 +1067,16 @@ print("a captured player stops being chased for silence")
 
 local captureBody = string.match(serverCode, "local function takeWhoeverIsHere%(%).-" .. NL .. "end") or ""
 check("(guard) found the capture path", #captureBody > 0)
-local connectAt = string.find(captureBody, "line:connect(userId, os.clock())", 1, true)
-local forgetAt = string.find(captureBody, "supervisor:forget(userId)", 1, true)
+-- R112: connect-and-forget moved to Connected.takeInRoom (RUN in tests/connected);
+-- the order is read there, and the capture path must call it.
+check(
+	"the capture path takes the room through Connected.takeInRoom",
+	string.find(captureBody, "line:takeInRoom(", 1, true) ~= nil
+)
+local connectedCode = LuauCode.stripNonCode(fs.readFile("src/server/systems/Connected.luau"))
+local takeBody = string.match(connectedCode, "function Connected.takeInRoom%(.-" .. NL .. "end") or ""
+local connectAt = string.find(takeBody, "self:connect(userId, now)", 1, true)
+local forgetAt = string.find(takeBody, "supervisor:forget(userId)", 1, true)
 check("(guard) the capture path connects a caught player", connectAt ~= nil)
 check("the Supervisor is told to forget them", forgetAt ~= nil)
 if connectAt and forgetAt then
@@ -1165,7 +1173,8 @@ check("the soak finds a player's room by position", string.find(soakCode, "Layou
 check("...forgives nobody unless the call went through", string.find(soakCode, "onItsWay", 1, true) ~= nil)
 check(
 	"...and catches whoever is in the room, not the first N",
-	string.find(soakCode, ":reachedInRoom(", 1, true) ~= nil
+	-- R112: through the server's own capture, which is reachedInRoom inside.
+	string.find(soakCode, ":takeInRoom(", 1, true) ~= nil
 )
 
 -- (control) a member no server path reaches for must not be reported as covered.

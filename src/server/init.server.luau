@@ -161,22 +161,21 @@ local function takeWhoeverIsHere()
 	-- The ROOM it arrived in, not a circle around it. See Connected.reachedInRoom:
 	-- a circle big enough to cover the square also covers 9.94 studs of corridor
 	-- outside every wall, so running out of the door did not save you.
-	local caught = line:reachedInRoom(pursuit.position, livePositions(), Layout.halfRoom())
-	for _, userId in caught do
-		if line:connect(userId, os.clock()) then
-			-- A caught player cannot act -- Objectives.submit refuses anyone
-			-- isConnected -- and nothing in this round releases them again, so
-			-- there is no more silence left to punish. Without this the
-			-- Supervisor kept chasing them anyway: measured, roughly HALF of
-			-- every dispatch and every audible "putting you through" went to a
-			-- player who could not possibly benefit from the visit, taken
-			-- directly from whoever the mechanic still has a reason to reach.
-			supervisor:forget(userId)
-			local victim = Players:GetPlayerByUserId(userId)
-			if victim then
-				heardRemote:FireClient(victim, Round.LINES.onTheLine, "", 1)
-				connectedRemote:FireClient(victim, true)
-			end
+	-- R112: connect-and-forget lives in Connected.takeInRoom (RUN by the
+	-- suite, and called by the soak); only the telling is left here.
+	local caught, newly = line:takeInRoom(pursuit.position, livePositions(), Layout.halfRoom(), os.clock(), supervisor)
+	for _, userId in newly do
+		-- A caught player cannot act -- Objectives.submit refuses anyone
+		-- isConnected -- and nothing in this round releases them again, so
+		-- there is no more silence left to punish. Without this the
+		-- Supervisor kept chasing them anyway: measured, roughly HALF of
+		-- every dispatch and every audible "putting you through" went to a
+		-- player who could not possibly benefit from the visit, taken
+		-- directly from whoever the mechanic still has a reason to reach.
+		local victim = Players:GetPlayerByUserId(userId)
+		if victim then
+			heardRemote:FireClient(victim, Round.LINES.onTheLine, "", 1)
+			connectedRemote:FireClient(victim, true)
 		end
 	end
 

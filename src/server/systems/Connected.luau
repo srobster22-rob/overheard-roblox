@@ -132,4 +132,31 @@ function Connected.allTaken(self: Line, userIds: { number }): boolean
 	return true
 end
 
+-- The Operator takes the room it arrived in: everyone inside is put on the
+-- line, and a player put on the line is FORGOTTEN by the Supervisor -- a caught
+-- player cannot act, so there is no silence left to punish, and chasing them
+-- took about half of every dispatch (R54). Returns everyone reached and, of
+-- those, who was newly connected (the ones the server tells).
+--
+-- R112 moved this out of init.server. tests/soak.luau ran a copy of it "as the
+-- server runs it", and the copy had drifted: it connected but never forgot.
+function Connected.takeInRoom(
+	self: Line,
+	centre: Point,
+	positions: { [number]: Point },
+	half: number,
+	now: number,
+	supervisor: any
+): ({ number }, { number })
+	local reached = self:reachedInRoom(centre, positions, half)
+	local newly: { number } = {}
+	for _, userId in reached do
+		if self:connect(userId, now) then
+			supervisor:forget(userId)
+			table.insert(newly, userId)
+		end
+	end
+	return reached, newly
+end
+
 return Connected
