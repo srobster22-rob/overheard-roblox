@@ -7889,3 +7889,47 @@ instead be logged and silently dropped rather than shown at all) is a smaller,
 genuinely cosmetic call left for whoever next looks at this panel in Studio.
 
 **Commit** `9ce7bde`
+
+
+## R82 — a seventh mutation wave: three caught, two equivalent mutants
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — fresh targets.** Five mutations never run before: `Heat.safeProgress`
+losing its clamp, `Silence.secondsLeft` going negative, the jam losing its
+escalation factor, and two in `LexiconSave` (R73) — the encode cap written
+`>=` instead of `>`, and `decode`'s cap check moved ahead of the insert.
+
+1. *(picked)* **Run the wave; close any real survivor.**
+2. R78's open list is unchanged.
+
+**Stage 2 — the sweep.** Three caught immediately (`it does not run past the
+end`, `...and none of it once the deadline passes`, `the second jam is twice as
+long as the first`). The two `LexiconSave` mutants survived.
+
+**Stage 3 — checked before writing a test, and they are not gaps.** Ran the
+original and both mutants on 199, 200 and 201 entries, for `encode`, a clean
+`decode`, and a `decode` with an invalid entry every third slot. **All nine
+results are identical across all three versions.**
+
+- `>=` at exactly 200 enters the trim branch, which then copies all 200 — the
+  same list `>` returns by skipping the branch.
+- Checking the cap before the insert instead of after breaks one iteration
+  later, at the same count.
+
+These are **equivalent mutants**: the code differs, the behaviour does not. A
+test written to "catch" them would have to assert on something no caller can
+observe, and would pass or fail for reasons unrelated to what it names — the
+exact kind of check this log has spent twenty rounds removing. No test added.
+Same kind of result as R59's "112 served either way": recorded so the next wave
+doesn't spend time on it.
+
+*A slip on my side, stopped before it ran.* The first probe for this round
+restored the file with a `git checkout --` fallback, which `OWNER.md` `## Never`
+forbids. The session was interrupted before that command executed. Afterward
+`git status` came back clean and `LexiconSave.luau` hashed `9e574781…ce32a8f0`
+as before. Every restore since has been a byte-copy with a sha256 check, which
+is the rule.
+
+**Stage 4 — ship.** No `src/` or `tests/` change. `selene src` 0/0, `rojo build`
+clean, full suite green and identical to R81's counts.
