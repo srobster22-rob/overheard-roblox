@@ -8477,3 +8477,5 @@ about that panel lying to the people who read it.
 **Stage 0.** The OWNER.md Next list is empty. **Stage 1 IDEATE.** Shortlist: (a) World's spawn is a literal (0,y,0) while every route test starts from Layout.spawn(), the last duplicated position after R105/R106; (b) the un- prefix (owner); (c) the corridor floor centre (a midpoint, not a Layout value). Pick (a).
 
 **Stage 2 BUILD.** World's spawn now reads Layout.spawn().x/.z. Test: layout "World spawns players at Layout.spawn (R107)". layout 126/126. **Stage 3 REVIEW.** Plant (pre-R107 World from git HEAD): the check FAILs by name. Restored, sha256 65377506 matched. Product: the same (0,0) by construction. With R105-R107, every position World builds that a headless test walks from or to now comes from Layout. **Stage 4 SHIP.** selene 0/0, rojo build carries Layout.spawn().x, full test.cmd 0 FAIL.
+
+**Commit** `88e7db4`
