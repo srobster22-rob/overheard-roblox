@@ -177,14 +177,16 @@ function World.build(): Built
 		)
 	end
 
-	local readerAt = recordsOrigin + Vector3.new(0, 4, -18)
-	local boardAt = boardOrigin + Vector3.new(0, 4, -18)
+	-- R106: every offset from Layout, where the walk tests read them.
+	local stationOffset, breakerOffset = Layout.stationOffset(), Layout.breakerOffset()
+	local readerAt = recordsOrigin + Vector3.new(stationOffset.x, 4, stationOffset.z)
+	local boardAt = boardOrigin + Vector3.new(stationOffset.x, 4, stationOffset.z)
 	local readerPrompt = station("Directory", "Read", readerAt, folder)
 	local boardPrompt = station("Switchboard", "Patch", boardAt, folder)
 	-- The breaker sits in the RECORDS room, deliberately opposite the board.
 	-- With both act-stations in one room the whole group just camps there and
 	-- the corridor stops being a cost; one at each end forces the walk.
-	local breakerAt = recordsOrigin + Vector3.new(18, 4, 0)
+	local breakerAt = recordsOrigin + Vector3.new(breakerOffset.x, 4, breakerOffset.z)
 	local breakerPrompt = station("Breaker", "Throw", breakerAt, folder)
 
 	-- The exchange is dark. Players get just enough to move.

@@ -91,6 +91,14 @@ function Layout.stationOffset(): Point
 	return { x = 0, z = -18 }
 end
 
+-- Where the breaker panel stands, relative to the RECORDS room centre: toward
+-- the doorway wall. R106: World wrote this as a literal and the layout test
+-- copied the same literal by hand, so the two agreed only by coincidence and
+-- no walk test reached the breaker at all.
+function Layout.breakerOffset(): Point
+	return { x = 18, z = 0 }
+end
+
 -- Is a point inside the room centred on `centre`?
 function Layout.inRoom(centre: Point, point: Point): boolean
 	local half = Layout.halfRoom()

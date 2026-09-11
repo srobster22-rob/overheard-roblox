@@ -317,7 +317,10 @@ local Config = rt.require(rt.shared.Config)
 
 -- The real station positions, from the same arithmetic World builds with.
 local boardStation = { x = Layout.boardCentre().x, z = Layout.boardCentre().z - 18 }
-local breakerStation = { x = Layout.archiveCentre().x + 18, z = Layout.archiveCentre().z }
+local breakerStation = {
+	x = Layout.archiveCentre().x + Layout.breakerOffset().x,
+	z = Layout.archiveCentre().z + Layout.breakerOffset().z,
+}
 
 local stationGap = math.sqrt((boardStation.x - breakerStation.x) ^ 2 + (boardStation.z - breakerStation.z) ^ 2)
 check(`(guard) the two act-stations really are far apart ({math.floor(stationGap)} studs)`, stationGap > 50)
@@ -777,6 +780,27 @@ check(
 check(
 	"World computes no room origin of its own from the separation",
 	string.find(worldCode, "SEPARATION / 2", 1, true) == nil
+)
+
+print("")
+print("every station is placed from Layout, and the breaker can be walked to (R106)")
+
+check("World places stations by Layout.stationOffset", string.find(worldCode, "Layout.stationOffset()", 1, true) ~= nil)
+check(
+	"World places the breaker by Layout.breakerOffset",
+	string.find(worldCode, "Layout.breakerOffset()", 1, true) ~= nil
+)
+check(
+	"World carries no literal station offset of its own",
+	string.find(worldCode, "Vector3.new(0, 4, -18)", 1, true) == nil
+		and string.find(worldCode, "Vector3.new(18, 4, 0)", 1, true) == nil
+)
+local archive = Layout.archiveCentre()
+local breakerPoint = { x = archive.x + Layout.breakerOffset().x, z = archive.z + Layout.breakerOffset().z }
+check("the breaker stands inside the records room", Layout.inRoom(archive, breakerPoint))
+check(
+	"you can walk from spawn through the door to the breaker",
+	Layout.routeIsClear({ Layout.spawn(), Layout.doorPoint(archive), breakerPoint })
 )
 
 print(`\n{checks - failures}/{checks} passed`)
