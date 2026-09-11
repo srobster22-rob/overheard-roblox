@@ -8333,3 +8333,5 @@ about that panel lying to the people who read it.
 **Stage 0.** The OWNER.md Next list is empty. **Stage 1 IDEATE.** Shortlist: (a) irregular -ves plurals (leaves/knives/wolves/shelves), the one plural gap R86 left open; (b) the censor-star respelling; (c) a Lexicon panel sort. Pick (a). Probe: leaves->leav and knives->kniv do not meet leaf or knife.
 
 **Stage 2 BUILD.** Lexicon.readings gives a stem ending in v an f reading (leav->leaf, kniv->knif). First cut: any v. My own control "waves is not wafer" FAILED on it, because wafer stems to waf. Narrowed to after l, after i, or after two vowels. lexicon 64/64. **Stage 3 REVIEW.** Plant "v->? (reading off)": five -ves checks FAIL by name. Plant "guard removed": "(control) waves is not wafer" FAILs. Restored, sha256 930e1946 matched. Product (Heuristic.conveyed, coinage at heat 1) before->after: the knives 0->1, red leaves 0->1, wolves den 0->1, top shelves 0->1, and wave<-wafer 0->0. **Stage 4 SHIP.** selene 0/0, the rojo build carries the guard, full test.cmd 0 FAIL.
+
+**Commit** `ae83e9b`
