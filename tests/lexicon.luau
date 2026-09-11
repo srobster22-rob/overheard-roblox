@@ -291,6 +291,22 @@ end
 check("after the cap resets, readings are still right", Lexicon.sameWord("stop", "stopped"))
 check("(control) and still distinct", not Lexicon.sameWord("stop", "step"))
 
+print("")
+print("Lexicon mutation sweep (R101)")
+
+-- Each check below is a mutant that passed the whole suite before R101.
+check("'and' is a stopword", Lexicon.isStopword("and"))
+check("'or' is a stopword", Lexicon.isStopword("or"))
+check("a lone apostrophe is not a token", #Lexicon.tokenize("' '") == 0)
+check("(control) an apostrophe inside a word is dropped, the word kept", Lexicon.tokenize("it's")[1] == "its")
+local spelled = Lexicon.tokenize("o u t")
+check(`exactly three spelled-out letters join ({table.concat(spelled, ",")})`, #spelled == 1 and spelled[1] == "out")
+check(
+	"'lives' is the same word as 'life' (a 3-letter -v stem)",
+	Lexicon.sameWord(Lexicon.stem("life"), Lexicon.stem("lives"))
+)
+check("(control) 'shell' is not 'shelf'", not Lexicon.sameWord(Lexicon.stem("shell"), Lexicon.stem("shelf")))
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)
