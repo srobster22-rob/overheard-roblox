@@ -278,6 +278,19 @@ check(
 check("'powered' is the same word as 'power' (R92)", Lexicon.sameWord(Lexicon.stem("power"), Lexicon.stem("powered")))
 check("(control) 'speed' is not 'spy'", not Lexicon.sameWord(Lexicon.stem("speed"), Lexicon.stem("spy")))
 
+print("")
+print("readings are cached, frozen and bounded")
+
+-- R95. Uncached readings made a worst-case chat line cost 120.8 ms.
+local first = Lexicon.readings("stopped")
+check("a repeated reading is the SAME table (cached)", Lexicon.readings("stopped") == first)
+check("a cached reading is frozen", table.isfrozen(first))
+for i = 1, 5000 do
+	Lexicon.readings(`filler{i}`)
+end
+check("after the cap resets, readings are still right", Lexicon.sameWord("stop", "stopped"))
+check("(control) and still distinct", not Lexicon.sameWord("stop", "step"))
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

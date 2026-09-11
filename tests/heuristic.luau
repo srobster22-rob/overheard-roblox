@@ -699,6 +699,39 @@ check(
 	#Heuristic.conveyed(utterance("meet at the exit"), benignPool, {}) > 0
 )
 
+print("")
+print("a worst-case chat line is cheap")
+
+-- R95. 200 characters of inflected words against a full 200-coinage lexicon:
+-- 9.5 ms before R89, 120.8 ms after R92 (uncached readings), 4.6 ms cached.
+-- The budget is loose (a server frame is ~16 ms) so it never flakes, but it
+-- still catches the uncached cost.
+local costPool = Round.dealSecrets(99)
+local words =
+	{ "running", "stopped", "batteries", "knives", "wired", "digging", "leaves", "hurried", "numbered", "planning" }
+local costLex = {}
+for i = 1, 200 do
+	local phrase = words[(i % 10) + 1] .. " " .. words[((i * 7) % 10) + 1] .. tostring(i)
+	table.insert(
+		costLex,
+		{
+			phrase = table.concat(Lexicon.stemAll(Lexicon.tokenize(phrase)), " "),
+			concept = costPool[(i % 5) + 1].concept,
+			heat = 0.5,
+			sightings = 3,
+			coinedBy = 1,
+		}
+	)
+end
+local costLine = string.rep("stopped running hurried batteries ", 6)
+costLine = string.sub(costLine, 1, 200)
+local costStart = os.clock()
+for _ = 1, 50 do
+	Heuristic.conveyed({ speaker = { UserId = 1 }, text = costLine, at = 0 } :: any, costPool, costLex :: any)
+end
+local costMs = (os.clock() - costStart) / 50 * 1000
+check(`a worst-case line costs under 30 ms ({string.format("%.1f", costMs)} ms)`, costMs < 30)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

@@ -257,7 +257,7 @@ end
 -- listing` meets `listing -> list`. The first version of this round dropped
 -- that reading while fixing the "ss" bug, took inflections from 70 of 70 to 59,
 -- and was put back once the probe showed what it had been doing.
-function Lexicon.readings(stemmed: string): { string }
+local function computeReadings(stemmed: string): { string }
 	local out = { stemmed }
 	if #stemmed > 3 and string.sub(stemmed, -1) == "e" then
 		table.insert(out, string.sub(stemmed, 1, -2))
@@ -307,6 +307,31 @@ function Lexicon.readings(stemmed: string): { string }
 			table.insert(out, string.sub(r, 1, -2) .. "y")
 		end
 	end
+	return out
+end
+
+-- R95: readings are a pure function of the stem, and after R89-R92 they cost
+-- enough that recomputing them made a worst-case chat line (200 characters, a
+-- full 200-coinage lexicon) take 120.8 ms in Heuristic.conveyed, against 9.5
+-- ms before R89 -- seven server frames of hitch every time someone talked.
+-- Cached, frozen so no caller can corrupt a shared entry, and capped: chat
+-- vocabulary is open-ended, so a long server would otherwise grow it forever.
+local READINGS_CAP = 4096
+local readingsCache: { [string]: { string } } = {}
+local readingsCached = 0
+
+function Lexicon.readings(stemmed: string): { string }
+	local hit = readingsCache[stemmed]
+	if hit then
+		return hit
+	end
+	if readingsCached >= READINGS_CAP then
+		readingsCache = {}
+		readingsCached = 0
+	end
+	local out = table.freeze(computeReadings(stemmed))
+	readingsCache[stemmed] = out
+	readingsCached += 1
 	return out
 end
 
