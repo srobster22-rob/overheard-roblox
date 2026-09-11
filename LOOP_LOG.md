@@ -8351,3 +8351,9 @@ about that panel lying to the people who read it.
 **Stage 2 BUILD.** Test only: heuristic gains "ordinary chat gives nothing away", 45 ordinary lines against all 5 secrets, with a corpus guard and a positive control. It sits alongside the older 15-line "ordinary chat is not mistaken", which never tempted the R89/R90 readings. heuristic 91/91. **Stage 3 REVIEW.** Plant: readings also yield a 3-letter prefix. The new check FAILs by name and lists the 12 lines it trips (staring, stared, leaf, wafer, starving...); 10 older checks fail too. Restored, sha256 b531663f matched. Product: the probe ran the real Heuristic.conveyed, 0/45 before R89 and now, so R89/R90 cost nothing on this corpus. **Stage 4 SHIP.** No src change; selene 0/0, rojo build OK, full test.cmd 0 FAIL.
 
 **Commit** `9f8678a`
+
+## R92
+
+**Stage 0.** The OWNER.md Next list is empty. **Stage 1 IDEATE.** Shortlist: (a) inflected forms of the secrets own plain words (probe: 4/25 MISS: numbered, powered down, hidden, unplugged); (b) irregular verbs; (c) the un- prefix. Pick (a) for numbered/powered: R90 readings are not re-stemmed, so numbered->number never meets stem(number)=numb. hidden and unplugged are left as tuning.
+
+**Stage 2 BUILD.** In Lexicon.readings, each -ed reading is also stemmed (numbered -> number -> numb). lexicon 81/81, heuristic 91/91 (the R91 ordinary-chat guard still holds at 0). **Stage 3 REVIEW.** Plant: drop the re-stem. "numbered is the same word as number (R92)" and "powered..." FAIL by name. Restored, sha256 79ed32bc matched. Product (Heuristic.conveyed on all 5 secrets, 25 inflected plain-word lines): MISS 4/25 -> 2/25 (left: hidden, unplugged). **Stage 4 SHIP.** selene 0/0, rojo build carries it, full test.cmd 0 FAIL.

@@ -271,6 +271,11 @@ check(
 	"(control) 'filled' is not 'file' (l is never undoubled)",
 	not Lexicon.sameWord(Lexicon.stem("filled"), Lexicon.stem("file"))
 )
+check(
+	"'numbered' is the same word as 'number' (R92)",
+	Lexicon.sameWord(Lexicon.stem("number"), Lexicon.stem("numbered"))
+)
+check("'powered' is the same word as 'power' (R92)", Lexicon.sameWord(Lexicon.stem("power"), Lexicon.stem("powered")))
 check("(control) 'speed' is not 'spy'", not Lexicon.sameWord(Lexicon.stem("speed"), Lexicon.stem("spy")))
 
 print(`\n{checks - failures}/{checks} passed`)

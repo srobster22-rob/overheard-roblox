@@ -287,6 +287,10 @@ function Lexicon.readings(stemmed: string): { string }
 	if #stemmed > 4 and string.sub(stemmed, -2) == "ed" then
 		table.insert(base, string.sub(stemmed, 1, -3)) -- stopped -> stopp, hurried -> hurri
 		table.insert(base, string.sub(stemmed, 1, -2)) -- wired -> wire
+		-- R92: and stem what is left, as the root itself was stemmed: "number"
+		-- stems to "numb" and "power" to "pow", so "numbered" and "powered"
+		-- missed the plain words they are.
+		table.insert(base, Lexicon.stem(string.sub(stemmed, 1, -3)))
 	end
 	for _, r in base do
 		if not table.find(out, r) then
