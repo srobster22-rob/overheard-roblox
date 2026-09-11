@@ -8212,3 +8212,5 @@ touches coinage storage. A new question asks how wide the vocabulary should be.
 
 *Not claimed:* that this settles R17's whole cluster. Items 3 and 4 (plural
 coinage phrases, re-stemmed coinage storage) are untouched.
+
+**Commit** `7d48193`
