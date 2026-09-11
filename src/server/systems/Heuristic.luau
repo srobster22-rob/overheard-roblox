@@ -75,11 +75,15 @@ local function matchesAny(
 			continue
 		end
 		if #candidateStems == 1 then
-			if Lexicon.contains(stems, candidateStems[1]) then
-				return true
-			end
-			if glued and Lexicon.contains(glued, candidateStems[1]) then
-				return true
+			-- R85: every reading of the term against every reading of the
+			-- utterance (the caller passes the utterance side already widened).
+			for _, reading in Lexicon.readings(candidateStems[1]) do
+				if Lexicon.contains(stems, reading) then
+					return true
+				end
+				if glued and Lexicon.contains(glued, reading) then
+					return true
+				end
 			end
 		else
 			-- Multi-word term: require the whole phrase, in order, on word
@@ -118,13 +122,27 @@ function Heuristic.conveyed(utterance: Utterance, secrets: { Secret }, lexicon: 
 		end
 	end
 
+	-- R85: the utterance side of `Lexicon.readings`, for single-word matching.
+	-- `joined` (multi-word phrases) is deliberately left exact.
+	local function widen(list: { string }): { string }
+		local wide: { string } = {}
+		for _, s in list do
+			for _, reading in Lexicon.readings(s) do
+				table.insert(wide, reading)
+			end
+		end
+		return wide
+	end
+	local wideStems = widen(stems)
+	local wideGlued = widen(glued)
+
 	local found: { Understanding } = {}
 
 	for _, secret in secrets do
 		local confidence = 0
 
 		-- Plain language is always understood.
-		if matchesAny(stems, joined, secret.plain, false, glued) then
+		if matchesAny(wideStems, joined, secret.plain, false, wideGlued) then
 			confidence = 1
 		end
 
@@ -134,7 +152,7 @@ function Heuristic.conveyed(utterance: Utterance, secrets: { Secret }, lexicon: 
 				continue
 			end
 			-- Already a stem; see `alreadyStemmed` above.
-			if matchesAny(stems, joined, { coinage.phrase }, true, glued) then
+			if matchesAny(wideStems, joined, { coinage.phrase }, true, wideGlued) then
 				local learned = math.clamp(coinage.heat / BURNED_AT, 0, 1)
 				confidence = math.max(confidence, learned)
 			end

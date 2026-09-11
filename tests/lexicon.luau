@@ -179,6 +179,44 @@ check("$ touching a letter reads as s", toks("bre$k") == "bresk")
 check("an answer spelled out digit by digit is left alone", toks("type 4 3 7") == "type|4|3|7")
 check("a lone @ or $ is not turned into a letter", toks("look @ it for $ 5") == "look|it|for|5")
 
+print("")
+print("a word ending in ss is not a plural")
+
+-- R85: stripping the last s off "fuss" made it the same stem as "fuses", and
+-- "don't make a fuss" moved the Operator to the breaker.
+check("fuss keeps its ss", Lexicon.stem("fuss") == "fuss")
+check("address keeps its ss", Lexicon.stem("address") == "address")
+check("...and addresses still stems to it", Lexicon.stem("addresses") == "address")
+check("(control) an ordinary plural still loses its s", Lexicon.stem("doors") == "door")
+check("(control) fuses still stems as before", Lexicon.stem("fuses") == "fus")
+
+print("")
+print("readings reconcile a word with its own inflections")
+local function meets(a: string, b: string): boolean
+	for _, x in Lexicon.readings(Lexicon.stem(a)) do
+		for _, y in Lexicon.readings(Lexicon.stem(b)) do
+			if x == y then
+				return true
+			end
+		end
+	end
+	return false
+end
+for _, pair in
+	{
+		{ "fuse", "fuses" },
+		{ "name", "names" },
+		{ "leave", "leaving" },
+		{ "escape", "escaping" },
+		{ "number", "numbering" },
+		{ "listing", "listings" },
+	}
+do
+	check(`'{pair[1]}' and '{pair[2]}' share a reading`, meets(pair[1], pair[2]))
+end
+check("(control) fuse and fuss do not", not meets("fuse", "fuss"))
+check("(control) box and boxes still do", meets("box", "boxes"))
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

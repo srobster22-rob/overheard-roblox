@@ -8116,3 +8116,99 @@ censor star still get through, deliberately; how forgiving the reader should
 be is a tuning question with false positives on the other side of it.
 
 **Commit** `ca14297`
+
+
+## R85 — plain words in the plural: R17's filed stemming item, without choosing a way to be wrong
+
+**Stage 0.** `OWNER.md` `## Next` still empty.
+
+**Stage 1 — paraphrase, measured.** Thirty-seven natural paraphrases across the
+five secrets, against the real reader: **16 missed.** Split by cause:
+
+- **Stemmer splits on words already in the plain lists (a defect).** Every plain
+  word ending in `e` stems differently from its own inflections:
+  `fuse→fuse` / `fuses→fus`, `name`/`names`, `leave`/`leaving`/`leaves`,
+  `escape`/`escaping`. So "the fuses", "the names", "leaving now" are free to
+  say. This is item 2 of R17's filed "stemming pair".
+- **Words not in the plain lists at all (a breadth question).** `cable`, `wire`,
+  `phone line`, `circuit`, `take cover`, `crouch`, `run away`; and compounds
+  `doorway`, `stairwell`, `backdoor`, `phonebook`, `underneath`.
+
+R17 filed the first group because any SINGLE suffix rule is wrong one way:
+trying `s` before `es` fixes `fuses` and breaks `boxes`/`buses`, and the current
+order does the reverse. That framing assumed one rule. It doesn't need one:
+**accept a match if any reading of the word agrees** — `fuses` read as `fus` or
+`fuse`, `leaving` as `leav` or `leave`. Nothing that matches today can stop
+matching; the only cost is a wider net, and that is measurable.
+
+1. *(picked)* **Single-word matches compare every reading of both words.**
+   Scoped to R17's item 2. Items 3 and 4 (plural coinage phrases, re-stemmed
+   coinage storage) are multi-word and stay filed.
+2. **Vocabulary breadth is filed, not built.** Adding `run`, `wire` or `line`
+   makes the most common panic chat a giveaway; compound matching by prefix or
+   suffix would make `support`, `report` and `airport` mean the jack and
+   `understand` mean hiding. How wide the net is IS the game's difficulty.
+
+**Stage 2 — the fix.**
+- `Lexicon.readings(stem)`: the stem, the stem without a trailing `e`, and the
+  stem stemmed once more. Single-word matching (plain words and one-word
+  coinages) accepts a match if any reading of the term meets any reading of the
+  utterance. Multi-word phrases (`joined`) are left exact.
+- `Lexicon.stem` no longer strips the final `s` from a word ending in `ss`.
+
+*Two corrections to my own first version, both found by measuring.*
+- The first version kept the `ss` bug and wallpapered it with the re-stem
+  reading. The false-positive corpus caught `dont make a fuss` → **breaker**:
+  `fuss` and `fuses` both stemmed to `fus`. Fixed at the source.
+- With `ss` fixed I dropped the re-stem reading as no longer needed, and
+  inflections fell from 70/70 to **59/70**. It had also been covering chained
+  suffixes (`numbering` → `number` vs `number` → `numb`, `powering`,
+  `listings`). Put back, with its real reason in the comment.
+
+**Stage 3 — proof.** 13 checks in `tests/lexicon.luau` (the `ss` rule with
+controls; six word pairs sharing a reading; `fuse`/`fuss` NOT sharing one;
+`box`/`boxes` still sharing one). 9 in `tests/heuristic.luau`, derived from the
+live pool: **every plain word understood in the plural (35 of 35)**, five
+inflected sentences understood, and ten lookalike sentences (`fuss`, `boss`,
+`pass`, `glasses`, `miss`, `less`, `buses`, `boxes`, `notes`) producing **0**
+giveaways.
+
+| plant | what failed |
+|---|---|
+| readings reduced to the bare stem | six word pairs, `every plain word is understood in the plural (28 of 35)`, five sentences |
+| the `ss` guard removed | `fuss keeps its ss`, `(control) fuse and fuss do not`, `lookalike words are not giveaways (2 of 10)` |
+| the re-stem reading removed | `number`/`numbering`, `listing`/`listings`, `(33 of 35)`, `'the numbering' is understood` |
+
+Restored from byte-copy backup; sha256 `ba2e5bf8…09592` and `18b4cb0d…ae4e`.
+
+**Verified in the product.** Before and after, on the real reader:
+
+| | before | after |
+|---|---|---|
+| plain words in plural and -ing (probe) | 47 of 70 | **70 of 70** |
+| plain words in the plural (test, 35) | 28 | **35** |
+| natural paraphrases missed | 16 of 37 | **13 of 37** |
+| genuine false giveaways on 44 lines | 0 | **0** |
+
+The false-positive corpus flags five sentences both ways; every one contains a
+plain word or its inflection (`hid`, `name`, `names`, `leaving`, `leaves`).
+That's the plain list doing its job. `the leaves fell` is a homograph, the same
+kind of hit as `board` in `key board`. Both functions are in the built place.
+
+The 13 remaining paraphrases are all vocabulary: words not in any plain list
+(`cable`, `wire`, `circuit`, `crouch`, `take cover`, `run away`), compounds
+(`doorway`, `stairwell`, `backdoor`, `phonebook`, `underneath`), and
+`electrical`. That's filed, below.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon **50**, heuristic **73**, operator ok, objectives 122,
+pursuit 104, round 61, config 63, wiring 354, connected 32, ordering 4,
+heat 20, layout 110, lifecycle 90, hud 26, readout 36, soak 42, hum 29, log 18,
+silence 62, lexiconsave 28.
+
+**`OWNER.md` updated.** The stemming pair is marked partly resolved; the
+remaining half (a burned multi-word coinage in the plural) is multi-word and
+touches coinage storage. A new question asks how wide the vocabulary should be.
+
+*Not claimed:* that this settles R17's whole cluster. Items 3 and 4 (plural
+coinage phrases, re-stemmed coinage storage) are untouched.

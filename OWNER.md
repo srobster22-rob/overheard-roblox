@@ -170,10 +170,11 @@ both sides. Full detail for each is in LOOP_LOG.md at the round named.
   question.
 - **R36 - does deferring a call read as patience, or as ignoring you?** Same
   category as R21.
-- **The stemming pair (R17-ish; see LOOP_LOG "the stemming pair").** An `es`
-  over-strip makes plain plurals free to say and kills a burned coinage in the
-  plural. Fixing it needs a decision about which way the game should be wrong
-  in the meantime; three related items bundle with it.
+- **The stemming pair - PARTLY RESOLVED in R85.** Plain words in the plural
+  or with -ing ("the fuses", "the names", "leaving now") are now understood:
+  35 of 35 plain words in the plural, no single suffix rule chosen - a match on
+  any reading of the word counts. Still open: a burned multi-word coinage in the
+  plural ("the blue wires" vs "the blue wire"), which touches coinage storage.
 - **R46 - the Operator can never actually learn a coinage in real play.**
   Measured: a normal session credits about 2 uses toward burning a phrase; 4
   are needed. `ActThreshold`/`HeatPerCredit`/`CreditWindow` are all candidates
@@ -207,3 +208,11 @@ both sides. Full detail for each is in LOOP_LOG.md at the round named.
   30. Reversal (`kcaj`) was left alone on purpose: it is closer to a cipher two
   players agree on than to a typo. Catch it too, or leave it as a trick a group
   can discover?
+- **R85 - how wide should the Operator's vocabulary be?** 13 of 37 natural
+  paraphrases still get through because the words are not in the plain lists at
+  all: `cable`, `wire`, `phone line`, `circuit`, `take cover`, `crouch`, `run
+  away`, and compounds like `doorway`, `stairwell`, `backdoor`, `phonebook`.
+  Adding them is easy; the catch is that `run`, `line` or `wire` would make the
+  most common panic chat a giveaway, and matching compounds by prefix/suffix
+  would make `support`, `report` and `airport` mean the jack. How wide the net
+  is sets how hard the game is.

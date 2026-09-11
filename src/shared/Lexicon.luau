@@ -221,11 +221,52 @@ function Lexicon.stem(word: string): string
 		return word
 	end
 	for _, suffix in { "ing", "ers", "er", "es", "s" } do
+		-- A word ending in "ss" is not a plural: "fuss", "boss", "address".
+		-- Stripping its last s made "fuss" and "fuses" the same stem, and made
+		-- "address" disagree with "addresses". R85 found both measuring
+		-- paraphrase: "don't make a fuss" moved the Operator to the breaker.
+		if suffix == "s" and string.sub(word, -2) == "ss" then
+			continue
+		end
 		if #word > #suffix + 2 and string.sub(word, -#suffix) == suffix then
 			return string.sub(word, 1, #word - #suffix)
 		end
 	end
 	return word
+end
+
+-- Every reasonable reading of an already-stemmed word, for SINGLE-word
+-- matching only.
+--
+-- R85, and R17's filed "stemming pair" item 2. `stem` strips one suffix, and
+-- English does not say which one: `fuses` is `fuse`+s or `fus`+es, exactly as
+-- `buses` is `bus`+es. The current order gives `fuses -> fus` against
+-- `fuse -> fuse`, so every plain word ending in e was free to say in the plural
+-- or with -ing: "the fuses", "the names", "leaving now", "escaping". R17 filed
+-- it because any SINGLE rule is wrong one way (try `s` before `es` and `boxes`
+-- and `buses` break instead).
+--
+-- It never needed a single rule. A match is accepted if ANY reading of the
+-- word agrees with any reading of the term, so nothing that matched before can
+-- stop matching; the cost is a wider net, measured in the tests rather than
+-- assumed. The readings: the stem itself, and the stem without a trailing `e`
+-- (`fuse`, `leave` -> `fus`, `leav`, meeting `fuses`, `leaving`).
+--
+-- And the stem stemmed once more, for chained suffixes: `numbering -> number`
+-- meets `number -> numb`, `powering -> power` meets `power -> pow`, `listings ->
+-- listing` meets `listing -> list`. The first version of this round dropped
+-- that reading while fixing the "ss" bug, took inflections from 70 of 70 to 59,
+-- and was put back once the probe showed what it had been doing.
+function Lexicon.readings(stemmed: string): { string }
+	local out = { stemmed }
+	if #stemmed > 3 and string.sub(stemmed, -1) == "e" then
+		table.insert(out, string.sub(stemmed, 1, -2))
+	end
+	local again = Lexicon.stem(stemmed)
+	if again ~= stemmed then
+		table.insert(out, again)
+	end
+	return out
 end
 
 function Lexicon.stemAll(words: { string }): { string }

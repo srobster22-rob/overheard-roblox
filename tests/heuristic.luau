@@ -466,6 +466,64 @@ check(
 	#Heuristic.conveyed(utterance("it is the blue one"), { jackSecret }, { blue }) > 0
 )
 
+print("")
+print("a plain word is understood in its own inflections")
+
+-- R85, and item 2 of R17's filed "stemming pair". Every plain word ending in e
+-- stemmed differently from its own plural and -ing form, so "the fuses", "the
+-- names", "leaving now" and "escaping" were free to say. R17 filed it because
+-- any single suffix rule is wrong one way; matching on ANY reading of the word
+-- needs no single rule. Derived from the live pool, so a new plain word is
+-- covered the day it is added.
+local inflPool = Round.dealSecrets(99)
+local inflected, understoodInfl = 0, 0
+local missedInfl: { string } = {}
+for _, secret in inflPool do
+	for _, w in secret.plain do
+		local plural = if string.match(w, "[sxz]$") or string.match(w, "[cs]h$") then w .. "es" else w .. "s"
+		for _, form in { plural } do
+			inflected += 1
+			if #Heuristic.conveyed(utterance(`the {form}`), { secret }, {}) > 0 then
+				understoodInfl += 1
+			else
+				table.insert(missedInfl, form)
+			end
+		end
+	end
+end
+check(`(guard) every plain word was inflected ({inflected})`, inflected >= 30)
+check(`every plain word is understood in the plural ({understoodInfl} of {inflected})`, understoodInfl == inflected)
+if #missedInfl > 0 then
+	print(`        missed: {table.concat(missedInfl, ", ")}`)
+end
+for _, text in { "leaving now", "they are escaping", "the numbering", "check the fuses", "read the names" } do
+	check(`'{text}' is understood`, #Heuristic.conveyed(utterance(text), inflPool, {}) > 0)
+end
+
+-- The wider net must not hear words that only LOOK like a plain word.
+local lookalikes = {
+	"dont make a fuss",
+	"thats the boss",
+	"pass it",
+	"no fuss",
+	"the glasses",
+	"i miss you",
+	"less talking",
+	"the buses are late",
+	"open the boxes",
+	"my notes say so",
+}
+local misheard: { string } = {}
+for _, text in lookalikes do
+	if #Heuristic.conveyed(utterance(text), inflPool, {}) > 0 then
+		table.insert(misheard, text)
+	end
+end
+check(`lookalike words are not giveaways ({#misheard} of {#lookalikes})`, #misheard == 0)
+if #misheard > 0 then
+	print(`        misheard: {table.concat(misheard, " / ")}`)
+end
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)
