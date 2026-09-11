@@ -803,6 +803,8 @@ check(
 	Layout.routeIsClear({ Layout.spawn(), Layout.doorPoint(archive), breakerPoint })
 )
 
+check("World spawns players at Layout.spawn (R107)", string.find(worldCode, "Layout.spawn()", 1, true) ~= nil)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

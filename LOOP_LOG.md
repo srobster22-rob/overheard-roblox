@@ -8471,3 +8471,9 @@ about that panel lying to the people who read it.
 **Stage 2 BUILD.** Added Layout.breakerOffset() = (18,0). World places the reader, board and breaker from Layout.stationOffset/breakerOffset (no literals left), and the layout test's hand-copied +18 now reads Layout. Tests: "every station is placed from Layout, and the breaker can be walked to (R106)": 3 source checks on World plus 2 geometric ones (the breaker is inside the records room, and spawn -> door -> breaker is clear). layout 125/125. **Stage 3 REVIEW.** Plant A (pre-R106 World from git HEAD): the 3 source checks FAIL by name. Plant B (breakerOffset x=30, out in the corridor): "the breaker stands inside the records room" FAILs; the route check alone would not catch it, since the corridor is walkable. Both files restored, sha256 b9e0dd35/42e57933 matched. Product: identical positions by construction. **Stage 4 SHIP.** selene 0/0; the rojo build carries Layout.breakerOffset (2 hits: the definition and World's use); full test.cmd 0 FAIL.
 
 **Commit** `00f694f`
+
+## R107
+
+**Stage 0.** The OWNER.md Next list is empty. **Stage 1 IDEATE.** Shortlist: (a) World's spawn is a literal (0,y,0) while every route test starts from Layout.spawn(), the last duplicated position after R105/R106; (b) the un- prefix (owner); (c) the corridor floor centre (a midpoint, not a Layout value). Pick (a).
+
+**Stage 2 BUILD.** World's spawn now reads Layout.spawn().x/.z. Test: layout "World spawns players at Layout.spawn (R107)". layout 126/126. **Stage 3 REVIEW.** Plant (pre-R107 World from git HEAD): the check FAILs by name. Restored, sha256 65377506 matched. Product: the same (0,0) by construction. With R105-R107, every position World builds that a headless test walks from or to now comes from Layout. **Stage 4 SHIP.** selene 0/0, rojo build carries Layout.spawn().x, full test.cmd 0 FAIL.

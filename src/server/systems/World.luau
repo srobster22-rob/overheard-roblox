@@ -229,7 +229,8 @@ function World.build(): Built
 			board = { x = boardAt.X, z = boardAt.Z },
 			breaker = { x = breakerAt.X, z = breakerAt.Z },
 		},
-		spawn = Vector3.new(0, FLOOR_Y + 4, 0),
+		-- R107: Layout.spawn, where every route test starts walking from.
+		spawn = Vector3.new(Layout.spawn().x, FLOOR_Y + 4, Layout.spawn().z),
 		rooms = rooms,
 		-- Out in the corridor, far enough from BOTH rooms that every approach
 		-- begins outside the silence radius. Standing 20 studs from the board
