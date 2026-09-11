@@ -8114,3 +8114,5 @@ silence 62, lexiconsave 28.
 *Not claimed:* that respelling is closed. Misspellings, sound-alikes and a
 censor star still get through, deliberately; how forgiving the reader should
 be is a tuning question with false positives on the other side of it.
+
+**Commit** `ca14297`
