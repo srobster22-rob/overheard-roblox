@@ -140,8 +140,12 @@ function World.build(): Built
 	folder.Parent = Workspace
 
 	-- Two rooms, far apart. You cannot see one from the other.
-	local recordsOrigin = Vector3.new(-SEPARATION / 2, 0, 0)
-	local boardOrigin = Vector3.new(SEPARATION / 2, 0, 0)
+	-- R105: from Layout, the same centres every headless capture and walk test
+	-- uses. This file computed them itself, so a drift here would have passed
+	-- the whole suite -- nothing in it runs outside Studio.
+	local archiveCentre, boardCentre = Layout.archiveCentre(), Layout.boardCentre()
+	local recordsOrigin = Vector3.new(archiveCentre.x, 0, archiveCentre.z)
+	local boardOrigin = Vector3.new(boardCentre.x, 0, boardCentre.z)
 
 	room("RecordsRoom", recordsOrigin, Layout.corridorSide({ x = recordsOrigin.X, z = recordsOrigin.Z }), folder)
 	room("BoardRoom", boardOrigin, Layout.corridorSide({ x = boardOrigin.X, z = boardOrigin.Z }), folder)

@@ -760,6 +760,25 @@ check(
 		and string.find(extra, "does not declare", 1, true) ~= nil
 )
 
+print("")
+print("World builds the rooms where Layout says they are (R105)")
+
+-- World.build cannot run headlessly, so every capture, walk and room test
+-- here uses Layout's centres. They are only the world's centres if World
+-- takes them FROM Layout rather than computing its own copy.
+check(
+	"World takes the board room's origin from Layout.boardCentre",
+	string.find(worldCode, "Layout.boardCentre()", 1, true) ~= nil
+)
+check(
+	"World takes the records room's origin from Layout.archiveCentre",
+	string.find(worldCode, "Layout.archiveCentre()", 1, true) ~= nil
+)
+check(
+	"World computes no room origin of its own from the separation",
+	string.find(worldCode, "SEPARATION / 2", 1, true) == nil
+)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)
