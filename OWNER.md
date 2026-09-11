@@ -183,6 +183,18 @@ Write in plain English. One item per line. Top item goes first.
 
 ## Open questions — filed by the loop, waiting on you
 
+> **R124 - the loop has converged on everything it can do alone.** Every
+> module is swept, every piece of logic that can run headlessly does, and
+> every kind of on-screen text is scanned. What would unblock real progress,
+> roughly in order of value:
+> 1. **A first Studio playtest** (blocked on this machine): does the world
+>    build, are parts anchored, and above all how does it FEEL.
+> 2. **R93 + R122**: may the Operator say "number", and may stations be
+>    labelled with their own secret word? One design question, really.
+> 3. **R85 vocabulary breadth**: how wide the word net should be (it gates the
+>    un- prefix, irregular verbs and compound words).
+> Anything you write under "## Next" above outranks all of this.
+
 Nothing below blocks the build; each is either a feel question Studio would
 answer (device-blocked all session) or a design choice with real trade-offs on
 both sides. Full detail for each is in LOOP_LOG.md at the round named.
