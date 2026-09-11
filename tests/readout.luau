@@ -248,6 +248,19 @@ do
 	check("no coinages gives no rows", #Readout.lexiconRows({}) == 0)
 end
 
+print("")
+print("the round-over screen (R123)")
+do
+	local won = Readout.roundOver("won", 3)
+	local lost = Readout.roundOver("lost", 3)
+	local odd = Readout.roundOver(nil, 3)
+	check("a won round is titled restored", won.title == Readout.TITLE_WON and won.won)
+	check("a lost round is titled lost", lost.title == Readout.TITLE_LOST and not lost.won)
+	check("an unknown ending is never called a win", odd.title == Readout.TITLE_LOST and not odd.won)
+	check("the next round is the one after this", won.next == "round 4 begins shortly")
+	check("(control) the two titles differ", Readout.TITLE_WON ~= Readout.TITLE_LOST)
+end
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

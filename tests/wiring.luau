@@ -1652,6 +1652,8 @@ local TITLE_NEVER_SHOWN: { [string]: boolean } = { ["The board"] = true }
 local sharedShown: { string } = {
 	ReadoutModule.PRIVATE_NOTE,
 	ReadoutModule.NOTHING_HELD,
+	ReadoutModule.TITLE_WON,
+	ReadoutModule.TITLE_LOST,
 	SilenceModule.note("clear"),
 	SilenceModule.note("warned"),
 	SilenceModule.note("overdue"),

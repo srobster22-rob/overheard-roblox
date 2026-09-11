@@ -112,4 +112,21 @@ function Readout.lexiconRows(entries: { any }): { { text: string, heat: number }
 	return rows
 end
 
+-- The round-over screen: its title, whether it reads as a win, and the line
+-- promising the next round. R123 moved this out of init.client, where a sweep
+-- could flip "won" to "not won" -- a lost round titled ROUND RESTORED --
+-- without one failure. Anything but "won" is a loss: the server sends only
+-- "won" or "lost", and a round that ended any other way was not restored.
+Readout.TITLE_WON = "ROUND RESTORED"
+Readout.TITLE_LOST = "ROUND LOST"
+
+function Readout.roundOver(outcome: string?, number: number): { title: string, won: boolean, next: string }
+	local won = outcome == "won"
+	return {
+		title = if won then Readout.TITLE_WON else Readout.TITLE_LOST,
+		won = won,
+		next = `round {number + 1} begins shortly`,
+	}
+end
+
 return Readout

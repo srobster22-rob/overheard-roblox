@@ -426,13 +426,15 @@ local function onPhase(state: { playing: boolean, outcome: string?, number: numb
 	silencePanel.Visible = false
 
 	overPanel.Visible = true
+	-- R123: title, win/loss and the next-round line are Readout.roundOver.
+	local over = Readout.roundOver(state.outcome, state.number)
 	local title = overPanel:FindFirstChild("Title") :: TextLabel?
 	if title then
-		title.Text = if state.outcome == "won" then "ROUND RESTORED" else "ROUND LOST"
+		title.Text = over.title
 	end
 	overWhat.Text = OUTCOME_TEXT[state.outcome or ""] or "The round is over."
-	overWhat.TextColor3 = if state.outcome == "won" then BRASS else Color3.fromRGB(206, 62, 52)
-	overNext.Text = `round {state.number + 1} begins shortly`
+	overWhat.TextColor3 = if over.won then BRASS else Color3.fromRGB(206, 62, 52)
+	overNext.Text = over.next
 	-- A keypad you can still type into is a keypad that lies about being usable.
 	closeBoard()
 end
