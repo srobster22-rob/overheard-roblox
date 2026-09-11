@@ -220,6 +220,34 @@ local fineRows = Readout.lineRows(fine)
 check("(control) a good prompt is FORMATTED, not just concatenated", fineRows[1].text == "Breaker 42 tripped.")
 check("(control) ...which reads differently from the fallback's shape", fineRows[1].text ~= "Breaker %s tripped. (42)")
 
+print("")
+print("the Lexicon panel's rows (R119)")
+do
+	local Heat = rt.require(rt.shared.Heat)
+	local Config = rt.require(rt.shared.Config)
+	local given = {
+		{ phrase = "blue wir", heat = 0.25 },
+		{ phrase = "zorp", heat = 1 },
+		{ phrase = "glim", heat = Config.ActThreshold },
+		{ phrase = "abc", heat = 0.25 },
+	}
+	local rows = Readout.lexiconRows(given)
+	check("hottest first", rows[1].heat == 1 and rows[#rows].heat == 0.25)
+	check("ties in a stable order (by phrase)", string.find(rows[3].text, '"abc"', 1, true) ~= nil)
+	check(
+		"heat is a whole percent",
+		string.find(rows[1].text, "100%", 1, true) ~= nil and string.find(rows[4].text, "25%", 1, true) ~= nil
+	)
+	check("a burned phrase says 'understood'", string.find(rows[1].text, "understood", 1, true) ~= nil)
+	check(
+		"one EXACTLY on the threshold says it too",
+		Heat.isUnderstood(Config.ActThreshold) and string.find(rows[2].text, "understood", 1, true) ~= nil
+	)
+	check("(control) a cold one does not", string.find(rows[4].text, "understood", 1, true) == nil)
+	check("the caller's list is not reordered", given[1].phrase == "blue wir")
+	check("no coinages gives no rows", #Readout.lexiconRows({}) == 0)
+end
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

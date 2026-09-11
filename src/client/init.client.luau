@@ -143,23 +143,10 @@ local function renderLexicon(entries: { any })
 		label(lexList, "no coinages yet", 11, DIM)
 		return
 	end
-	table.sort(entries, function(a, b)
-		return a.heat > b.heat
-	end)
-	for i, entry in entries do
-		local row = label(
-			lexList,
-			-- Said in words as well as colour: the crossing is the single fact
-			-- this panel exists to convey, and colour alone cannot carry it.
-			string.format(
-				'"%s"  %d%%%s',
-				entry.phrase,
-				math.floor(entry.heat * 100 + 0.5),
-				if Heat.isUnderstood(entry.heat) then "  understood" else ""
-			),
-			12,
-			heatColor(entry.heat)
-		)
+	-- R119: the rows (order, percent, "understood") are Readout.lexiconRows,
+	-- run by tests/readout; only the drawing is left here.
+	for i, entry in Readout.lexiconRows(entries) do
+		local row = label(lexList, entry.text, 12, heatColor(entry.heat))
 		row.LayoutOrder = i
 	end
 end

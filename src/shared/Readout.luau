@@ -17,6 +17,8 @@
 --
 -- The rows come back already in order, so the caller never invents one.
 
+local Heat = require(script.Parent.Heat)
+
 local Readout = {}
 
 export type Row = {
@@ -79,6 +81,34 @@ function Readout.lineRows(entries: { any }): { Row }
 		table.insert(rows, { text = Readout.NOTHING_HELD, kind = "empty" })
 	end
 
+	return rows
+end
+
+-- The Lexicon panel's rows: hottest first, each as the phrase, its heat as a
+-- whole percent, and the word "understood" once it has crossed the threshold --
+-- said in words as well as colour, because that crossing is the single fact
+-- the panel exists to convey. R119 moved this out of init.client, where no
+-- test could run it. Sorts a COPY: the caller's list is left as it came.
+function Readout.lexiconRows(entries: { any }): { { text: string, heat: number } }
+	local sorted = table.clone(entries)
+	table.sort(sorted, function(a, b)
+		if a.heat ~= b.heat then
+			return a.heat > b.heat
+		end
+		return a.phrase < b.phrase
+	end)
+	local rows = {}
+	for _, entry in sorted do
+		table.insert(rows, {
+			text = string.format(
+				'"%s"  %d%%%s',
+				entry.phrase,
+				math.floor(entry.heat * 100 + 0.5),
+				if Heat.isUnderstood(entry.heat) then "  understood" else ""
+			),
+			heat = entry.heat,
+		})
+	end
 	return rows
 end
 
