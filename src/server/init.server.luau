@@ -392,38 +392,25 @@ submitRemote.OnServerEvent:Connect(function(player: Player, id: unknown, value: 
 	-- R32 gated listening; this is the last place that takes player input, and
 	-- without it a player types the number they were told into a keypad the game
 	-- still draws and it vanishes into a round that is over.
-	if not round:isPlaying() then
-		rejectedRemote:FireClient(player, id :: string, "the round is over")
+	-- R114: the gates -- round over, on the line, not at the station, a keypad
+	-- never opened -- live in Station.gate, in that order, where the suite runs
+	-- them. Only the telling is left here.
+	local refused = desk:gate(
+		player.UserId,
+		id :: string,
+		round:isPlaying(),
+		line:isConnected(player.UserId),
+		livePositions()[player.UserId],
+		built.stationAt[id :: string]
+	)
+	if refused then
+		if refused.busy then
+			heardRemote:FireClient(player, Round.LINES.busy, "", 0)
+		end
+		rejectedRemote:FireClient(player, id :: string, refused.reason)
 		return
 	end
 
-	-- On the line: you can still be heard, you cannot still act. Checked before
-	-- the station gate so the message names the real reason.
-	if line:isConnected(player.UserId) then
-		rejectedRemote:FireClient(player, id :: string, "you are on the line")
-		return
-	end
-
-	-- AND you have to still be there. `desk:accepts` answers "which prompt did
-	-- you last trigger", which is a memory: a player could prime the Switchboard,
-	-- walk the 104 studs to the other room, stand beside the holder reading the
-	-- number out, and patch from there. Layout says distance IS the mechanic;
-	-- this is where that gets enforced rather than assumed.
-	local standing = livePositions()[player.UserId]
-	local stationAt = built.stationAt[id :: string]
-	if stationAt and not (standing and Layout.within(stationAt, standing, Config.StationReach)) then
-		rejectedRemote:FireClient(player, id :: string, "you are not at that station")
-		return
-	end
-
-	if not desk:accepts(player.UserId, id :: string) then
-		heardRemote:FireClient(player, Round.LINES.busy, "", 0)
-		rejectedRemote:FireClient(player, id :: string, "you are not at that station")
-		return
-	end
-
-	-- The same `now` the cooldown used. The cooldown only paces attempts; the
-	-- jam inside `submit` is what makes guessing the answer not worth doing.
 	local result = board:submit(id :: string, player.UserId, value :: string, now)
 	if not result.ok and result.reason then
 		-- Two channels, on purpose. The Operator says its line to this player

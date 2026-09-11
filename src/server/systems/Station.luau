@@ -20,6 +20,10 @@
 -- and `init.client` are the two files no headless test can run, so the decision
 -- must not live in either.
 
+local ReplicatedStorage_ = game:GetService("ReplicatedStorage")
+local Layout = require(ReplicatedStorage_.Shared.Layout)
+local Config = require(ReplicatedStorage_.Shared.Config)
+
 local Station = {}
 Station.__index = Station
 
@@ -68,6 +72,38 @@ end
 
 function Station.forget(self: Desk, userId: number)
 	self.at[userId] = nil
+end
+
+-- May this player enter a code at this station RIGHT NOW? nil if so; otherwise
+-- the refusal, and whether the Operator also says "busy" to them (only for a
+-- keypad they never opened -- a probe, not an honest mistake).
+--
+-- R114 moved these gates out of init.server's Submit handler, where the suite
+-- could only grep them; a sweep flipped every one without a failure. The
+-- ORDER is part of the rule: a finished round and the line come first, then
+-- your body, then the keypad you opened.
+function Station.gate(
+	self: Desk,
+	userId: number,
+	stationId: string,
+	playing: boolean,
+	onLine: boolean,
+	standing: Layout.Point?,
+	stationAt: Layout.Point?
+): { reason: string, busy: boolean }?
+	if not playing then
+		return { reason = "the round is over", busy = false }
+	end
+	if onLine then
+		return { reason = "you are on the line", busy = false }
+	end
+	if stationAt and not (standing and Layout.within(stationAt, standing, Config.StationReach)) then
+		return { reason = "you are not at that station", busy = false }
+	end
+	if not self:accepts(userId, stationId) then
+		return { reason = "you are not at that station", busy = true }
+	end
+	return nil
 end
 
 return Station

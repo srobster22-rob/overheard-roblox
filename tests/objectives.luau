@@ -741,6 +741,42 @@ print("")
 print("an empty board is not a won round")
 check("allSolved is false with no objectives", Objectives.new():allSolved() == false)
 
+print("")
+print("who may enter a code, RUN rather than grepped (R114)")
+
+do
+	local Station = rt.require(rt.systems.Station)
+	local Layout = rt.require(rt.shared.Layout)
+	local at = { x = 0, z = 0 }
+	local near = { x = 1, z = 0 }
+	local far = { x = Config.StationReach + 5, z = 0 }
+	local desk = Station.new()
+	desk:open(1, "board")
+	local function gate(playing, onLine, standing, stationAt, who: number?)
+		return desk:gate(who or 1, "board", playing, onLine, standing, stationAt)
+	end
+	check("(guard) near really is within reach", Layout.within(at, near, Config.StationReach))
+	check("a player at the keypad they opened may enter", gate(true, false, near, at) == nil)
+	local over = gate(false, false, near, at)
+	check("a finished round refuses", over ~= nil and over.reason == "the round is over" and not over.busy)
+	local caught = gate(true, true, near, at)
+	check("a player on the line refuses", caught ~= nil and caught.reason == "you are on the line" and not caught.busy)
+	local away = gate(true, false, far, at)
+	check(
+		"a player out of reach refuses, quietly",
+		away ~= nil and away.reason == "you are not at that station" and not away.busy
+	)
+	local bodiless = gate(true, false, nil, at)
+	check("a player with no body refuses", bodiless ~= nil and bodiless.reason == "you are not at that station")
+	local probe = gate(true, false, near, at, 2)
+	check(
+		"a keypad never opened refuses AND the Operator says busy",
+		probe ~= nil and probe.busy == true and probe.reason == "you are not at that station"
+	)
+	local order = gate(false, true, far, at, 2)
+	check("the round being over is said first", order ~= nil and order.reason == "the round is over")
+end
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

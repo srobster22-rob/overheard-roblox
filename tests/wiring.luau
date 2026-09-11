@@ -328,12 +328,13 @@ local submitBody = string.match(serverCode, "submitRemote%.OnServerEvent:Connect
 check("init.server has a Submit handler", submitBody ~= nil)
 check(
 	"the Submit handler checks the player is at that station",
-	submitBody ~= nil and string.find(submitBody :: string, "desk:accepts", 1, true) ~= nil
+	submitBody ~= nil and string.find(submitBody :: string, "desk:gate(", 1, true) ~= nil
 )
 -- Order matters. If the station gate ran AFTER board:submit the answer would
 -- already have been compared and a miss already counted, so a made-up station id
 -- could burn the honest actor's jam allowance from across the map.
-local gateAt = submitBody and string.find(submitBody :: string, "desk:accepts", 1, true)
+-- R114: the gates are Station.gate (run in tests/objectives).
+local gateAt = submitBody and string.find(submitBody :: string, "desk:gate(", 1, true)
 local submitAt = submitBody and string.find(submitBody :: string, "board:submit", 1, true)
 check("the station gate exists before board:submit is reached", gateAt ~= nil and submitAt ~= nil and gateAt < submitAt)
 check(
@@ -668,8 +669,14 @@ check("a finished round takes no more answers", string.find(submitPhaseBody, "ro
 -- position check here a player primes the Switchboard, walks 104 studs to the
 -- room where the number is being read out, and patches from beside the reader.
 check("submit reads where the player actually is", string.find(submitPhaseBody, "livePositions()", 1, true) ~= nil)
-check("...and measures it against the station", string.find(submitPhaseBody, "Layout.within", 1, true) ~= nil)
-check("...using the dial, not a literal", string.find(submitPhaseBody, "Config.StationReach", 1, true) ~= nil)
+-- R114: measured inside Station.gate, which the handler must call.
+local stationCode = LuauCode.stripNonCode(fs.readFile("src/server/systems/Station.luau"))
+check(
+	"...and measures it against the station",
+	string.find(stationCode, "Layout.within", 1, true) ~= nil
+		and string.find(submitPhaseBody, "desk:gate(", 1, true) ~= nil
+)
+check("...using the dial, not a literal", string.find(stationCode, "Config.StationReach", 1, true) ~= nil)
 check("...against the position World built", string.find(submitPhaseBody, "built.stationAt", 1, true) ~= nil)
 
 check("the tick waits out an intermission", string.find(tickBody, "Config.IntermissionSeconds", 1, true) ~= nil)
@@ -1602,7 +1609,9 @@ check("the keypad hint no longer names the jack", #saidAloud("enter what you wer
 -- template scan above nor R93's Round.LINES check reads them, and a player
 -- repeating "someone else has to patch this" is chat like any other.
 local serverSaid = {}
-for _, file in { "src/server/init.server.luau", "src/server/systems/Objectives.luau" } do
+for _, file in
+	{ "src/server/init.server.luau", "src/server/systems/Objectives.luau", "src/server/systems/Station.luau" }
+do
 	local raw = fs.readFile(file)
 	for text in string.gmatch(raw, 'reason = "([^"]+)"') do
 		serverSaid[text] = true
