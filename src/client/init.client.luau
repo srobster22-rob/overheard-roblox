@@ -319,7 +319,8 @@ input.FocusLost:Connect(function(enterPressed: boolean)
 		return
 	end
 	local value = input.Text
-	if #value == 0 or not openStation then
+	-- R120: Keypad.sends, run by the suite.
+	if not Keypad.sends(value, openStation) then
 		closeBoard()
 		return
 	end
@@ -472,10 +473,9 @@ local function onObjectives(entries: { any })
 	-- A solved station closes its own keypad rather than leaving a stale one
 	-- open. Only the station actually in front of the player, now that there
 	-- is more than one.
-	for _, entry in entries do
-		if entry.id == openStation and entry.solved then
-			closeBoard()
-		end
+	-- R120: Keypad.closesOn, run by the suite.
+	if Keypad.closesOn(openStation, entries) then
+		closeBoard()
 	end
 end
 objectivesRemote.OnClientEvent:Connect(onObjectives)

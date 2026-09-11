@@ -80,6 +80,24 @@ check(
 check("(control) an id AT the cap is valid", Keypad.validSubmission(string.rep("b", Keypad.MAX_ID), "42"))
 check("an empty id is refused", not Keypad.validSubmission("", "42"))
 check("the server gates Submit on it", string.find(serverCode, "Keypad.validSubmission(id, value)", 1, true) ~= nil)
+
+-- R120: the client's two keypad decisions, run rather than grepped.
+local solvedHere = { { id = "board", solved = true }, { id = "breaker", solved = false } }
+check("solving the open station closes its keypad", Keypad.closesOn("board", solvedHere))
+check("solving the OTHER station does not", not Keypad.closesOn("breaker", solvedHere))
+check("an unsolved open station stays open", not Keypad.closesOn("breaker", { { id = "breaker", solved = false } }))
+check("no keypad open, nothing to close", not Keypad.closesOn(nil, solvedHere))
+check("a typed code at an open keypad is sent", Keypad.sends("42", "board"))
+check("an empty box is not sent", not Keypad.sends("", "board"))
+check("nothing is sent with no keypad open", not Keypad.sends("42", nil))
+check(
+	"the client asks Keypad.sends before firing",
+	string.find(clientSource, "Keypad.sends(value, openStation)", 1, true) ~= nil
+)
+check(
+	"the client asks Keypad.closesOn on every board push",
+	string.find(clientSource, "Keypad.closesOn(openStation, entries)", 1, true) ~= nil
+)
 check("nothing is shown when no keypad is open", Keypad.accepts(nil, "board") == false)
 check("a rejection naming no station is dropped", Keypad.accepts("board", nil) == false)
 check("both nil is dropped", Keypad.accepts(nil, nil) == false)

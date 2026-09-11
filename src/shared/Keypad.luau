@@ -63,4 +63,27 @@ function Keypad.validSubmission(id: any, value: any): boolean
 	return #id > 0 and #id <= Keypad.MAX_ID and #value <= Keypad.MAX_VALUE
 end
 
+-- Does this push of the board close the keypad in front of the player? Only if
+-- THAT station was just solved -- with two stations, solving the other one must
+-- not shut the keypad somebody is typing into. R120 moved this out of
+-- init.client, where no test could run it.
+function Keypad.closesOn(openStation: string?, entries: { any }): boolean
+	if openStation == nil then
+		return false
+	end
+	for _, entry in entries do
+		if entry.id == openStation and entry.solved then
+			return true
+		end
+	end
+	return false
+end
+
+-- Is what the player pressed Enter on worth sending? Not an empty box, and not
+-- with no keypad open. (Anything else is the server's to judge: see
+-- `validSubmission`, which never trusts the client.)
+function Keypad.sends(value: string, openStation: string?): boolean
+	return #value > 0 and openStation ~= nil
+end
+
 return Keypad
