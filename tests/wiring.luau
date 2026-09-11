@@ -1539,6 +1539,30 @@ check("(control) a plain giveaway is still heard", #saidAloud("enter the jack nu
 -- And the specific defect, named, so a regression says which.
 check("the keypad hint no longer names the jack", #saidAloud("enter what you were told") == 0)
 
+-- R94. The server hands players text too: rejection reasons fired at one
+-- client and the reason every Objectives refusal carries. Neither the client
+-- template scan above nor R93's Round.LINES check reads them, and a player
+-- repeating "someone else has to patch this" is chat like any other.
+local serverSaid = {}
+for _, file in { "src/server/init.server.luau", "src/server/systems/Objectives.luau" } do
+	local raw = fs.readFile(file)
+	for text in string.gmatch(raw, 'reason = "([^"]+)"') do
+		serverSaid[text] = true
+	end
+	for text in string.gmatch(raw, 'FireClient%([^,]+, [^,]+, "([^"]+)"') do
+		serverSaid[text] = true
+	end
+end
+local serverCount, serverLeaks = 0, {}
+for text in serverSaid do
+	serverCount += 1
+	if #saidAloud(text) > 0 then
+		table.insert(serverLeaks, text)
+	end
+end
+check(`(guard) found the server's player-facing reasons ({serverCount})`, serverCount >= 7)
+check(`no server reason gives a concept away ({table.concat(serverLeaks, " | ")})`, #serverLeaks == 0)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)
