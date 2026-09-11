@@ -216,3 +216,12 @@ both sides. Full detail for each is in LOOP_LOG.md at the round named.
   most common panic chat a giveaway, and matching compounds by prefix/suffix
   would make `support`, `report` and `airport` mean the jack. How wide the net
   is sets how hard the game is.
+
+- **R93: the Operator says "number" out loud.** `greeting` ("Number, please.")
+  and `givingUp` ("I'll try that number again later.") both convey the jack
+  secret if a player echoes them in chat, so a group quoting the monster moves
+  it to the board. It may be deliberate bait (the monster tempting you to say
+  its word), or it may be an accident. Your call: keep them as bait, or reword
+  them (e.g. "Go ahead, please." / "I'll try again later."). A test pins these
+  two as the ONLY lines that give anything away, so no new line can add one
+  unnoticed.
