@@ -64,6 +64,7 @@ end
 
 check("a rejection for the open station is shown", Keypad.accepts("board", "board") == true)
 check("a rejection for the other station is dropped", Keypad.accepts("board", "breaker") == false)
+check("no keypad open and no station named is dropped (R102)", Keypad.accepts(nil, nil) == false)
 check("nothing is shown when no keypad is open", Keypad.accepts(nil, "board") == false)
 check("a rejection naming no station is dropped", Keypad.accepts("board", nil) == false)
 check("both nil is dropped", Keypad.accepts(nil, nil) == false)

@@ -167,6 +167,38 @@ check("the cap drops the WEAKEST entries, not the first ones seen", weakestKept 
 local cappedBack = LexiconSave.decode(cappedSave)
 check("decode also respects the cap on the way back in", #cappedBack <= LexiconSave.MAX_SAVED)
 
+print("")
+print("what a load keeps (R102 mutation sweep)")
+local function one(c): number
+	return #LexiconSave.decode({ v = LexiconSave.VERSION, coinages = { c } })
+end
+check(
+	"a BURNED coinage (heat exactly 1) survives a load",
+	one({ phrase = "zorp", concept = "exit", heat = 1, sightings = 4 }) == 1
+)
+check(
+	"a stone-cold coinage (heat 0) is still a valid entry",
+	one({ phrase = "zorp", concept = "exit", heat = 0, sightings = 4 }) == 1
+)
+check(
+	"a coinage never sighted (0) is still a valid entry",
+	one({ phrase = "zorp", concept = "exit", heat = 0.5, sightings = 0 }) == 1
+)
+check(
+	"a coinage with no coiner survives (coinedBy is optional)",
+	one({ phrase = "zorp", concept = "exit", heat = 0.5, sightings = 1 }) == 1
+)
+local okStr, nStr = pcall(one, { phrase = "zorp", concept = "exit", heat = 0.5, sightings = "4" })
+check("a string for sightings is rejected, not an error", okStr and nStr == 0)
+local many = {}
+for i = 1, LexiconSave.MAX_SAVED + 50 do
+	table.insert(many, { phrase = `zorp{i}`, concept = "exit", heat = 0.5, sightings = 1 })
+end
+check(
+	"a load never hands back more than MAX_SAVED",
+	#LexiconSave.decode({ v = LexiconSave.VERSION, coinages = many }) == LexiconSave.MAX_SAVED
+)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

@@ -397,6 +397,12 @@ do
 	check("(control) a watched player has one", sup2:band(1, 10) ~= nil)
 end
 
+print("")
+print("the bar at the deadline (R102 mutation sweep)")
+local atDeadline = Silence.fill(0.5, 0, 0)
+check(`with no seconds left the bar is full, not NaN ({atDeadline})`, atDeadline == 1)
+check("past the deadline it is full too", Silence.fill(0.2, -3, 1) == 1)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

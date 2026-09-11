@@ -159,6 +159,17 @@ for _ = 1, 600 do
 end
 check("(control) a snap arrives in exactly one step", snapSteps == 1)
 
+print("")
+print("what the ear can tell apart (R102 mutation sweep)")
+check(
+	"a louder hum at the same pitch is distinguishable",
+	Hum.distinguishable({ volume = 0.2, pitch = 1 } :: any, { volume = 0.6, pitch = 1 } :: any)
+)
+check(
+	"(control) the same volume with a hair of pitch is not",
+	not Hum.distinguishable({ volume = 0.2, pitch = 1 } :: any, { volume = 0.2, pitch = 1.05 } :: any)
+)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)
