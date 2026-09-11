@@ -24,6 +24,7 @@ local Harness = require("./harness")
 local rt = Harness.build()
 local Heuristic = rt.require(rt.systems.Heuristic)
 local Round = rt.require(rt.systems.Round)
+local Lexicon = rt.require(rt.shared.Lexicon)
 
 local failures = 0
 local checks = 0
@@ -523,6 +524,48 @@ check(`lookalike words are not giveaways ({#misheard} of {#lookalikes})`, #mishe
 if #misheard > 0 then
 	print(`        misheard: {table.concat(misheard, " / ")}`)
 end
+
+print("")
+print("a burned coinage is still heard in the plural")
+
+-- R86, and item 3 of R17's filed "stemming pair". Multi-word coinages were
+-- matched as exact joined stems, so a group's own "blue wire" at heat 1.0
+-- stopped working the moment somebody said "blue wires" -- while the Lexicon
+-- panel still showed it burned. Minted the way the game mints them: as stems.
+local coinPool = Round.dealSecrets(99)
+local coinSecret = coinPool[1]
+local function minted(words: string)
+	return {
+		phrase = table.concat(Lexicon.stemAll(Lexicon.tokenize(words)), " "),
+		concept = coinSecret.concept,
+		heat = 1,
+		sightings = 9,
+		coinedBy = 1,
+	}
+end
+local function heardAs(text: string, coin): number
+	local r = Heuristic.conveyed(utterance(text), { coinSecret }, { coin })
+	return if #r > 0 then r[1].confidence else 0
+end
+for _, case in
+	{
+		{ "blue wire", "the blue wires" },
+		{ "blue wire", "blue wires please" },
+		{ "fuse closet", "the fuses closet" },
+		{ "gathering spot", "gather spot" },
+	}
+do
+	check(`coinage '{case[1]}' is heard in '{case[2]}'`, heardAs(case[2], minted(case[1])) == 1)
+end
+
+-- R15's rule must survive: whole words, adjacent, in order.
+local blue = minted("the blue")
+check("(control) 'check the bluetooth' is not 'the blue'", heardAs("check the bluetooth", blue) == 0)
+check("(control) 'someone blue' is not 'one blue'", heardAs("someone blue", minted("one blue")) == 0)
+check("(control) 'the big redhead' is not 'big red'", heardAs("the big redhead", minted("big red")) == 0)
+check("the words must be in order: 'wire blue' is not 'blue wire'", heardAs("the wire blue", minted("blue wire")) == 0)
+check("...and adjacent: 'blue and wire' is not 'blue wire'", heardAs("blue and wire", minted("blue wire")) == 0)
+check("(control) the exact phrase still is", heardAs("the blue wire", minted("blue wire")) == 1)
 
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then

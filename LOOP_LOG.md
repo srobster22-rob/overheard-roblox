@@ -8214,3 +8214,71 @@ touches coinage storage. A new question asks how wide the vocabulary should be.
 coinage phrases, re-stemmed coinage storage) are untouched.
 
 **Commit** `7d48193`
+
+
+## R86 — a burned multi-word coinage stops working in the plural
+
+**Stage 0.** `OWNER.md` `## Next` still empty.
+
+**Stage 1 — the other half of R17's stemming pair.** R17 filed item 3 (a burned
+coinage dies in the plural) with item 2 because "fixing one without the other
+would be incoherent". R85 fixed item 2 for single words, so item 3 is now the
+coherent next step. Seven coinages minted the way the game mints them (stems),
+seventeen sentences, heat 1.0:
+
+| coinage | missed |
+|---|---|
+| `blue wire` | `the blue wires`, `blue wires please` |
+| `fuse closet` | `the fuses closet` |
+| `gathering spot` (stored `gather spot`) | `gather spot` |
+| `big leaf` | `the big leaves` |
+
+**5 of 17.** A group's own codeword stops working the moment somebody says it in
+the plural, and the Lexicon panel still shows it burned. That's R14/R20's worst
+case for this game: the panel is the instrument players use to decide what's
+still safe to say.
+
+Cause: multi-word phrases are matched as exact text against the joined stems,
+so R85's readings never reach them.
+
+1. *(picked)* **Match multi-word phrases position by position, each word
+   accepting any shared reading**, keeping R15's rule (whole words, adjacent, in
+   order).
+2. `leaves`/`leaf` is an irregular plural no suffix reading can reach. Not
+   attempted.
+
+**Stage 2 — the fix.** `Heuristic` gains `sameWord` (two stems share any
+`Lexicon.readings`) and `sequenceMeets` (a phrase occurs as adjacent, in-order
+whole tokens, each meeting its counterpart on a shared reading). The exact
+`containsWords` check stays first and unchanged; the positional check runs
+after it and only adds matches. Because it compares a phrase word with exactly
+one whole token, R15's boundary rule holds by construction.
+
+**Stage 3 — proof.** 10 checks in `tests/heuristic.luau`: four coinages heard in
+the plural, and six controls — R15's three original cases (`check the
+bluetooth`, `someone blue`, `the big redhead`), word order (`the wire blue`),
+adjacency (`blue and wire`) and the exact phrase.
+
+| plant | what failed |
+|---|---|
+| positional pass removed | all four plural coinage checks |
+| `sameWord` exact-only | all four plural coinage checks |
+| words compared in reverse order | all four, `the words must be in order`, and an older check, `out of order does not match` |
+
+Restored from byte-copy backup; sha256 `70ee914c…b0dc05`.
+
+**Verified in the product.** The same 17 sentences, before and after: **5
+missed → 1 missed** (`the big leaves`, an irregular plural, as scoped).
+`sequenceMeets` is in the Rojo-built place.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon 50, heuristic **83**, operator ok, objectives 122,
+pursuit 104, round 61, config 63, wiring 354, connected 32, ordering 4,
+heat 20, layout 110, lifecycle 90, hud 26, readout 36, soak 42, hum 29, log 18,
+silence 62, lexiconsave 28.
+
+**R17's stemming pair is closed.** Item 2 in R85, item 3 here. Item 4
+(re-stemmed coinage storage) had already been fixed by the `alreadyStemmed`
+flag. `OWNER.md` marks it resolved with nothing left for the owner; irregular
+plurals are recorded there as the one remaining gap, which would need a word
+list rather than a rule.

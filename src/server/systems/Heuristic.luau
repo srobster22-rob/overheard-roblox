@@ -35,6 +35,44 @@ local function containsWords(joined: string, phrase: string): boolean
 	return string.find(` {joined} `, ` {phrase} `, 1, true) ~= nil
 end
 
+-- Do two stems share any reading? See `Lexicon.readings` (R85).
+local function sameWord(a: string, b: string): boolean
+	if a == b then
+		return true
+	end
+	for _, x in Lexicon.readings(a) do
+		for _, y in Lexicon.readings(b) do
+			if x == y then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+-- Does `words` contain `phrase` as a run of ADJACENT, IN-ORDER whole words,
+-- each allowed to meet its counterpart on a shared reading? Positional, so
+-- R15's boundary rule holds by construction: a phrase word can only ever be
+-- compared with one whole token, never with part of a longer one.
+local function sequenceMeets(words: { string }, phrase: { string }): boolean
+	if #phrase == 0 or #phrase > #words then
+		return false
+	end
+	for start = 1, #words - #phrase + 1 do
+		local all = true
+		for k = 1, #phrase do
+			if not sameWord(words[start + k - 1], phrase[k]) then
+				all = false
+				break
+			end
+		end
+		if all then
+			return true
+		end
+	end
+	return false
+end
+
 -- `alreadyStemmed` exists because the two call sites pass different things.
 -- `secret.plain` holds RAW words an author typed, which must be stemmed here.
 -- `coinage.phrase` is ALREADY a stem — it came out of this file's own
@@ -90,6 +128,13 @@ local function matchesAny(
 			-- boundaries. Single-word terms go through `Lexicon.contains`,
 			-- which compares whole stems and was never affected.
 			if containsWords(joined, table.concat(candidateStems, " ")) then
+				return true
+			end
+			-- R86: the same rule -- whole words, adjacent, in order -- but each
+			-- word may meet its counterpart on any shared reading, so a burned
+			-- "blue wire" still hears "the blue wires". The exact check above
+			-- stays first and unchanged; this only adds matches.
+			if sequenceMeets(string.split(joined, " "), candidateStems) then
 				return true
 			end
 		end

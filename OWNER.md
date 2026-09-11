@@ -170,11 +170,11 @@ both sides. Full detail for each is in LOOP_LOG.md at the round named.
   question.
 - **R36 - does deferring a call read as patience, or as ignoring you?** Same
   category as R21.
-- **The stemming pair - PARTLY RESOLVED in R85.** Plain words in the plural
-  or with -ing ("the fuses", "the names", "leaving now") are now understood:
-  35 of 35 plain words in the plural, no single suffix rule chosen - a match on
-  any reading of the word counts. Still open: a burned multi-word coinage in the
-  plural ("the blue wires" vs "the blue wire"), which touches coinage storage.
+- **The stemming pair - RESOLVED in R85/R86, nothing left for you here.**
+  Plain words in the plural are understood (35 of 35), and a burned multi-word
+  coinage still works in the plural ("the blue wires" for "blue wire"). No
+  suffix rule had to be chosen: a match on any reading of a word counts.
+  Irregular plurals (leaf/leaves) still slip; that needs a word list, not a rule.
 - **R46 - the Operator can never actually learn a coinage in real play.**
   Measured: a normal session credits about 2 uses toward burning a phrase; 4
   are needed. `ActThreshold`/`HeatPerCredit`/`CreditWindow` are all candidates
