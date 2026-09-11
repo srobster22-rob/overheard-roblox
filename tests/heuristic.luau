@@ -609,6 +609,24 @@ check(
 	#rowsFor(twoCodes, "blue wire") == 1 and #rowsFor(twoCodes, "blue box") == 1
 )
 
+-- R88. R87's plant C survived: nothing checked that a phrase meaning one
+-- secret is not merged into a same-sounding coinage for ANOTHER secret. Two
+-- secrets, "blue wire" credited to the first, "blue wires" to the second.
+local crossA, crossB = learnPool[1], learnPool[2]
+local crossOp = Operator.new({ crossA, crossB })
+crossOp:hear({ speaker = { UserId = 1 } :: any, text = "the blue wire", at = 1 })
+crossOp:credit(crossA.concept, 1)
+crossOp:hear({ speaker = { UserId = 1 } :: any, text = "the blue wires", at = 2 })
+crossOp:credit(crossB.concept, 2)
+local crossConcepts = {}
+for _, c in rowsFor(crossOp:snapshot(), "blue wire") do
+	crossConcepts[c.concept] = true
+end
+check(
+	"a plural naming a DIFFERENT secret is its own coinage",
+	crossConcepts[crossA.concept] == true and crossConcepts[crossB.concept] == true
+)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)
