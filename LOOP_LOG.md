@@ -7933,3 +7933,5 @@ is the rule.
 
 **Stage 4 — ship.** No `src/` or `tests/` change. `selene src` 0/0, `rojo build`
 clean, full suite green and identical to R81's counts.
+
+**Commit** `9aed935`
