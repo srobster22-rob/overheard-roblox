@@ -278,6 +278,31 @@ function Lexicon.readings(stemmed: string): { string }
 			table.insert(out, string.sub(stemmed, 1, -2) .. "f")
 		end
 	end
+	-- R90: past tense and doubled consonants. `stem` never strips -ed and
+	-- never undoes "running -> runn", so "stopped", "wired", "digging",
+	-- "hurried" and "batteries" were all different words from their roots (12
+	-- of 15 common pairs missed). Readings, not `stem`, because stems are what
+	-- LexiconSave stores: changing `stem` would orphan every saved coinage.
+	local base = table.clone(out)
+	if #stemmed > 4 and string.sub(stemmed, -2) == "ed" then
+		table.insert(base, string.sub(stemmed, 1, -3)) -- stopped -> stopp, hurried -> hurri
+		table.insert(base, string.sub(stemmed, 1, -2)) -- wired -> wire
+	end
+	for _, r in base do
+		if not table.find(out, r) then
+			table.insert(out, r)
+		end
+		local last = string.sub(r, -1)
+		-- runn -> run, stopp -> stop; only the letters English doubles before a
+		-- suffix, so "shell" and "fill" keep their own spelling.
+		if #r >= 4 and string.sub(r, -2, -2) == last and string.find("bdgmnprt", last, 1, true) then
+			table.insert(out, string.sub(r, 1, -2))
+		end
+		-- tri -> try, batteri -> battery, hurri -> hurry
+		if #r >= 3 and last == "i" then
+			table.insert(out, string.sub(r, 1, -2) .. "y")
+		end
+	end
 	return out
 end
 

@@ -242,6 +242,37 @@ check(
 )
 check("(control) 'gloves' is still 'glove'", Lexicon.sameWord(Lexicon.stem("glove"), Lexicon.stem("gloves")))
 
+print("")
+print("past tense and doubled consonants are the same word")
+
+for _, pair in
+	{
+		{ "run", "running" },
+		{ "stop", "stopped" },
+		{ "plan", "planning" },
+		{ "wire", "wired" },
+		{ "hurry", "hurried" },
+		{ "battery", "batteries" },
+		{ "dig", "digging" },
+		{ "fuse", "fused" },
+		{ "try", "tries" },
+		{ "shut", "shutting" },
+	}
+do
+	check(`'{pair[2]}' is the same word as '{pair[1]}'`, Lexicon.sameWord(Lexicon.stem(pair[1]), Lexicon.stem(pair[2])))
+end
+check(
+	"(control) 'red' is not 're'-anything: 'red' is not 'ready'",
+	not Lexicon.sameWord(Lexicon.stem("red"), Lexicon.stem("ready"))
+)
+check("(control) 'shelled' is not 'shed'", not Lexicon.sameWord(Lexicon.stem("shelled"), Lexicon.stem("shed")))
+check("(control) 'filled' is not 'fired'", not Lexicon.sameWord(Lexicon.stem("filled"), Lexicon.stem("fired")))
+check(
+	"(control) 'filled' is not 'file' (l is never undoubled)",
+	not Lexicon.sameWord(Lexicon.stem("filled"), Lexicon.stem("file"))
+)
+check("(control) 'speed' is not 'spy'", not Lexicon.sameWord(Lexicon.stem("speed"), Lexicon.stem("spy")))
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

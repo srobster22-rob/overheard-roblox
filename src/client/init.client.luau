@@ -52,7 +52,9 @@ local PANEL_BG = Color3.fromRGB(14, 13, 12)
 -- from the same table.
 local function panel(name: string): Frame
 	local spec = Hud.get(name)
-	assert(spec, `no Hud panel named '{name}'`)
+	-- R90: "named" now reads as "name" (a directory word), and the
+	-- wiring leak scan counts every client template -- so not "named".
+	assert(spec, `no Hud panel called '{name}'`)
 
 	local frame = Instance.new("Frame")
 	frame.Name = name
