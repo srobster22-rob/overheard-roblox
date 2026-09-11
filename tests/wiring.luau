@@ -65,6 +65,21 @@ end
 check("a rejection for the open station is shown", Keypad.accepts("board", "board") == true)
 check("a rejection for the other station is dropped", Keypad.accepts("board", "breaker") == false)
 check("no keypad open and no station named is dropped (R102)", Keypad.accepts(nil, nil) == false)
+
+-- R109: the Submit remote's payload check, run rather than grepped.
+check("a real submission is valid", Keypad.validSubmission("board", "42"))
+check("a non-string id is refused", not Keypad.validSubmission(7, "42"))
+check("a non-string value is refused", not Keypad.validSubmission("board", 42))
+check("nil is refused", not Keypad.validSubmission(nil, nil))
+check("a value over the cap is refused", not Keypad.validSubmission("board", string.rep("4", Keypad.MAX_VALUE + 1)))
+check("(control) a value AT the cap is valid", Keypad.validSubmission("board", string.rep("4", Keypad.MAX_VALUE)))
+check(
+	"an id over the cap is refused (it had none before R109)",
+	not Keypad.validSubmission(string.rep("b", Keypad.MAX_ID + 1), "42")
+)
+check("(control) an id AT the cap is valid", Keypad.validSubmission(string.rep("b", Keypad.MAX_ID), "42"))
+check("an empty id is refused", not Keypad.validSubmission("", "42"))
+check("the server gates Submit on it", string.find(serverCode, "Keypad.validSubmission(id, value)", 1, true) ~= nil)
 check("nothing is shown when no keypad is open", Keypad.accepts(nil, "board") == false)
 check("a rejection naming no station is dropped", Keypad.accepts("board", nil) == false)
 check("both nil is dropped", Keypad.accepts(nil, nil) == false)

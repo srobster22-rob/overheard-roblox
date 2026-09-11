@@ -19,6 +19,7 @@ local Pursuit = require(script.systems.Pursuit)
 local Round = require(script.systems.Round)
 local Connected = require(script.systems.Connected)
 local Lifecycle = require(script.systems.Lifecycle)
+local Keypad = require(ReplicatedStorage.Shared.Keypad)
 local Station = require(script.systems.Station)
 local Supervisor = require(script.systems.Supervisor)
 local World = require(script.systems.World)
@@ -406,10 +407,8 @@ end
 
 submitRemote.OnServerEvent:Connect(function(player: Player, id: unknown, value: unknown)
 	-- Never trust the client.
-	if typeof(id) ~= "string" or typeof(value) ~= "string" then
-		return
-	end
-	if #(value :: string) > 8 then
+	-- R109: types and lengths, in Shared.Keypad where the suite runs them.
+	if not Keypad.validSubmission(id, value) then
 		return
 	end
 

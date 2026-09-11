@@ -45,4 +45,22 @@ function Keypad.accepts(openStation: string?, messageStation: string?): boolean
 	return openStation == messageStation
 end
 
+-- The longest code a keypad takes, and the longest station id a client may
+-- name. The answer is two digits; 8 leaves room for dashes and spaces.
+Keypad.MAX_VALUE = 8
+Keypad.MAX_ID = 32
+
+-- Is a Submit payload even worth looking at? Never trust the client: both must
+-- be strings, and both bounded. R109 moved this out of init.server (where the
+-- suite could only grep it, and a sweep flipped every clause unnoticed) and
+-- bounded the id, which had NO cap: a client could send an id of any length,
+-- and the server echoes the id straight back through FireClient and uses it as
+-- a lookup key.
+function Keypad.validSubmission(id: any, value: any): boolean
+	if typeof(id) ~= "string" or typeof(value) ~= "string" then
+		return false
+	end
+	return #id > 0 and #id <= Keypad.MAX_ID and #value <= Keypad.MAX_VALUE
+end
+
 return Keypad
