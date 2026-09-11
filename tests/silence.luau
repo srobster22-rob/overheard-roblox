@@ -452,6 +452,28 @@ do
 	check("a player with no body is skipped, not forgiven", who == 2 and isOverdue(s, 1))
 end
 
+print("")
+print("each panel is told once per change, and again after a reset (R115)")
+do
+	local s = Supervisor.new()
+	s:watch(1, 0)
+	local first = s:bandNews(1, 1)
+	check("the first band is news", first == "clear")
+	check("the same band a tick later is not", s:bandNews(1, 1.25) == nil)
+	local warned, quiet = s:bandNews(1, Config.SpeakWarning + 1)
+	check("a change of band is news", warned == "warned" and quiet > Config.SpeakWarning)
+	-- The case that matters: the band after the reset EQUALS the last one told.
+	local r = Supervisor.new()
+	r:watch(1, 0)
+	check("(guard) told 'clear' once", r:bandNews(1, 1) == "clear" and r:bandNews(1, 2) == nil)
+	r:reset(100)
+	check("after a reset the SAME band as before is news again", r:bandNews(1, 101) == "clear")
+	s:forget(1)
+	check("a forgotten player is told nothing", s:bandNews(1, 102) == nil)
+	s:watch(1, 103)
+	check("...and is told afresh when watched again", s:bandNews(1, 104) == "clear")
+end
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

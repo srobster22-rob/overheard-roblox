@@ -32,6 +32,7 @@ export type Tracker = {
 	-- When a call was last put through to them, so one overdue player is not
 	-- punished on every tick of the clock.
 	lastCalled: { [number]: number },
+	shown: { [number]: string },
 	watch: (self: Tracker, userId: number, at: number) -> (),
 	forget: (self: Tracker, userId: number) -> (),
 	hear: (self: Tracker, userId: number, at: number) -> (),
@@ -46,6 +47,7 @@ function Supervisor.new(): Tracker
 	return setmetatable({
 		lastSpoke = {},
 		lastCalled = {},
+		shown = {},
 	}, Supervisor) :: any
 end
 
@@ -62,6 +64,7 @@ end
 function Supervisor.forget(self: Tracker, userId: number)
 	self.lastSpoke[userId] = nil
 	self.lastCalled[userId] = nil
+	self.shown[userId] = nil
 end
 
 -- Anything at all resets the clock. Deliberately NOT gated on the Operator
@@ -130,6 +133,24 @@ function Supervisor.reset(self: Tracker, at: number)
 		self.lastSpoke[userId] = at
 	end
 	table.clear(self.lastCalled)
+	-- A new round re-tells every panel: the client hid them all when the round
+	-- ended, and a band equal to the last one pushed would otherwise never be
+	-- sent again (R115; this was one easily-lost line in init.server).
+	table.clear(self.shown)
+end
+
+-- The band to TELL this player now, or nil if it has not changed since they
+-- were last told (R11: announce once, not four times a second). Also returns
+-- how long they have been quiet, for the bar. R115 moved the memory of what was
+-- shown in here, so `reset` and `forget` clear it by construction.
+function Supervisor.bandNews(self: Tracker, userId: number, now: number): (Silence.Band?, number)
+	local band = self:band(userId, now)
+	local quiet = self:quietFor(userId, now) or 0
+	if band == nil or self.shown[userId] == band then
+		return nil, quiet
+	end
+	self.shown[userId] = band
+	return band, quiet
 end
 
 -- Put through ONE silent line: the longest-quiet overdue player who is standing

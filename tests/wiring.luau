@@ -752,7 +752,9 @@ for line in string.gmatch(serverCode, "[^" .. NL .. "]+") do
 		table.insert(perPlayer, name)
 	end
 end
-check(`(guard) found the per-player tables ({table.concat(perPlayer, ", ")})`, #perPlayer >= 2)
+-- R115: `shown` moved into the Supervisor (its forget clears it; run in
+-- tests/silence), so the server keeps one per-player table of its own.
+check(`(guard) found the per-player tables ({table.concat(perPlayer, ", ")})`, #perPlayer >= 1)
 
 for _, name in perPlayer do
 	check(

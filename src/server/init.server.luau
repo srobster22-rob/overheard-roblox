@@ -240,17 +240,13 @@ end
 -- four times a second. R11's lesson: an event that should announce itself once
 -- announcing itself continuously is its own bug, and this one would also
 -- replicate to every client on every tick.
-local shown: { [number]: string } = {}
 local function showEveryoneTheirClock()
 	local now = os.clock()
 	for _, player in Players:GetPlayers() do
-		local band = supervisor:band(player.UserId, now)
-		if band == nil then
-			continue
-		end
-		local quiet = supervisor:quietFor(player.UserId, now) or 0
-		if shown[player.UserId] ~= band then
-			shown[player.UserId] = band
+		-- R115: "on change" is remembered by the Supervisor, which forgets it on
+		-- reset and on leave by construction.
+		local band, quiet = supervisor:bandNews(player.UserId, now)
+		if band then
 			-- Band, how full the bar is, and the words. The client is told the
 			-- PRESSURE rather than the seconds, so the dial can move without the
 			-- client knowing it exists -- `Silence.pressure` was written for
@@ -458,7 +454,6 @@ Players.PlayerRemoving:Connect(function(player: Player)
 	-- `misses`/`jammedUntil` deliberately DO NOT (see Objectives), because a jam
 	-- a player can shed by reconnecting is not a jam.
 	lastSubmit[player.UserId] = nil
-	shown[player.UserId] = nil
 	supervisor:forget(player.UserId)
 	line:forget(player.UserId)
 	desk:forget(player.UserId)
@@ -504,10 +499,7 @@ local function beginRound()
 	-- Every clock starts again. R31: a player quiet through the eight-second
 	-- intermission must not be called in the first seconds of the round.
 	supervisor:reset(os.clock())
-	-- ...and every panel with it. Without this the band a player was last told
-	-- sits on their screen through the intermission, and `shown` still holds it
-	-- so the push on change never fires to correct it.
-	table.clear(shown)
+	-- (R115: `supervisor:reset` above also clears what each panel was last told.)
 
 	local userIds: { number } = {}
 	for _, p in Players:GetPlayers() do
