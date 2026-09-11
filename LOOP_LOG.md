@@ -8317,3 +8317,5 @@ about that panel lying to the people who read it.
 **Stage 3 REVIEW.** Plant A (drop findCoinage's second pass): "alternating singular and plural leaves ONE row (2)" and "...burned as fully (0.5)" FAIL. Plant B (samePhrase ignores word order): "(control) order matters" FAIL. Plant C (drop the `c.concept == concept` guard in the second pass) SURVIVED. No test crosses concepts on one phrase. Filed as a known gap rather than tested this round. Both files restored, sha256 matched before and after. Product: the mixed "blue wire"/"blue wires" x2 each now gives one row at heat 1.00 (it was 0.50 + 0.50, under ActThreshold 0.6).
 
 **Stage 4 SHIP.** stylua clean, selene 0/0, rojo build contains `function Lexicon.samePhrase`, full test.cmd green.
+
+**Commit** `eead10c`
