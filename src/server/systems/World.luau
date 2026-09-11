@@ -206,17 +206,11 @@ function World.build(): Built
 		archive = { x = recordsOrigin.X, z = recordsOrigin.Z },
 	}
 
-	local declared: { [string]: boolean } = {}
-	for _, name in Config.Rooms do
-		declared[name] = true
-		if not rooms[name] then
-			error(`Config.Rooms declares room '{name}', which World.build gives no position for`)
-		end
-	end
-	for name in rooms do
-		if not declared[name] then
-			error(`World.build builds room '{name}', which Config.Rooms does not declare`)
-		end
+	-- R104: the comparison lives in Layout so the headless suite can run it;
+	-- nothing in this file can run outside Studio.
+	local mismatch = Layout.roomMismatch(rooms, Config.Rooms)
+	if mismatch then
+		error(mismatch)
 	end
 
 	return {

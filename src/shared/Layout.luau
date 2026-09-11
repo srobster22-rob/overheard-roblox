@@ -295,6 +295,28 @@ end
 -- band and away from the player spawn at the midpoint.
 -- `tests/layout.luau` asserts the invariant against the real dial rather than
 -- trusting this comment.
+-- Do the rooms the world builds and the rooms Config declares agree, in both
+-- directions? nil if they do, otherwise the message World.build raises. A name
+-- declared with no position makes `Pursuit.sendTo` refuse the move, so the
+-- Operator never comes and nothing errors -- a silent monster reads as a dead
+-- game. R104 moved this out of World.build, which only runs in Studio, so R103's
+-- sweep could finally reach it.
+function Layout.roomMismatch(built: { [string]: Point }, declared: { string }): string?
+	local named: { [string]: boolean } = {}
+	for _, name in declared do
+		named[name] = true
+		if not built[name] then
+			return `Config.Rooms declares room '{name}', which World.build gives no position for`
+		end
+	end
+	for name in built do
+		if not named[name] then
+			return `World.build builds room '{name}', which Config.Rooms does not declare`
+		end
+	end
+	return nil
+end
+
 function Layout.operatorPost(): Point
 	-- EQUIDISTANT from both rooms, so both get the same warning.
 	--

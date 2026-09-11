@@ -741,6 +741,25 @@ check(
 	not Layout.walkIsClear(outsidePost, Layout.boardCentre())
 )
 
+print("")
+print("the rooms the world builds are the rooms Config declares (R104)")
+
+local builtRooms = { board = Layout.boardCentre(), archive = Layout.archiveCentre() }
+local real = Layout.roomMismatch(builtRooms, Config.Rooms)
+check(`the shipped Config.Rooms matches the built rooms ({real or "ok"})`, real == nil)
+local missing = Layout.roomMismatch({ board = Layout.boardCentre() }, { "board", "archive" })
+check(
+	"a declared room with no position is caught, by name",
+	missing ~= nil and string.find(missing, "'archive'", 1, true) ~= nil
+)
+local extra = Layout.roomMismatch(builtRooms, { "board" })
+check(
+	"a built room nobody declared is caught, by name",
+	extra ~= nil
+		and string.find(extra, "'archive'", 1, true) ~= nil
+		and string.find(extra, "does not declare", 1, true) ~= nil
+)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)
