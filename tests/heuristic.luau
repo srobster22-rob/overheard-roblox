@@ -729,6 +729,44 @@ end
 local costMs = (os.clock() - costStart) / 50 * 1000
 check(`a worst-case line costs under 30 ms ({string.format("%.1f", costMs)} ms)`, costMs < 30)
 
+print("")
+print("what the learner is offered (R100 mutation sweep)")
+
+-- R100. novelTerms is the Operator's intake: every term it returns can be
+-- minted into a coinage on the next success. Three rules in it were untested,
+-- and breaking any one of them passed the whole suite.
+local intakePool = Round.dealSecrets(99)
+local function offered(text: string): { [string]: boolean }
+	local set = {}
+	for _, t in Heuristic.novelTerms(utterance(text), intakePool) do
+		set[t] = true
+	end
+	return set
+end
+local fuseStem = Lexicon.stem("fuse")
+local zorpy = offered("the fuse by zorpy")
+check("a plain secret word is never offered as a coinage", not zorpy[fuseStem])
+check("(control) an unfamiliar word is", zorpy[Lexicon.stem("zorpy")] == true)
+local bigrams = 0
+for term in zorpy do
+	if string.find(term, " ", 1, true) and string.find(` {term} `, ` {fuseStem} `, 1, true) then
+		bigrams += 1
+	end
+end
+check("a two-word phrase containing a plain word is not offered", bigrams == 0)
+check(
+	"(control) two unfamiliar words are offered as a phrase",
+	offered("zorpy glimmer")[`{Lexicon.stem("zorpy")} {Lexicon.stem("glimmer")}`] == true
+)
+check("two-letter scraps are not offered", not offered("zq xv")["zq"] and not offered("zq xv")["xv"])
+
+-- sequenceMeets: a coinage longer than the utterance cannot be in it.
+local longCoin = { phrase = "blue wire", concept = intakePool[1].concept, heat = 1, sightings = 9, coinedBy = 1 }
+check(
+	"a two-word coinage is not heard in one of its words",
+	#Heuristic.conveyed(utterance("blue"), { intakePool[1] }, { longCoin :: any }) == 0
+)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)
