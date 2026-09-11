@@ -8387,3 +8387,5 @@ about that panel lying to the people who read it.
 ## R96
 
 **Stage 0.** The OWNER.md Next list is empty. **Stage 1 IDEATE.** Shortlist: (a) cost of the full chat path (Operator:hear, including novelTerms) and of credit after a burst, since R95 timed only Heuristic.conveyed; (b) the un- prefix; (c) irregular verbs. Pick (a). **Measured, no build:** 80 lines of 200 chars from 8 speakers in one credit window, against a 200-coinage lexicon: hear 402.9 ms total, about 5.0 ms per line (matches R95's conveyed cost); 80 observations, 3304 novel terms; one credit 16.6 ms (about one server frame, once per solved objective); the lexicon grew 200 -> 262. Observations are cleared by credit and at round end, and the lexicon is trimmed by decay, so neither grows without bound. No defect, and nothing shipped: a guard here would duplicate R95's worst-case budget. Full suite unchanged (log-only commit).
+
+**Commit** `2213fe6`
