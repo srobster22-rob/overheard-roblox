@@ -683,6 +683,64 @@ check("(guard) the board is finished", won:allSolved())
 check("a finished board reports nothing finishable", won:anyFinishable({ 1, 2 }) == false)
 check("...which is why the win is checked first", won:allSolved() == true)
 
+print("")
+print("every refusal is a refusal (R98 mutation sweep)")
+
+-- R98. A scripted sweep flipped `ok = false` to `ok = true` on four refusal
+-- paths and the whole suite passed. The server only sends the keypad note when
+-- `not result.ok`, so any of those flips makes the keypad silently swallow the
+-- attempt: no "that line is dead", no jam countdown.
+do
+	local b = Objectives.new()
+	local line = b:add("board", "jack_number", "Patch line to jack %s")
+	b:deal({ HOLDER })
+	line.holder = HOLDER
+	line.seenBy = { [HOLDER] = true }
+	local refusals = {
+		["no such objective"] = b:submit("nowhere", ACTOR, "00", T0),
+		["the holder"] = b:submit("board", HOLDER, line.answer, T0),
+	}
+	line.seenBy = {}
+	refusals["the holder, unseen"] = b:submit("board", HOLDER, line.answer, T0)
+	local wrong = if line.answer == "00" then "11" else "00"
+	for n = 1, Config.GuessesBeforeLockout do
+		refusals[`wrong answer {n}`] = b:submit("board", ACTOR, wrong, T0)
+	end
+	refusals["while jammed"] = b:submit("board", ACTOR, line.answer, T0 + 0.5)
+	for name, result in refusals do
+		check(`refusal '{name}' is not ok ({result.reason})`, result.ok == false and result.reason ~= nil)
+	end
+	check(
+		"(guard) the jam really was reached",
+		string.find(refusals["while jammed"].reason or "", "jammed", 1, true) ~= nil
+	)
+	b:submit("board", THIRD, line.answer, T0)
+	local late = b:submit("board", ACTOR, line.answer, T0 + 999)
+	check("refusal 'already restored' is not ok", late.ok == false and late.reason == "already restored")
+end
+
+print("")
+print("a re-dealt line counts as seen by whoever it was re-dealt to")
+
+-- R98. `redealOrphans` marking `seenBy[to]` was untested: without it, a player
+-- handed an orphaned line reads the number, leaves, rejoins after it has been
+-- re-dealt again, and enters the number they were shown -- solving a line alone.
+do
+	local b = Objectives.new()
+	local line = b:add("board", "jack_number", "Patch line to jack %s")
+	b:deal({ HOLDER })
+	b:redealOrphans({ ACTOR }) -- the holder left; ACTOR is shown the number
+	check("(guard) the orphan went to the player present", line.holder == ACTOR)
+	b:redealOrphans({ THIRD }) -- ACTOR left too
+	check("(guard) and moved on when they left", line.holder == THIRD)
+	local back = b:submit("board", ACTOR, line.answer, T0) -- ACTOR rejoins
+	check("the player it was re-dealt to cannot enter it", back.ok == false and line.solved == false)
+end
+
+print("")
+print("an empty board is not a won round")
+check("allSolved is false with no objectives", Objectives.new():allSolved() == false)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

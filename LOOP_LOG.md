@@ -8399,3 +8399,9 @@ about that panel lying to the people who read it.
 **Commit** `7e3e40b`
 
 **Note.** The R97 commit also carries a StyLua-only reformat of R95's tests/heuristic.luau cost block (one table.insert call reflowed, no logic change). It was left unformatted in R95's commit.
+
+## R98
+
+**Stage 0.** The OWNER.md Next list is empty. **Stage 1 IDEATE.** Shortlist: (a) a scripted mutation sweep (operator flips, full suite per mutant, byte restore plus sha check) over Pursuit/Objectives/Supervisor, R97's method made systematic; (b) the un- prefix; (c) irregular verbs. Pick (a): R97 showed hand plants still find holes.
+
+**Stage 2 BUILD.** Scratchpad mutate.py: operator flips (<=/<, ==/~=, and/or, true/false, +1/-1, not) one per line, the FULL test.cmd per mutant, byte restore with a sha256 assert. Pursuit: 29 mutants, 26 killed, 3 survived, all equivalent: L184/L210 are <= vs < at exactly arriveRadius (a float boundary never hit exactly), and in L74 dwell is only accrued and read while arrived, so resetting it on entry or on exit gives the same values. Objectives: 52 mutants, 43 killed, 9 survived. Real ones: four refusal paths could return ok = true (the server sends the keypad note only when not ok, so a wrong answer would get no feedback at all); redealOrphans' seenBy[to] = true; allSolved on an empty board. Tests added: "every refusal is a refusal" (8 paths, plus a jam guard), "a re-dealt line counts as seen by whoever it was re-dealt to", "an empty board is not a won round". objectives 135/135. **Stage 3 REVIEW.** Re-sweep: 52 mutants, 48 killed, 4 survived, all equivalent: L114/L174 i-1 vs i+1 (a random start index, just another rotation), and L221/L244 `solved` on a refusal (init.server never reads result.solved). Objectives sha256 86edc756 is identical before and after both sweeps. The tests drive the real module. **Stage 4 SHIP.** No src change; selene 0/0, rojo build OK, full test.cmd 0 FAIL.
