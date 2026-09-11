@@ -8397,3 +8397,5 @@ about that panel lying to the people who read it.
 **Stage 2 BUILD.** Test only: layout "you cannot walk into the {board,archive} room through its {north,south} wall", 4 checks through Layout.walkIsClear (the same walls World builds, via allWalls). layout 114/114. **Stage 3 REVIEW.** Plant C (drop every south wall) FAILs both south checks by name; plant D (drop every north wall) FAILs both north checks. Layout restored, sha256 11cb3262 matched. No src change: the product walls were already right, and it was the net that had the hole. **Stage 4 SHIP.** selene 0/0, rojo build carries Layout.walls, full test.cmd 0 FAIL.
 
 **Commit** `7e3e40b`
+
+**Note.** The R97 commit also carries a StyLua-only reformat of R95's tests/heuristic.luau cost block (one table.insert call reflowed, no logic change). It was left unformatted in R95's commit.
