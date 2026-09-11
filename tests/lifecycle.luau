@@ -110,6 +110,7 @@ print("per-round state does not cross the boundary")
 local Station = rt.require(rt.systems.Station)
 local Operator = rt.require(rt.systems.Operator)
 local Config = rt.require(rt.shared.Config)
+local Round = rt.require(rt.systems.Round)
 
 -- 1. Where each player is standing. R12 added this gate so the SERVER owns it;
 --    surviving the boundary handed every player one free station.
@@ -543,6 +544,60 @@ for _, outcome in OUTCOMES do
 	)
 	check(`the round restarts after '{outcome}'`, cycled:restart())
 	check(`...and '{outcome}' is forgotten`, cycled.outcome == nil)
+end
+
+print("")
+print("the Operator's signals fire when, and only when, something changed (R99)")
+
+-- R99 mutation sweep. Four survivors in Operator, all player-facing:
+-- `onBurned` makes it say "I'm connecting you now." to everyone and rebroadcast
+-- the Lexicon; `decay`'s return drives the Lexicon broadcast every DecaySeconds;
+-- and Config documents a burned term cooling to EXACTLY ActThreshold.
+do
+	local pool = Round.dealSecrets(99)
+	local secret = pool[1]
+	local op = Operator.new({ secret })
+	local burnsOf: { [string]: number } = {}
+	op.onBurned = function(c)
+		burnsOf[c.phrase] = (burnsOf[c.phrase] or 0) + 1
+	end
+	for t = 1, 7 do
+		op:hear({ speaker = { UserId = 1 } :: any, text = "zorp glimmer", at = t * 100 })
+		op:credit(secret.concept, t * 100)
+	end
+	local zorp = nil
+	for _, c in op.lexicon do
+		if c.phrase == "zorp" then
+			zorp = c
+		end
+	end
+	check("(guard) the codeword burned", zorp ~= nil and zorp.heat >= 1)
+	local burned, repeats = 0, 0
+	for _, c in op.lexicon do
+		if c.heat >= 1 then
+			burned += 1
+			if burnsOf[c.phrase] ~= 1 then
+				repeats += 1
+			end
+		end
+	end
+	check(`every burned phrase announced exactly ONCE ({burned} burned, {repeats} wrong)`, burned >= 1 and repeats == 0)
+
+	check("cooling by nothing reports no change", op:cool(0) == false)
+	check("cooling an empty lexicon reports no change", Operator.new({ secret }):cool(1) == false)
+	check("(control) cooling a hot lexicon reports a change", op:cool(0.1) == true)
+
+	local edge = Operator.new({ secret })
+	table.insert(
+		edge.lexicon,
+		{ phrase = "zorp", concept = secret.concept, heat = Config.ActThreshold, sightings = 4, coinedBy = 1 } :: any
+	)
+	local acted = 0
+	edge.onUnderstood = function()
+		acted += 1
+	end
+	edge:hear({ speaker = { UserId = 1 } :: any, text = "zorp", at = 0 })
+	check("a codeword sitting EXACTLY on ActThreshold is still understood", acted == 1)
 end
 
 print(`\n{checks - failures}/{checks} passed`)

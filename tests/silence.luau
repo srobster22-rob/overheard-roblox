@@ -388,6 +388,15 @@ for step = 0, 400 do
 end
 check(`the bar never goes backwards while you stay quiet ({dips} dips)`, dips == 0)
 
+print("")
+print("a player the Supervisor is not watching has no clock (R99)")
+do
+	local sup2 = Supervisor.new()
+	sup2:watch(1, 0)
+	check("an unwatched player has no band", sup2:band(99, 10) == nil)
+	check("(control) a watched player has one", sup2:band(1, 10) ~= nil)
+end
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)
