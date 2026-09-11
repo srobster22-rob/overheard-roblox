@@ -8523,3 +8523,5 @@ about that panel lying to the people who read it.
 ## R113
 
 **Stage 0.** The OWNER.md Next list is empty. **Stage 1 IDEATE.** Shortlist: (a) R112 changed a measured figure, so check every owner-facing number that quotes the soak; (b) the un- prefix (owner); (c) band display. Pick (a). **Checked:** R59/R62's "225 corridor" is the same under R110's new counting (the pre-R110 soak at be79e51, run against current src, gives 225), and "21 of 28 lost" is unchanged. R54's "is SpeakEvery the right pressure" question was being weighed against an overstated call count (28, really 21, per R112). **Build:** a correction note appended under R54 in OWNER.md Open questions. Doc-only; no src/test change, so no plant applies. tests/log guards the log. Full suite unchanged.
+
+**Commit** `f7a7911`
