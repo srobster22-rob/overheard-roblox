@@ -8607,3 +8607,5 @@ about that panel lying to the people who read it.
 ## R124
 
 **Stage 0.** The OWNER.md Next list is empty. **Stage 1 IDEATE, and a convergence finding.** Shortlist check: every server system and shared module is mutation-swept (R98-R103), all testable logic is out of init.server/init.client and run headlessly (R104-R123), and every displayed-text category is scanned (R90/R93/R94/R121/R122). The remaining candidates are the un- prefix, irregular verbs and compounds (gated on the R85 vocabulary-breadth question), the Operator's "number" (R93), the station labels (R122), and Roblox UI/Instance behaviour and feel (Studio, device-blocked). No TODOs, clean tree, green suite, 13 open owner questions. **Build:** a short "what would unblock the loop" block at the top of OWNER.md Open questions (playtest; R93+R122; R85), so the owner has one place to act from. Doc-only; no plant applies. Later rounds continue with whatever the owner answers, and otherwise with re-verification (the full suite plus a re-sweep) rather than inventing work.
+
+**Commit** `afc34c5`
