@@ -8282,3 +8282,5 @@ silence 62, lexiconsave 28.
 flag. `OWNER.md` marks it resolved with nothing left for the owner; irregular
 plurals are recorded there as the one remaining gap, which would need a word
 list rather than a rule.
+
+**Commit** `8f49b3a`
