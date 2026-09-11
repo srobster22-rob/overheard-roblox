@@ -8357,3 +8357,5 @@ about that panel lying to the people who read it.
 **Stage 0.** The OWNER.md Next list is empty. **Stage 1 IDEATE.** Shortlist: (a) inflected forms of the secrets own plain words (probe: 4/25 MISS: numbered, powered down, hidden, unplugged); (b) irregular verbs; (c) the un- prefix. Pick (a) for numbered/powered: R90 readings are not re-stemmed, so numbered->number never meets stem(number)=numb. hidden and unplugged are left as tuning.
 
 **Stage 2 BUILD.** In Lexicon.readings, each -ed reading is also stemmed (numbered -> number -> numb). lexicon 81/81, heuristic 91/91 (the R91 ordinary-chat guard still holds at 0). **Stage 3 REVIEW.** Plant: drop the re-stem. "numbered is the same word as number (R92)" and "powered..." FAIL by name. Restored, sha256 79ed32bc matched. Product (Heuristic.conveyed on all 5 secrets, 25 inflected plain-word lines): MISS 4/25 -> 2/25 (left: hidden, unplugged). **Stage 4 SHIP.** selene 0/0, rojo build carries it, full test.cmd 0 FAIL.
+
+**Commit** `59d8b33`
