@@ -8033,3 +8033,5 @@ filed question should be.
 `jaaack` with a genuine double collapsed too far), homophones (`jak`) and
 per-letter substitution beyond the six digits all still get through. This
 closes the five that need no skill at all.
+
+**Commit** `abd51f0`
