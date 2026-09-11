@@ -8373,3 +8373,5 @@ about that panel lying to the people who read it.
 **Stage 0.** The OWNER.md Next list is empty. **Stage 1 IDEATE.** Shortlist: (a) extend R93 to the server's other player-facing text, the rejection reasons (FireClient) and Objectives reason strings, which neither the client template scan (R90) nor R93 reads; (b) the un- prefix; (c) irregular verbs. Pick (a). Probe: all 9 are clean today, and nothing keeps them so.
 
 **Stage 2 BUILD.** Test only: wiring scans every `reason = "..."` in Objectives and the init.server FireClient literals through saidAloud, with a count guard (8 found) and zero leaks allowed. wiring 356/356. **Stage 3 REVIEW.** Plant: Objectives "that line is dead" becomes "...try the breaker". "no server reason gives a concept away (that line is dead, try the breaker)" FAILs by name. Restored, sha256 86edc756 matched. Product: the probe ran the real Heuristic.conveyed over the shipped strings, 9/9 clean. **Stage 4 SHIP.** No src change; selene 0/0, rojo build OK, full test.cmd 0 FAIL.
+
+**Commit** `45dba3b`
