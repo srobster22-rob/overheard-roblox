@@ -627,6 +627,78 @@ check(
 	crossConcepts[crossA.concept] == true and crossConcepts[crossB.concept] == true
 )
 
+print("")
+print("ordinary chat gives nothing away")
+
+-- R91. R85, R86, R89 and R90 each widened what counts as "the same word".
+-- Every widening is measured for what it catches; this is the other side of
+-- the ledger. Ordinary horror-game chat, including lines built to tempt the
+-- readings (leaf/leave, wafer, filed, stared/stair, knives, lived), must
+-- convey NO secret. 0/45 before R89 and after R90.
+local benignPool = Round.dealSecrets(99)
+local benignLines = {
+	"did you hear that",
+	"i think it saw me",
+	"wait for me",
+	"my flashlight died",
+	"stay together guys",
+	"this place is creepy",
+	"who screamed",
+	"i'm scared lol",
+	"it stopped moving",
+	"we planned this badly",
+	"i got lost again",
+	"the lights flickered",
+	"running is pointless",
+	"it's getting closer",
+	"stay quiet",
+	"i'm staring at the wall",
+	"we tried everything",
+	"that was a leaf",
+	"i found a shelf",
+	"my wife is calling",
+	"the knives are sharp",
+	"he filed a report",
+	"i'm filling up my bottle",
+	"that wafer was stale",
+	"someone moved it",
+	"she stared at me",
+	"we're doomed",
+	"i'm bored",
+	"that hurt",
+	"it's hunting us",
+	"turn over a new leaf",
+	"the thief ran",
+	"the wolves howled",
+	"i'm starving",
+	"is it listening",
+	"great teamwork",
+	"whose turn is it",
+	"i dropped my phone",
+	"that's hilarious",
+	"stop talking",
+	"i'm staying here",
+	"we lived",
+	"the ceiling creaked",
+	"i hopped over it",
+	"my heart is pounding",
+}
+local benignHits = {}
+for _, line in benignLines do
+	if #Heuristic.conveyed(utterance(line), benignPool, {}) > 0 then
+		table.insert(benignHits, line)
+	end
+end
+check(
+	`(guard) the corpus is real ({#benignLines} lines, {#benignPool} secrets)`,
+	#benignLines >= 40 and #benignPool == 5
+)
+check(`no ordinary line conveys a secret ({table.concat(benignHits, " | ")})`, #benignHits == 0)
+check(
+	"(control) the same pool still hears 'meet at the exit'",
+	#Heuristic.conveyed(utterance("meet at the exit"), benignPool, {}) > 0
+)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)
