@@ -8284,3 +8284,36 @@ plurals are recorded there as the one remaining gap, which would need a word
 list rather than a rule.
 
 **Commit** `8f49b3a`
+
+
+## R87 — alternating singular and plural keeps a codeword half-learned
+
+**Stage 0.** `OWNER.md` `## Next` still empty.
+
+**Stage 1 — the learning side of R85/R86.** Those rounds made MATCHING treat
+`blue wire` and `blue wires` as one phrase. Learning (`Operator.credit` →
+`findCoinage`) still looks coinages up by exact text. Measured against the real
+Operator, four credited uses each:
+
+| said | Lexicon afterwards |
+|---|---|
+| `the blue wire` ×4 | `blue wire` **1.00** |
+| `the blue wires` ×4 | `blue wir` **1.00** |
+| 2 of each, alternated | `blue wire` **0.50** and `blue wir` **0.50** |
+
+Alternating splits one codeword into two half-heated rows. The reader takes the
+stronger of them, 0.50, which is under `ActThreshold` (0.6), so **a group that
+varies the plural keeps its codeword unlearned for twice as long**, for free.
+The Lexicon panel meanwhile shows the same word twice. R14 and R20 are both
+about that panel lying to the people who read it.
+
+1. *(picked)* **Credit an existing coinage when the new term is the same phrase
+   by reading** (same word count, each word sharing a reading, as `sequenceMeets`
+   already decides for matching). `sameWord` moves into `Lexicon` so the matcher
+   and the learner cannot disagree about what "the same word" means.
+
+**Stage 2 BUILD.** Added `Lexicon.sameWord` and `Lexicon.samePhrase`, so the matcher and the learner now share one definition of "the same word". Heuristic now uses `Lexicon.sameWord`. `Operator.findCoinage` tries an exact match first, then looks for a coinage with the same concept and `samePhrase`, and keeps the first-minted spelling. Tests: lexicon 56/56, heuristic 87/87.
+
+**Stage 3 REVIEW.** Plant A (drop findCoinage's second pass): "alternating singular and plural leaves ONE row (2)" and "...burned as fully (0.5)" FAIL. Plant B (samePhrase ignores word order): "(control) order matters" FAIL. Plant C (drop the `c.concept == concept` guard in the second pass) SURVIVED. No test crosses concepts on one phrase. Filed as a known gap rather than tested this round. Both files restored, sha256 matched before and after. Product: the mixed "blue wire"/"blue wires" x2 each now gives one row at heat 1.00 (it was 0.50 + 0.50, under ActThreshold 0.6).
+
+**Stage 4 SHIP.** stylua clean, selene 0/0, rojo build contains `function Lexicon.samePhrase`, full test.cmd green.

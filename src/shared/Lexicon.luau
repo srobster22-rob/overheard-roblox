@@ -269,6 +269,42 @@ function Lexicon.readings(stemmed: string): { string }
 	return out
 end
 
+-- Do two stems share any reading? The ONE definition of "the same word",
+-- used by the matcher (Heuristic) and the learner (Operator) alike. R87: when
+-- only the matcher knew it, a group alternating "blue wire" and "blue wires"
+-- was understood as one phrase but learned as two, each half-heated.
+function Lexicon.sameWord(a: string, b: string): boolean
+	if a == b then
+		return true
+	end
+	for _, x in Lexicon.readings(a) do
+		for _, y in Lexicon.readings(b) do
+			if x == y then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+-- Are two already-stemmed phrases the same phrase: same length, and each word
+-- the same word, in order?
+function Lexicon.samePhrase(a: string, b: string): boolean
+	if a == b then
+		return true
+	end
+	local aw, bw = string.split(a, " "), string.split(b, " ")
+	if #aw ~= #bw then
+		return false
+	end
+	for i = 1, #aw do
+		if not Lexicon.sameWord(aw[i], bw[i]) then
+			return false
+		end
+	end
+	return true
+end
+
 function Lexicon.stemAll(words: { string }): { string }
 	local out: { string } = {}
 	for _, w in words do

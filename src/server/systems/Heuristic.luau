@@ -35,20 +35,8 @@ local function containsWords(joined: string, phrase: string): boolean
 	return string.find(` {joined} `, ` {phrase} `, 1, true) ~= nil
 end
 
--- Do two stems share any reading? See `Lexicon.readings` (R85).
-local function sameWord(a: string, b: string): boolean
-	if a == b then
-		return true
-	end
-	for _, x in Lexicon.readings(a) do
-		for _, y in Lexicon.readings(b) do
-			if x == y then
-				return true
-			end
-		end
-	end
-	return false
-end
+-- One definition of "the same word", shared with the learner (R87).
+local sameWord = Lexicon.sameWord
 
 -- Does `words` contain `phrase` as a run of ADJACENT, IN-ORDER whole words,
 -- each allowed to meet its counterpart on a shared reading? Positional, so

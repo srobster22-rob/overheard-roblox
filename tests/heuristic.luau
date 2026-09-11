@@ -567,6 +567,48 @@ check("the words must be in order: 'wire blue' is not 'blue wire'", heardAs("the
 check("...and adjacent: 'blue and wire' is not 'blue wire'", heardAs("blue and wire", minted("blue wire")) == 0)
 check("(control) the exact phrase still is", heardAs("the blue wire", minted("blue wire")) == 1)
 
+print("")
+print("a codeword said both ways is learned as one")
+
+-- R87. Matching treated "blue wire" and "blue wires" as one phrase (R86), but
+-- learning looked coinages up by exact text, so alternating the two minted two
+-- rows at 0.50 each -- under the act threshold -- where four uses of either
+-- spelling reach 1.00. Varying the plural kept a codeword unlearned for free.
+local learnPool = Round.dealSecrets(99)
+local learnSecret = learnPool[1]
+local function learnFrom(lines: { string })
+	local op = Operator.new({ learnSecret })
+	for t, line in lines do
+		op:hear({ speaker = { UserId = 1 } :: any, text = line, at = t })
+		op:credit(learnSecret.concept, t)
+	end
+	return op:snapshot()
+end
+local function rowsFor(snapshot, needle: string)
+	local found = {}
+	for _, c in snapshot do
+		if c.phrase == needle or Lexicon.samePhrase(c.phrase, needle) then
+			table.insert(found, c)
+		end
+	end
+	return found
+end
+local mixedLearn = learnFrom({ "the blue wire", "the blue wires", "the blue wire", "the blue wires" })
+local mixedRows = rowsFor(mixedLearn, "blue wire")
+check(`alternating singular and plural leaves ONE row ({#mixedRows})`, #mixedRows == 1)
+check(
+	`...burned as fully as saying it one way ({mixedRows[1] and mixedRows[1].heat or 0})`,
+	mixedRows[1] ~= nil and mixedRows[1].heat == 1
+)
+check("...under the spelling first said", mixedRows[1] ~= nil and mixedRows[1].phrase == "blue wire")
+
+-- (control) genuinely different codewords must stay separate.
+local twoCodes = learnFrom({ "the blue wire", "the blue box", "the blue wire", "the blue box" })
+check(
+	"(control) 'blue wire' and 'blue box' stay two rows",
+	#rowsFor(twoCodes, "blue wire") == 1 and #rowsFor(twoCodes, "blue box") == 1
+)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

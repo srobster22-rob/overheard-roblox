@@ -217,6 +217,16 @@ end
 check("(control) fuse and fuss do not", not meets("fuse", "fuss"))
 check("(control) box and boxes still do", meets("box", "boxes"))
 
+print("")
+print("one definition of the same phrase")
+
+check("samePhrase: singular and plural are the same phrase", Lexicon.samePhrase("blue wire", "blue wir"))
+check("samePhrase: identical phrases are", Lexicon.samePhrase("blue wire", "blue wire"))
+check("(control) a different word is not", not Lexicon.samePhrase("blue wire", "blue box"))
+check("(control) a different length is not", not Lexicon.samePhrase("blue wire", "blue"))
+check("(control) order matters", not Lexicon.samePhrase("blue wire", "wire blue"))
+check("(control) fuse and fuss are still different words", not Lexicon.sameWord("fuse", "fuss"))
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

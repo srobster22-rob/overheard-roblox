@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Types = require(ReplicatedStorage.Shared.Types)
+local Lexicon = require(ReplicatedStorage.Shared.Lexicon)
 local Heuristic = require(script.Parent.Heuristic)
 
 type Secret = Types.Secret
@@ -92,9 +93,21 @@ function Operator.hear(self: Operator, utterance: Utterance)
 	end
 end
 
+-- An exact match wins; otherwise an existing coinage that is the SAME PHRASE
+-- by reading (R87). Without the second pass, a group alternating "blue wire"
+-- and "blue wires" minted two coinages, each at half the heat, and the reader
+-- -- which already treats them as one phrase -- took the weaker 0.50, under
+-- the act threshold: varying the plural kept a codeword unlearned for free, and
+-- the Lexicon panel showed the same word twice. The first-minted spelling is
+-- kept, so the panel's row does not change its name under the players.
 local function findCoinage(self: Operator, phrase: string, concept: string): Coinage?
 	for _, c in self.lexicon do
 		if c.phrase == phrase and c.concept == concept then
+			return c
+		end
+	end
+	for _, c in self.lexicon do
+		if c.concept == concept and Lexicon.samePhrase(c.phrase, phrase) then
 			return c
 		end
 	end
