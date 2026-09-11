@@ -266,6 +266,18 @@ function Lexicon.readings(stemmed: string): { string }
 	if again ~= stemmed then
 		table.insert(out, again)
 	end
+	-- R89: the "-ves" plurals. "leaves" stems to "leav", "knives" to "kniv";
+	-- reading the v as f meets "leaf" and "knif" (knife). Only where English
+	-- actually does this -- after l (wolves, shelves, halves), after i (knives,
+	-- wives, lives), or after two vowels (leaves, loaves, thieves) -- because a
+	-- bare "wav" read as "waf" would make "waves" the word "wafer".
+	if #stemmed >= 3 and string.sub(stemmed, -1) == "v" then
+		local before = string.sub(stemmed, -2, -2)
+		local pair = string.sub(stemmed, -3, -2)
+		if before == "l" or before == "i" or string.match(pair, "^[aeiou][aeiou]$") then
+			table.insert(out, string.sub(stemmed, 1, -2) .. "f")
+		end
+	end
 	return out
 end
 

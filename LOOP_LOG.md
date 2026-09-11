@@ -8327,3 +8327,9 @@ about that panel lying to the people who read it.
 **Stage 2 BUILD.** Test only: two secrets, with "blue wire" credited to one and "blue wires" to the other, must leave two coinages. **Stage 3 REVIEW.** heuristic 88/88. R87 plant C (drop the concept guard) now FAILs "a plural naming a DIFFERENT secret is its own coinage". Operator restored, sha256 10c0331b matched before and after. **Stage 4 SHIP.** selene 0/0, and the rojo build carries the guarded findCoinage. Full test.cmd: 0 FAIL.
 
 **Commit** `9ccbabf`
+
+## R89
+
+**Stage 0.** The OWNER.md Next list is empty. **Stage 1 IDEATE.** Shortlist: (a) irregular -ves plurals (leaves/knives/wolves/shelves), the one plural gap R86 left open; (b) the censor-star respelling; (c) a Lexicon panel sort. Pick (a). Probe: leaves->leav and knives->kniv do not meet leaf or knife.
+
+**Stage 2 BUILD.** Lexicon.readings gives a stem ending in v an f reading (leav->leaf, kniv->knif). First cut: any v. My own control "waves is not wafer" FAILED on it, because wafer stems to waf. Narrowed to after l, after i, or after two vowels. lexicon 64/64. **Stage 3 REVIEW.** Plant "v->? (reading off)": five -ves checks FAIL by name. Plant "guard removed": "(control) waves is not wafer" FAILs. Restored, sha256 930e1946 matched. Product (Heuristic.conveyed, coinage at heat 1) before->after: the knives 0->1, red leaves 0->1, wolves den 0->1, top shelves 0->1, and wave<-wafer 0->0. **Stage 4 SHIP.** selene 0/0, the rojo build carries the guard, full test.cmd 0 FAIL.

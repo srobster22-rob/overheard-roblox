@@ -227,6 +227,21 @@ check("(control) a different length is not", not Lexicon.samePhrase("blue wire",
 check("(control) order matters", not Lexicon.samePhrase("blue wire", "wire blue"))
 check("(control) fuse and fuss are still different words", not Lexicon.sameWord("fuse", "fuss"))
 
+print("")
+print("-ves plurals are the same word")
+
+for _, pair in
+	{ { "leaf", "leaves" }, { "knife", "knives" }, { "wolf", "wolves" }, { "shelf", "shelves" }, { "half", "halves" } }
+do
+	check(`'{pair[2]}' is the same word as '{pair[1]}'`, Lexicon.sameWord(Lexicon.stem(pair[1]), Lexicon.stem(pair[2])))
+end
+check("(control) 'waves' is not 'wafer'", not Lexicon.sameWord(Lexicon.stem("waves"), Lexicon.stem("wafer")))
+check(
+	"(control) 'doves' is not 'dofe'-anything: 'dove' stays 'dove'",
+	Lexicon.sameWord(Lexicon.stem("dove"), Lexicon.stem("doves"))
+)
+check("(control) 'gloves' is still 'glove'", Lexicon.sameWord(Lexicon.stem("glove"), Lexicon.stem("gloves")))
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)
