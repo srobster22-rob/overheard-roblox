@@ -225,46 +225,12 @@ end
 -- overdue players would queue three rooms behind each other and the last would
 -- arrive a minute after the silence that caused it.
 local function putThroughTheSilentLine()
-	local due = supervisor:overdue(os.clock())
-	if #due == 0 then
-		return
-	end
-
-	local positions = livePositions()
-	for _, userId in due do
-		local standing = positions[userId]
-		if not standing then
-			-- No body yet (still loading, or dead). Not a silence we can act on,
-			-- and marking them called would forgive it.
-			continue
-		end
-		for _, room in Config.Rooms do
-			local centre = built.rooms[room]
-			if centre and Layout.inRoom(centre, standing) then
-				-- Was it ALREADY coming here? Then this silence is already being
-				-- answered by the trip in progress: the player is forgiven
-				-- because they are about to be visited, but nothing new is
-				-- announced, because nothing new happened.
-				local alreadyComing = pursuit.targetName == room
-				local _, onItsWay = pursuit:sendTo(room)
-				if not onItsWay then
-					-- Committed elsewhere. The request is sitting in `pending`,
-					-- where the next one will overwrite it, so NOTHING has
-					-- happened: say nothing and leave the player overdue. They
-					-- are still silent, and the tick will ask again.
-					return
-				end
-				supervisor:called(userId, os.clock())
-				if not alreadyComing then
-					heardRemote:FireAllClients(Round.LINES.traced, "", 1)
-				end
-				return
-			end
-		end
-		-- Standing in the corridor. The Supervisor has nowhere to send anybody,
-		-- so the silence goes unpunished -- which makes the corridor a place to
-		-- hide from it. Filed for the owner rather than fixed by inventing a
-		-- rule: see LOOP_LOG R54.
+	-- R110: the dispatch lives in Supervisor.putThrough, where the suite RUNS
+	-- it and the soak calls the same function. All that is left here is the
+	-- one thing the module cannot do: say the line.
+	local called, announce = supervisor:putThrough(pursuit, built.rooms, Config.Rooms, livePositions(), os.clock())
+	if called and announce then
+		heardRemote:FireAllClients(Round.LINES.traced, "", 1)
 	end
 end
 

@@ -20,6 +20,7 @@
 
 local Config = require(game:GetService("ReplicatedStorage").Shared.Config)
 local Silence = require(game:GetService("ReplicatedStorage").Shared.Silence)
+local Layout = require(game:GetService("ReplicatedStorage").Shared.Layout)
 
 local Supervisor = {}
 Supervisor.__index = Supervisor
@@ -129,6 +130,49 @@ function Supervisor.reset(self: Tracker, at: number)
 		self.lastSpoke[userId] = at
 	end
 	table.clear(self.lastCalled)
+end
+
+-- Put through ONE silent line: the longest-quiet overdue player who is standing
+-- in a room. Returns the userId it called (nil if none) and whether the call is
+-- NEWS worth announcing. R110 moved this out of init.server, where the suite
+-- could only check the ORDER of its statements by text, and where the soak ran
+-- a hand-copied twin "as the server runs it" that could drift from the real one.
+--
+-- The rules, unchanged (R54/R55):
+--   * no body yet (loading, dead): skipped, and NOT forgiven;
+--   * standing in the corridor: skipped (filed, R54), and the next overdue
+--     player is considered;
+--   * the Operator committed elsewhere: the request only lands in `pending`,
+--     so NOTHING happened -- nobody forgiven, nothing said, and it stops;
+--   * a trip already under way to that room answers the silence: forgiven,
+--     but not announced again.
+function Supervisor.putThrough(
+	self: Tracker,
+	pursuit: any,
+	rooms: { [string]: Layout.Point },
+	roomOrder: { string },
+	positions: { [number]: Layout.Point },
+	now: number
+): (number?, boolean)
+	for _, userId in self:overdue(now) do
+		local standing = positions[userId]
+		if not standing then
+			continue
+		end
+		for _, room in roomOrder do
+			local centre = rooms[room]
+			if centre and Layout.inRoom(centre, standing) then
+				local alreadyComing = pursuit.targetName == room
+				local _, onItsWay = pursuit:sendTo(room)
+				if not onItsWay then
+					return nil, false
+				end
+				self:called(userId, now)
+				return userId, not alreadyComing
+			end
+		end
+	end
+	return nil, false
 end
 
 return Supervisor

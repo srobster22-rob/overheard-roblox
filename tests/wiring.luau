@@ -774,8 +774,20 @@ check(
 print("")
 print("the Supervisor only speaks when the call really went through")
 
-local dispatchBody = string.match(serverCode, "local function putThroughTheSilentLine%(%).-" .. NL .. "end") or ""
+-- R110: the dispatch moved to Supervisor.putThrough (RUN in tests/silence);
+-- the order is still read there, and the line is still said by the server.
+local supervisorCode = LuauCode.stripNonCode(fs.readFile("src/server/systems/Supervisor.luau"))
+local dispatchBody = string.match(supervisorCode, "function Supervisor.putThrough%(.-" .. NL .. "end") or ""
+local dispatchWrapper = string.match(serverCode, "local function putThroughTheSilentLine%(%).-" .. NL .. "end") or ""
 check("(guard) found the dispatch", #dispatchBody > 0)
+check(
+	"the server's dispatch is Supervisor.putThrough",
+	string.find(dispatchWrapper, "supervisor:putThrough(", 1, true) ~= nil
+)
+check(
+	"...and says the line only for a call that is news",
+	string.find(dispatchWrapper, "if called and announce then", 1, true) ~= nil
+)
 
 local askedAt = string.find(dispatchBody, "onItsWay = pursuit:sendTo", 1, true)
 check("it asks whether the call went through", askedAt ~= nil)
@@ -783,8 +795,8 @@ check("it asks whether the call went through", askedAt ~= nil)
 local bailedAt = string.find(dispatchBody, "if not onItsWay then", 1, true)
 check("...and bails out when it did not", bailedAt ~= nil)
 
-local forgaveAt = string.find(dispatchBody, "supervisor:called", 1, true)
-local saidAt = string.find(dispatchBody, "Round.LINES.traced", 1, true)
+local forgaveAt = string.find(dispatchBody, "self:called", 1, true)
+local saidAt = string.find(dispatchBody, "not alreadyComing", 1, true)
 check("(guard) it does forgive the player somewhere", forgaveAt ~= nil)
 check("(guard) ...and does say the line somewhere", saidAt ~= nil)
 
@@ -794,8 +806,9 @@ if askedAt and bailedAt and forgaveAt and saidAt then
 	check("...and is never announced", saidAt > bailedAt)
 	-- And the announcement is gated a second time, so a trip already under way
 	-- to that room punishes the silence without saying it twice.
-	local alreadyAt = string.find(dispatchBody, "if not alreadyComing then", 1, true)
-	check("a trip already under way is not announced again", alreadyAt ~= nil and alreadyAt < saidAt)
+	-- R110: read BEFORE sendTo retargets, or every call would look like news.
+	local alreadyAt = string.find(dispatchBody, "local alreadyComing = pursuit.targetName == room", 1, true)
+	check("a trip already under way is not announced again", alreadyAt ~= nil and alreadyAt < askedAt)
 end
 
 -- (control) the reader must be able to fail: a phrase that is not in the
@@ -1107,7 +1120,9 @@ local NOT_THE_SOAKS_JOB: { [string]: boolean } = {
 	pushObjectives = true,
 }
 
-for _, path in { "putThroughTheSilentLine", "takeWhoeverIsHere" } do
+-- R110: the dispatch is no longer copied into the soak -- both call it.
+check("the soak runs the server's own dispatch", string.find(soakCode, ":putThrough(", 1, true) ~= nil)
+for _, path in { "takeWhoeverIsHere" } do
 	local body = string.match(serverCode, `local function {path}%(%).-` .. NL .. "end") or ""
 	check(`(guard) read the server's '{path}'`, #body > 0)
 

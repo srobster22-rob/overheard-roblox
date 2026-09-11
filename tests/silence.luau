@@ -403,6 +403,55 @@ local atDeadline = Silence.fill(0.5, 0, 0)
 check(`with no seconds left the bar is full, not NaN ({atDeadline})`, atDeadline == 1)
 check("past the deadline it is full too", Silence.fill(0.2, -3, 1) == 1)
 
+print("")
+print("putting through a silent line, RUN rather than grepped (R110)")
+
+do
+	local Pursuit = rt.require(rt.systems.Pursuit)
+	local Layout = rt.require(rt.shared.Layout)
+	local rooms = { board = Layout.boardCentre(), archive = Layout.archiveCentre() }
+	local order = { "board", "archive" }
+	local late = Config.SpeakEvery + 1
+	local function fresh()
+		local s = Supervisor.new()
+		s:watch(1, 0)
+		s:watch(2, 1)
+		return s, Pursuit.new(rooms, Layout.operatorPost())
+	end
+	local function isOverdue(s, id): boolean
+		return table.find(s:overdue(late), id) ~= nil
+	end
+	local inBoard = { x = rooms.board.x, z = rooms.board.z }
+
+	local s, p = fresh()
+	local who, news = s:putThrough(p, rooms, order, { [1] = inBoard }, late)
+	check("an idle Operator is sent to the silent player's room", who == 1 and p.targetName == "board")
+	check("...and that is announced", news == true)
+	check("...and the player is forgiven", not isOverdue(s, 1))
+
+	s, p = fresh()
+	p:sendTo("board")
+	who, news = s:putThrough(p, rooms, order, { [1] = inBoard }, late)
+	check("a trip already coming here answers the silence", who == 1 and not isOverdue(s, 1))
+	check("...but is not announced again", news == false)
+
+	s, p = fresh()
+	p:sendTo("archive")
+	check("(guard) the Operator is committed elsewhere", p.state == "approaching")
+	who, news = s:putThrough(p, rooms, order, { [1] = inBoard }, late)
+	check("a call that only queues calls nobody", who == nil and news == false)
+	check("...forgives nobody", isOverdue(s, 1))
+	check("...and leaves the room waiting in pending", p.pending == "board")
+
+	s, p = fresh()
+	who = s:putThrough(p, rooms, order, { [1] = Layout.spawn(), [2] = inBoard }, late)
+	check("a silent player in the corridor is passed over for the next", who == 2 and isOverdue(s, 1))
+
+	s, p = fresh()
+	who = s:putThrough(p, rooms, order, { [2] = inBoard }, late)
+	check("a player with no body is skipped, not forgiven", who == 2 and isOverdue(s, 1))
+end
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

@@ -240,29 +240,10 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 			})
 		end
 
-		-- `putThroughTheSilentLine`, as the server runs it on every beat.
+		-- R110: the server's own dispatch, not a copy of it.
 		if round:isPlaying() then
-			for _, userId in supervisor:overdue(now) do
-				local at = standing[userId]
-				if not at then
-					continue
-				end
-				local found = false
-				for _, name in Config.Rooms do
-					local centre = rooms[name]
-					if centre and Layout.inRoom(centre, at) then
-						found = true
-						local _, onItsWay = pursuit:sendTo(name)
-						if onItsWay then
-							supervisor:called(userId, now)
-							report.silenceCalls += 1
-						end
-						break
-					end
-				end
-				if found then
-					break
-				end
+			if supervisor:putThrough(pursuit, rooms, Config.Rooms, standing, now) then
+				report.silenceCalls += 1
 			end
 		end
 
@@ -639,40 +620,29 @@ local function silentGroup(ticks: number, seed: number): (number, number, boolea
 		-- The dispatch is the server's, in miniature: everyone stands in a room,
 		-- so the longest-quiet player's room is where it is sent.
 		if round:isPlaying() then
-			-- `putThroughTheSilentLine`, as the server runs it: longest-quiet
-			-- first, the room the player is actually standing in, and nothing
-			-- forgiven unless the call really goes through (R55).
+			-- The corridor measurement (R54): overdue players standing where no
+			-- room can serve them. Counted beside the call, not by copying it.
 			for _, userId in supervisor:overdue(now) do
 				local at = standing[userId]
-				if not at then
-					continue
-				end
-				local found = false
-				for _, name in Config.Rooms do
-					local centre = rooms[name]
-					if centre and Layout.inRoom(centre, at) then
-						found = true
-						-- `alreadyComing` is the server's second gate: a trip
-						-- already under way answers this silence, so the player
-						-- is forgiven but nothing new is announced (R55).
-						local alreadyComing = pursuit.targetName == name
-						local _, onItsWay = pursuit:sendTo(name)
-						if onItsWay then
-							supervisor:called(userId, now)
-							calls += 1
-							if not alreadyComing then
-								announced += 1
-							end
+				if at then
+					local inRoom = false
+					for _, name in Config.Rooms do
+						if rooms[name] and Layout.inRoom(rooms[name], at) then
+							inRoom = true
 						end
-						break
+					end
+					if not inRoom then
+						unreachable += 1
 					end
 				end
-				if found then
-					break
+			end
+			-- R110: the server's own dispatch, not a copy of it.
+			local called, announce = supervisor:putThrough(pursuit, rooms, Config.Rooms, standing, now)
+			if called then
+				calls += 1
+				if announce then
+					announced += 1
 				end
-				-- In the corridor: no room to send anything to, so this player's
-				-- silence goes unanswered and the next overdue player is tried.
-				unreachable += 1
 			end
 		end
 
