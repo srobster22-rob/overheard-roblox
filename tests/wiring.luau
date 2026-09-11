@@ -1556,6 +1556,17 @@ local AFTER_THE_ROUND: { [string]: boolean } = {
 -- collected only two and found THREE strings while the client shows six -- the
 -- coverage guard below caught that rather than letting a narrow sweep pass.
 local clientRaw = fs.readFile("src/client/init.client.luau")
+
+-- R118. A round is lost two ways (Lifecycle.nobodyCanWin: everyone taken, OR
+-- nobody still free can finish), and the server sends only "lost". The text
+-- the client shows for it must be true of both, so it may not claim everyone
+-- was taken.
+local lostText = string.match(clientRaw, NL .. '%s*lost = "([^"]+)"')
+check(`(guard) found the loss text ({lostText or "none"})`, lostText ~= nil)
+check(
+	"the loss text does not claim everyone was taken",
+	lostText ~= nil and not string.find(string.lower(lostText :: string), "everyone", 1, true)
+)
 local displayed: { [string]: boolean } = {}
 for text in string.gmatch(clientRaw, 'label%([%w_.]+, "([^"]+)"') do
 	displayed[text] = true

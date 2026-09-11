@@ -411,7 +411,12 @@ overNext.Size = UDim2.new(1, -16, 0, 28)
 
 local OUTCOME_TEXT = {
 	won = "The board was restored.",
-	lost = "Everyone was put on the line.",
+	-- R118: true of BOTH losses. Since R48 a round is also lost when nobody
+	-- still free can finish, with players not on the line, and "Everyone was
+	-- put on the line" told them something false. The server sends only
+	-- "lost", so this must not claim which kind. Kept free of secret words so
+	-- the displayed-text leak scan needs no exemption for it.
+	lost = "Nobody left free could finish it.",
 }
 
 local function onPhase(state: { playing: boolean, outcome: string?, number: number })
