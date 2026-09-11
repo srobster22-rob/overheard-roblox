@@ -600,6 +600,52 @@ do
 	check("a codeword sitting EXACTLY on ActThreshold is still understood", acted == 1)
 end
 
+print("")
+print("the loss condition, RUN rather than grepped (R108)")
+
+-- R108. This rule lived in init.server, where the suite could only grep it; a
+-- sweep flipped every clause of the game's loss condition without a failure.
+do
+	local function setup(seenBy: { number })
+		local b = Objectives.new()
+		local o = b:add("board", "jack_number", "Patch line to jack %s")
+		o.holder = seenBy[1]
+		for _, id in seenBy do
+			o.seenBy[id] = true
+		end
+		return b, o, Connected.new()
+	end
+
+	local b, _, l = setup({ 1 })
+	check("nobody present is not a loss", Lifecycle.nobodyCanWin({}, b, l) == false)
+
+	b, _, l = setup({ 1 })
+	l:connect(1, 0)
+	l:connect(2, 0)
+	check("everyone present taken is a loss", Lifecycle.nobodyCanWin({ 1, 2 }, b, l) == true)
+
+	local o
+	b, o, l = setup({ 1 })
+	o.solved = true
+	l:connect(1, 0)
+	l:connect(2, 0)
+	check("...unless the board is already won", Lifecycle.nobodyCanWin({ 1, 2 }, b, l) == false)
+
+	b, _, l = setup({ 1 })
+	l:connect(2, 0)
+	check("a survivor who has SEEN the only line is stranded: a loss", Lifecycle.nobodyCanWin({ 1, 2 }, b, l) == true)
+
+	b, _, l = setup({ 1 })
+	l:connect(2, 0)
+	check(
+		"(control) with someone able who has NOT seen it, play goes on",
+		Lifecycle.nobodyCanWin({ 1, 2, 3 }, b, l) == false
+	)
+
+	b, _, l = setup({ 1 })
+	check("a solo server nobody has touched does not lose and loop", Lifecycle.nobodyCanWin({ 1 }, b, l) == false)
+end
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

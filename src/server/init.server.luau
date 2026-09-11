@@ -148,21 +148,12 @@ end
 -- instantly and looping: a board nobody can finish with NOBODY connected is the
 -- dealing problem, which is the owner's filed solo question, not a round that
 -- play has stranded.
+--
+-- R108: the rule itself lives in `Lifecycle.nobodyCanWin`, where the headless
+-- suite can RUN it. Here it could only be grepped, and a mutation sweep of this
+-- file flipped every clause of the game's loss condition without one failure.
 local function endTheRoundIfNobodyCanWin(present: { number }): boolean
-	if #present == 0 or board:allSolved() then
-		return false
-	end
-	if line:allTaken(present) then
-		return true
-	end
-
-	local able: { number } = {}
-	for _, userId in present do
-		if not line:isConnected(userId) then
-			table.insert(able, userId)
-		end
-	end
-	return line:count() > 0 and not board:anyFinishable(able)
+	return Lifecycle.nobodyCanWin(present, board, line)
 end
 
 local function takeWhoeverIsHere()

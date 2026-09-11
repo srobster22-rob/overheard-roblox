@@ -88,4 +88,27 @@ function Lifecycle.restart(self: Round): boolean
 	return true
 end
 
+-- Has the group lost? Everyone present taken, OR nobody left able to finish
+-- anything (R48/R49; see the caller in init.server). `board` is an Objectives
+-- board and `line` a Connected line -- both pure, so this runs headlessly.
+-- `line:count() > 0` keeps a solo server from losing instantly and looping: a
+-- board nobody can finish with NOBODY connected is the dealing problem (the
+-- owner's filed solo question), not a round that play has stranded.
+function Lifecycle.nobodyCanWin(present: { number }, board: any, line: any): boolean
+	if #present == 0 or board:allSolved() then
+		return false
+	end
+	if line:allTaken(present) then
+		return true
+	end
+
+	local able: { number } = {}
+	for _, userId in present do
+		if not line:isConnected(userId) then
+			table.insert(able, userId)
+		end
+	end
+	return line:count() > 0 and not board:anyFinishable(able)
+end
+
 return Lifecycle

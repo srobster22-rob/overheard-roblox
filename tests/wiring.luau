@@ -494,7 +494,17 @@ print("the round can be LOST, not only won")
 local serverSource = fs.readFile("src/server/init.server.luau")
 local serverCode = LuauCode.stripNonCode(serverSource)
 
-check("`allTaken` is actually called in the server", string.find(serverCode, "allTaken(", 1, true) ~= nil)
+-- R108: via Lifecycle.nobodyCanWin, which the server's losing rule calls (checked
+-- beside the rule below).
+local lifecycleSource = LuauCode.stripNonCode(fs.readFile("src/server/systems/Lifecycle.luau"))
+check(
+	"`allTaken` is actually called in the server",
+	string.find(serverCode, "allTaken(", 1, true) ~= nil
+		or (
+			string.find(lifecycleSource, "line:allTaken(", 1, true) ~= nil
+			and string.find(serverCode, "Lifecycle.nobodyCanWin(", 1, true) ~= nil
+		)
+)
 check("the loss says its own line", string.find(serverCode, "LINES.lost", 1, true) ~= nil)
 
 -- Three opposite events must not share one sentence. `completed` and `taken`
@@ -1346,7 +1356,15 @@ check("the phase is pushed when the round is won", string.find(solvedBlock, "pus
 -- 134 ticks of a stranded round still running after the Operator walked away --
 -- so it now lives in a function of its own that BOTH the capture path and the
 -- tick ask. These checks follow it there.
-local loseBody = string.match(serverCode, "local function endTheRoundIfNobodyCanWin%(.-" .. NL .. "end") or ""
+-- R108: the body moved to Lifecycle.nobodyCanWin (where tests/lifecycle RUNS
+-- it); these text checks follow it there.
+local lifecycleCode = LuauCode.stripNonCode(fs.readFile("src/server/systems/Lifecycle.luau"))
+local loseBody = string.match(lifecycleCode, "function Lifecycle.nobodyCanWin%(.-" .. NL .. "end") or ""
+local loseWrapper = string.match(serverCode, "local function endTheRoundIfNobodyCanWin%(.-" .. NL .. "end") or ""
+check(
+	"the server's losing rule is Lifecycle.nobodyCanWin",
+	string.find(loseWrapper, "Lifecycle.nobodyCanWin(present, board, line)", 1, true) ~= nil
+)
 -- R51. `Presence` must SPEAK through Shared.Hum, or the pitch difference is a
 -- module nobody consults and coming still sounds like going.
 local presenceCode = LuauCode.stripNonCode(fs.readFile("src/server/systems/Presence.luau"))
