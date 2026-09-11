@@ -8325,3 +8325,5 @@ about that panel lying to the people who read it.
 **Stage 0.** The OWNER.md Next list is empty. **Stage 1 IDEATE.** Shortlist: (a) close R87 plant C, the untested cross-concept merge; (b) leaf/leaves irregular plural; (c) the censor-star respelling. Pick (a). It is a live gap in shipped code, and (b) and (c) are tuning.
 
 **Stage 2 BUILD.** Test only: two secrets, with "blue wire" credited to one and "blue wires" to the other, must leave two coinages. **Stage 3 REVIEW.** heuristic 88/88. R87 plant C (drop the concept guard) now FAILs "a plural naming a DIFFERENT secret is its own coinage". Operator restored, sha256 10c0331b matched before and after. **Stage 4 SHIP.** selene 0/0, and the rojo build carries the guarded findCoinage. Full test.cmd: 0 FAIL.
+
+**Commit** `9ccbabf`
