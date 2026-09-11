@@ -89,12 +89,91 @@ function Lexicon.isStopword(word: string): boolean
 end
 
 -- Lowercase, strip punctuation, split on whitespace.
-function Lexicon.tokenize(text: string): { string }
+-- Digits players type in place of letters. Applied ONLY to a token that
+-- mixes letters and digits, so an all-digit token -- which is how every
+-- ANSWER in this game is written -- is never rewritten.
+local LEET: { [string]: string } = {
+	["0"] = "o",
+	["1"] = "i",
+	["3"] = "e",
+	["4"] = "a",
+	["5"] = "s",
+	["7"] = "t",
+}
+
+local function unleet(word: string): string
+	if not (string.find(word, "%a") and string.find(word, "%d")) then
+		return word
+	end
+	return (string.gsub(word, "%d", function(d: string): string
+		return LEET[d] or d
+	end))
+end
+
+-- A letter held for three or more characters ("jackkk", "exiiit") collapses to
+-- one. Real spellings never repeat a letter three times, so this cannot damage
+-- an ordinary word; a genuine double stretched out ("doooor") collapses to
+-- "dor" and is still missed, which is no worse than before.
+--
+-- Walked by hand rather than done with a pattern: Lua applies quantifiers only
+-- to single character classes, never to a back-reference, so "(%a)%1%1+" reads
+-- its "+" as a literal plus sign and matched nothing. The first version of
+-- this function was exactly that, and the probe caught it at 0 of 5.
+local function unstretch(word: string): string
 	local out: { string } = {}
-	for raw in string.gmatch(string.lower(text), "[%a%d']+") do
-		local word = string.gsub(raw, "'", "")
+	local i = 1
+	while i <= #word do
+		local ch = string.sub(word, i, i)
+		local j = i
+		while j < #word and string.sub(word, j + 1, j + 1) == ch do
+			j += 1
+		end
+		local run = j - i + 1
+		if run >= 3 and string.match(ch, "%a") then
+			table.insert(out, ch)
+		else
+			table.insert(out, string.sub(word, i, j))
+		end
+		i = j + 1
+	end
+	return table.concat(out)
+end
+
+-- R83. RESPELLINGS ARE NOT SHARED CONTEXT. Tokens are split on anything
+-- outside [%a%d'], so "j.a.c.k", "j-a-c-k" and "j a c k" all arrived as four
+-- one-letter tokens, and "j4ck" as a token matching nothing. Measured against
+-- the real Heuristic: 0 of 30 respelled giveaways understood, across every
+-- secret in the pool. GAME.md is explicit that what defeats the Operator is
+-- "shared context it was never present for" -- a stranger spacing a word out
+-- on their first round is not that, and once one player finds it the whole
+-- mechanic is optional.
+--
+-- Normalised HERE, in the one function every reader goes through, so plain
+-- matching, coinages and novel terms all see the same word.
+function Lexicon.tokenize(text: string): { string }
+	local raw: { string } = {}
+	for piece in string.gmatch(string.lower(text), "[%a%d']+") do
+		local word = string.gsub(piece, "'", "")
 		if #word > 0 then
-			table.insert(out, word)
+			table.insert(raw, word)
+		end
+	end
+
+	local out: { string } = {}
+	local i = 1
+	while i <= #raw do
+		-- A run of three or more single letters is one word spelled out. Two
+		-- is left alone: "u r" and "i a" are ordinary chat, not a spelling.
+		local j = i
+		while j <= #raw and string.match(raw[j], "^%a$") do
+			j += 1
+		end
+		if j - i >= 3 then
+			table.insert(out, unstretch(table.concat(raw, "", i, j - 1)))
+			i = j
+		else
+			table.insert(out, unstretch(unleet(raw[i])))
+			i += 1
 		end
 	end
 	return out

@@ -138,6 +138,31 @@ check("saying 'guys' five times does not burn it", not burnedGuy)
 local heard = Heuristic.understand({ speaker = speaker, text = "hey guys", at = 99 }, secrets, op.lexicon)
 check(`"hey guys" gives nothing away (conf {string.format("%.2f", heard.confidence)})`, heard.confidence < 0.6)
 
+print("")
+print("respellings are tokenized as the word they spell")
+
+-- R83. A giveaway spelled out ("j a c k", "j.a.c.k", "j-a-c-k"), leeted
+-- ("j4ck") or stretched ("jackkk") reached the Operator as tokens that matched
+-- nothing: 0 of 30 understood across the whole pool. GAME.md says only shared
+-- context defeats it, and a respelling is not that.
+local function toks(text: string): string
+	return table.concat(Lexicon.tokenize(text), "|")
+end
+check("spaced letters rejoin", toks("the j a c k") == "the|jack")
+check("dotted letters rejoin", toks("the j.a.c.k") == "the|jack")
+check("dashed letters rejoin", toks("the j-a-c-k") == "the|jack")
+check("leet unscrambles a token that mixes letters and digits", toks("j4ck") == "jack")
+check("a letter held three times collapses", toks("jackkk") == "jack")
+
+-- What must NOT change.
+check("an all-digit token -- every answer in this game -- is left alone", toks("jack 42 07 777") == "jack|42|07|777")
+check("two single letters are ordinary chat, not a spelling", toks("u r right") == "u|r|right")
+check("a real double letter survives", toks("door street book") == "door|street|book")
+check(
+	"(control) an ordinary sentence tokenizes exactly as before",
+	toks("meet me by the purple lantern") == "meet|me|by|the|purple|lantern"
+)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

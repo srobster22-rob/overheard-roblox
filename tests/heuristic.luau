@@ -333,6 +333,66 @@ check(
 	heatFor(opOnce, "gizmo") == heatFor(opTwice, "gizmo")
 )
 
+print("")
+print("a respelled giveaway is still a giveaway")
+
+-- R83, measured against the real reader. Before: 0 of 30. Reversal ("kcaj") is
+-- deliberately NOT normalised -- whether a word two players agree to read
+-- backwards is shared context is filed as a design question -- so it is kept
+-- here as a (recorded) row, not asserted either way.
+local respellPool = Round.dealSecrets(99)
+local respelled = { spaced = 0, dotted = 0, dashed = 0, leet = 0, stretched = 0 }
+local offered = 0
+for _, secret in respellPool do
+	local w = secret.plain[1]
+	offered += 1
+	local forms = {
+		spaced = table.concat(string.split(w, ""), " "),
+		dotted = table.concat(string.split(w, ""), "."),
+		dashed = table.concat(string.split(w, ""), "-"),
+		leet = (string.gsub(string.gsub(string.gsub(w, "a", "4"), "e", "3"), "o", "0")),
+		stretched = (string.gsub(w, "(%a)$", "%1%1%1")),
+	}
+	for kind, text in forms do
+		if #Heuristic.conveyed(utterance(`it's the {text}`), { secret }, {}) > 0 then
+			respelled[kind] += 1
+		end
+	end
+end
+check(`(guard) every secret in the pool was respelled ({offered})`, offered >= 5)
+for _, kind in { "spaced", "dotted", "dashed", "leet", "stretched" } do
+	check(`a {kind} giveaway is understood ({respelled[kind]} of {offered})`, respelled[kind] == offered)
+end
+
+-- The fix must not make the Operator hear things nobody said.
+local ordinaryChat = {
+	"i think u r right about that",
+	"a b testing is fun",
+	"gg wp",
+	"the answer is 42",
+	"room 404 is empty",
+	"go 2 the left",
+	"lol ok",
+	"i am so tired",
+	"wait for me",
+	"ha ha ha",
+	"hmmm let me think",
+	"its 3am",
+	"l8r",
+	"what is up",
+	"b4 we go",
+}
+local falseHits: { string } = {}
+for _, text in ordinaryChat do
+	if #Heuristic.conveyed(utterance(text), respellPool, {}) > 0 then
+		table.insert(falseHits, text)
+	end
+end
+check(`ordinary chat is not mistaken for a giveaway ({#falseHits} of {#ordinaryChat})`, #falseHits == 0)
+if #falseHits > 0 then
+	print(`        misheard: {table.concat(falseHits, " / ")}`)
+end
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

@@ -201,3 +201,9 @@ both sides. Full detail for each is in LOOP_LOG.md at the round named.
 - **R77 - `Layout.reach()` and `Layout.cornerDistance()` have no production
   caller** (superseded by room-based capture, R23). Delete, keep as a
   documented primitive, or repurpose for a future entity.
+- **R83 - does a word read backwards count as shared context?** Players can no
+  longer dodge the Operator by spelling a giveaway out (`j a c k`), leeting it
+  (`j4ck`) or stretching it (`jackkk`); those were beating it 30 times out of
+  30. Reversal (`kcaj`) was left alone on purpose: it is closer to a cipher two
+  players agree on than to a typo. Catch it too, or leave it as a trick a group
+  can discover?

@@ -7935,3 +7935,101 @@ is the rule.
 clean, full suite green and identical to R81's counts.
 
 **Commit** `9aed935`
+
+
+## R83 — the Operator can be beaten by typing "j a c k"
+
+**Stage 0.** `OWNER.md` `## Next` still empty. All filed questions untouched.
+
+**Stage 1 — probing the core mechanic with input as players actually type it.**
+Two probes against the real `Heuristic.conveyed`, every secret in the pool.
+
+*Ordinary variation is handled.* `THE JACK`, `the jack!!!`, `the jack's over
+there`, `jack?`, `the jacks`, `the...jack`, `"jack"`, `the jack🙂`, `thé jack`:
+all **understood**. No defect there.
+
+*Trivial obfuscation is not.* Five secrets × six respellings:
+
+| respelling | example | result |
+|---|---|---|
+| spaced | `j a c k` | missed ×5 |
+| dotted | `j.a.c.k` | missed ×5 |
+| dashed | `j-a-c-k` | missed ×5 |
+| leet | `j4ck`, `3xit`, `br34k3r` | missed ×5 |
+| stretched | `jackkk` | missed ×5 |
+| reversed | `kcaj` | missed ×5 |
+
+**Caught 0 of 30.** `GAME.md`: the Operator "understands synonyms, paraphrase,
+and circumlocution," and "what defeats it is **shared context it was never
+present for**." Spacing a word out is not shared context — a stranger can do it
+on their first round, and once one player finds it the whole mechanic is
+optional. This is the design bible's own rule, not a new decision.
+
+The cause is one line: `Lexicon.tokenize` splits on anything outside
+`[%a%d']`, so `j.a.c.k` becomes four one-letter tokens, and `j4ck` is a token
+that matches nothing.
+
+1. *(picked)* **Normalise respellings inside `Lexicon.tokenize`**, so every
+   reader (plain matching, coinages, novel terms) gets the same fix: rejoin runs
+   of three or more single letters, un-leet tokens that mix letters and digits,
+   and collapse a letter repeated three or more times.
+2. **Reversal is filed, not fixed.** `kcaj` is closer to a cipher two players
+   agree on than to a respelling. Whether it counts as shared context is a
+   design call.
+3. R78's open list is otherwise unchanged.
+
+**Stage 2 — the fix.** `Lexicon.tokenize` now normalises before any reader sees
+a token: a run of three or more single letters is joined into one word; a token
+that mixes letters and digits is un-leeted (`0 1 3 4 5 7` → `o i e a s t`); a
+letter repeated three or more times collapses to one. All-digit tokens are never
+touched, which matters because every ANSWER in this game is written in digits.
+Two single letters (`u r`) are left as ordinary chat.
+
+*A defect in my own first version, caught by the probe.* The collapse was
+written `string.gsub(word, "(%a)%1%1+", "%1")`. Lua applies quantifiers only to
+single character classes and never to a back-reference, so the `+` was matched
+as a literal plus sign and the pattern never fired: stretched giveaways stayed
+at **0 of 5** after the "fix". It is now a plain loop, and plant B below
+restores the broken pattern to prove the test sees the difference.
+
+**Stage 3 — proof.** 9 checks in `tests/lexicon.luau` (each respelling
+tokenizes as its word; answers, two-letter chat, real double letters and an
+ordinary sentence are unchanged). 7 in `tests/heuristic.luau` against the real
+reader, derived from the live pool: each of five respellings understood for
+every secret, and **15 lines of ordinary chat produce 0 false positives**
+("i think u r right", "the answer is 42", "room 404", "b4 we go", "l8r", ...).
+
+| plant | what failed |
+|---|---|
+| the pre-R83 tokenizer | all five respelling checks, `(0 of 5)` each |
+| `unstretch` back to the unquantifiable pattern | `a letter held three times collapses`, `a stretched giveaway is understood (0 of 5)` |
+| leet applied to every token, answers included | `an all-digit token ... is left alone`, and an older check, `keeps digits` |
+
+Restored from byte-copy backup; sha256 `95051461…1ccab0ba8f`.
+
+**Verified in the product, not merely the source.** Same 30-giveaway
+measurement, before and after:
+
+| respelling | before | after |
+|---|---|---|
+| spaced / dotted / dashed | 0/5 each | **5/5** each |
+| leet | 0/5 | **5/5** |
+| stretched | 0/5 | **5/5** |
+| reversed (filed) | 0/5 | 0/5 |
+| **total** | **0 of 30** | **25 of 30** |
+
+Both `unleet` and `unstretch` are present in the Rojo-built place file.
+
+**Stage 4 — ship.** `stylua` clean, `selene src` 0/0, `rojo build` clean, full
+suite **green**: lexicon **31**, heuristic **56**, operator ok, objectives 122,
+pursuit 104, round 61, config 63, wiring 354, connected 32, ordering 4,
+heat 20, layout 110, lifecycle 90, hud 26, readout 36, soak 42, hum 29, log 18,
+silence 62, lexiconsave 28.
+
+**Filed:** reversal, added to `OWNER.md`'s open questions as R78 said the next
+filed question should be.
+
+*Not claimed:* that no respelling beats the Operator. Mixed forms (`j 4 c k`,
+`jaaack` with a genuine double collapsed too far), homophones (`jak`) and
+per-letter substitution beyond the six digits all still get through. This
+closes the five that need no skill at all.
