@@ -189,8 +189,8 @@ Write in plain English. One item per line. Top item goes first.
 > roughly in order of value:
 > 1. **A first Studio playtest** (blocked on this machine): does the world
 >    build, are parts anchored, and above all how does it FEEL.
-> 2. **R93 + R122**: may the Operator say "number", and may stations be
->    labelled with their own secret word? One design question, really.
+> 2. **R93**: may the Operator say "number"? (Its sibling R122, the station
+>    labels, was answered: renamed in R126.)
 > 3. **R85 vocabulary breadth**: how wide the word net should be (it gates the
 >    un- prefix, irregular verbs and compound words).
 > Anything you write under "## Next" above outranks all of this.
@@ -266,12 +266,10 @@ both sides. Full detail for each is in LOOP_LOG.md at the round named.
   two as the ONLY lines that give anything away, so no new line can add one
   unnoticed.
 
-- **R122: the stations are labelled with the words you must not say.** The
-  prompt over each station reads "Directory", "Switchboard" and "Breaker", and
-  each of those is plain language for its own secret: a player who reads the
-  label aloud gives that secret away. It may be the point (the game names the
-  thing and dares you not to say it) or an oversight; the verbs ("Read",
-  "Patch", "Throw") are clean. Keep the labels, or rename them to something
-  that does not give the secret away? A test pins these three as the only
-  labels that convey anything, so no new one can add a giveaway unnoticed.
-  Same family as R93 (the Operator saying "number").
+- **R122: ANSWERED (2026-09-14) -- rename them. Done in R126.** The prompts
+  that read "Directory", "Switchboard" and "Breaker" each gave their own
+  secret away when read aloud. They are now "Card Index", "Exchange Desk" and
+  "Cutoff" (verbs unchanged: Read, Patch, Throw), each checked clean against
+  the Operator's vocabulary, and the test no longer allows ANY label to give a
+  secret away. Prefer different words? Any name works as long as
+  `tests/wiring.luau` stays green.

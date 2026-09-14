@@ -1674,22 +1674,17 @@ check(`no shared display text gives a concept away ({table.concat(sharedLeaks, "
 for name in TITLE_NEVER_SHOWN do
 	check(`the exempt title '{name}' really does convey something (or drop the exemption)`, #saidAloud(name) > 0)
 end
--- R122. The station prompts are displayed text too: World builds each with
+-- R122/R126. The station prompts are displayed text too: World builds each with
 -- ObjectText = the station's name and ActionText = the verb, shown over the
--- station to anyone near it. Measured: all three NAMES convey their own secret
--- ("Directory", "Switchboard" -> jack, "Breaker"); every verb is clean. Whether
--- the game may label a station with the very word you must not say is FILED for
--- the owner (OWNER.md, R122) -- as with the Operator's own "number" (R93),
--- these are pinned as the only exceptions and must stay real, and nothing else
--- a prompt shows may convey anything.
+-- station to anyone near it. R122 found all three names conveyed their own
+-- secret ("Directory", "Switchboard" -> jack, "Breaker") and filed it; the owner
+-- ruled a label must not give its secret away, so R126 renamed them and there
+-- are NO exemptions: no name and no verb a prompt shows may convey anything.
 local worldRaw = fs.readFile("src/server/systems/World.luau")
-local LABELS_THE_OWNER_DECIDES: { [string]: boolean } = { Directory = true, Switchboard = true, Breaker = true }
 local promptCount, promptLeaks = 0, {}
 for name, verb in string.gmatch(worldRaw, 'station%("([^"]+)", "([^"]+)"') do
 	promptCount += 1
-	if LABELS_THE_OWNER_DECIDES[name] then
-		check(`the filed station label '{name}' still names a secret`, #saidAloud(name) > 0)
-	elseif #saidAloud(name) > 0 then
+	if #saidAloud(name) > 0 then
 		table.insert(promptLeaks, name)
 	end
 	if #saidAloud(verb) > 0 then
@@ -1697,7 +1692,7 @@ for name, verb in string.gmatch(worldRaw, 'station%("([^"]+)", "([^"]+)"') do
 	end
 end
 check(`(guard) found the station prompts ({promptCount})`, promptCount >= 3)
-check(`no other prompt text gives a concept away ({table.concat(promptLeaks, " | ")})`, #promptLeaks == 0)
+check(`no station prompt gives a concept away ({table.concat(promptLeaks, " | ")})`, #promptLeaks == 0)
 
 check(
 	"...and the keypad's title really is replaced on every open",

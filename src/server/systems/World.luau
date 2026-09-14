@@ -181,13 +181,15 @@ function World.build(): Built
 	local stationOffset, breakerOffset = Layout.stationOffset(), Layout.breakerOffset()
 	local readerAt = recordsOrigin + Vector3.new(stationOffset.x, 4, stationOffset.z)
 	local boardAt = boardOrigin + Vector3.new(stationOffset.x, 4, stationOffset.z)
-	local readerPrompt = station("Directory", "Read", readerAt, folder)
-	local boardPrompt = station("Switchboard", "Patch", boardAt, folder)
+	-- Labels are shown over each station, so none may name a secret (R126: the
+	-- owner ruled "Directory", "Switchboard" and "Breaker" gave theirs away).
+	local readerPrompt = station("Card Index", "Read", readerAt, folder)
+	local boardPrompt = station("Exchange Desk", "Patch", boardAt, folder)
 	-- The breaker sits in the RECORDS room, deliberately opposite the board.
 	-- With both act-stations in one room the whole group just camps there and
 	-- the corridor stops being a cost; one at each end forces the walk.
 	local breakerAt = recordsOrigin + Vector3.new(breakerOffset.x, 4, breakerOffset.z)
-	local breakerPrompt = station("Breaker", "Throw", breakerAt, folder)
+	local breakerPrompt = station("Cutoff", "Throw", breakerAt, folder)
 
 	-- The exchange is dark. Players get just enough to move.
 	Lighting.Ambient = Color3.fromRGB(18, 16, 14)
