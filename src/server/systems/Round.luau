@@ -85,7 +85,10 @@ local STATIONS: { Station } = {
 	{
 		id = "breaker",
 		concept = "breaker",
-		prompt = "Breaker %s tripped. Someone has to throw it.",
+		-- R127: not even this station's own concept. The holder reads this aloud
+		-- to whoever throws it, and "Breaker %s tripped" handed the Operator the
+		-- word; it matches the station label "Cutoff" (R126) instead.
+		prompt = "Cutoff %s dropped. Someone has to throw it back.",
 		actionText = "Throw",
 	},
 }

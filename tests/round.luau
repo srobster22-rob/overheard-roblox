@@ -188,6 +188,11 @@ local livePool = Round.dealSecrets(99)
 check(`(guard) the whole pool is in play ({#livePool} concepts)`, #livePool >= 3)
 
 local speaker = { UserId = 1 } :: any
+-- R127. Stations whose prompt may convey NOTHING, not even their own concept:
+-- the owner ruled the breaker's instruction must not name its secret, since the
+-- holder reads it aloud ("Breaker 47 tripped" handed the Operator the word).
+local PROMPT_SAYS_NOTHING: { [string]: boolean } = { breaker = true }
+local silentSwept = 0
 local stationCount = 0
 for _, station in Round.STATIONS do
 	stationCount += 1
@@ -208,11 +213,34 @@ for _, station in Round.STATIONS do
 		#strangers == 0
 	)
 
+	if PROMPT_SAYS_NOTHING[station.id] then
+		silentSwept += 1
+		local any: { string } = {}
+		for _, reading in conveyed do
+			table.insert(any, reading.concept :: string)
+		end
+		check(
+			`'{station.id}' prompt gives away nothing at all, not even its own ({if #any == 0
+				then "none"
+				else table.concat(any, ", ")})`,
+			#any == 0
+		)
+	end
+
 	-- The substitution must be exercised, or a prompt whose giveaway sits in the
 	-- number would slip through untested.
 	check(`(guard) '{station.id}' has a number substituted in`, string.find(spoken, "47", 1, true) ~= nil)
 end
 check(`(guard) stations were swept ({stationCount})`, stationCount >= 2)
+check(`(guard) every say-nothing station exists and was swept ({silentSwept})`, silentSwept == 1)
+check(
+	"(control) the old breaker wording really did give the breaker away",
+	#Heuristic.conveyed(
+			{ speaker = speaker, text = "Breaker 47 tripped. Someone has to throw it.", at = 1 },
+			livePool,
+			{}
+		) > 0
+)
 
 -- The control: the words that WERE in that prompt really are dangerous, so the
 -- sweep above is not passing because the reader is deaf.
