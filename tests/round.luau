@@ -302,23 +302,22 @@ end
 print("")
 print("the Operator's own lines give nothing away")
 
--- R93. A player echoing the monster ("number, please?") is chat like any
--- other, and nothing scanned Round.LINES. Two lines convey the jack today and
--- are FILED for the owner (bait or accident, OWNER.md). Every other line must
--- stay clean, and the two exemptions must stay real.
+-- R93/R129. A player echoing the monster is chat like any other, and nothing
+-- scanned Round.LINES. R93 found `greeting` ("Number, please.") and `givingUp`
+-- ("I'll try that number again later.") conveyed the jack and filed them; the
+-- owner ruled they must not, so R129 reworded both and there are NO exemptions.
 local Heuristic = rt.require(rt.systems.Heuristic)
-local SAYS_ITS_WORD: { [string]: boolean } = { greeting = true, givingUp = true }
 local lineCount = 0
 for key, line in Round.LINES do
 	lineCount += 1
 	local gives = Heuristic.conveyed({ speaker = { UserId = 1 }, text = line, at = 0 } :: any, all, {})
-	if SAYS_ITS_WORD[key] then
-		check(`the filed exemption '{key}' still names a secret`, #gives > 0)
-	else
-		check(`the Operator's '{key}' line gives nothing away`, #gives == 0)
-	end
+	check(`the Operator's '{key}' line gives nothing away`, #gives == 0)
 end
 check(`(guard) every line was scanned ({lineCount})`, lineCount >= 10)
+check(
+	"(control) the old greeting really did give the jack away",
+	#Heuristic.conveyed({ speaker = { UserId = 1 }, text = "Number, please.", at = 0 } :: any, all, {}) > 0
+)
 
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then

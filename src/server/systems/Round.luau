@@ -149,7 +149,9 @@ end
 -- The Operator's whole vocabulary of spoken lines. It is never threatening.
 -- Politeness is the instrument.
 Round.LINES = {
-	greeting = "Number, please.",
+	-- R129: neither this nor `givingUp` may say "number" -- a player quoting the
+	-- Operator gave it the jack. The owner ruled that out.
+	greeting = "Operator. Go ahead, please.",
 	-- Said to the player it just took. Polite, procedural, and the worst thing
 	-- it could say: you are on the line now, and it is holding it.
 	onTheLine = "Hold the line, please.",
@@ -157,7 +159,7 @@ Round.LINES = {
 	-- is the keypad's private rejection and reusing it here would repeat exactly
 	-- the collision R10 and R13 each had to unpick -- two unrelated events
 	-- rendering as one line.
-	givingUp = "I'll try that number again later.",
+	givingUp = "I'll try that call again later.",
 	-- Everyone present is on the line: the round is LOST. Distinct from
 	-- `completed` (won) and `taken` (it arrived) for the same reason those two
 	-- were split -- three different events must not share one sentence.

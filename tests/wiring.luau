@@ -648,11 +648,11 @@ check("(guard) found the chat handler", #chatBody > 0)
 check("...and it is the one that feeds the Operator (control)", string.find(chatBody, "operator:hear", 1, true) ~= nil)
 check("the Operator only listens while a round is live", string.find(chatBody, "round:isPlaying()", 1, true) ~= nil)
 
--- R42. The Operator's OWN lines contain plain giveaways -- "Number, please." is
--- its greeting, and `number` is plain language for `jack_number`. That is not a
--- defect ONLY because its speech is delivered by RemoteEvent and never routed
--- back through `hear`, so it cannot summon itself. That exemption has to earn
--- itself rather than be believed, so: chat is the only thing that feeds it.
+-- R42. The Operator's OWN lines once contained plain giveaways -- its greeting
+-- was "Number, please." until R129, and `number` is plain language for
+-- `jack_number`. Its speech must never be routed back through `hear` anyway,
+-- or any future line could summon it. That has to be proven rather than
+-- believed, so: chat is the only thing that feeds it.
 local fedFrom = 0
 local at = 1
 while true do

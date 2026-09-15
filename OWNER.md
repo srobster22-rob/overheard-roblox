@@ -189,8 +189,9 @@ Write in plain English. One item per line. Top item goes first.
 > roughly in order of value:
 > 1. **A first Studio playtest** (blocked on this machine): does the world
 >    build, are parts anchored, and above all how does it FEEL.
-> 2. **R93**: may the Operator say "number"? (Its sibling R122, the station
->    labels, was answered: renamed in R126.)
+> 2. ~~R93 + R122~~ answered: station labels renamed (R126), both station
+>    instructions reworded (R127-R128), the Operator's "number" lines reworded
+>    (R129). No on-screen text gives a secret away now.
 > 3. **R85 vocabulary breadth**: how wide the word net should be (it gates the
 >    un- prefix, irregular verbs and compound words).
 > Anything you write under "## Next" above outranks all of this.
@@ -257,14 +258,11 @@ both sides. Full detail for each is in LOOP_LOG.md at the round named.
   would make `support`, `report` and `airport` mean the jack. How wide the net
   is sets how hard the game is.
 
-- **R93: the Operator says "number" out loud.** `greeting` ("Number, please.")
-  and `givingUp` ("I'll try that number again later.") both convey the jack
-  secret if a player echoes them in chat, so a group quoting the monster moves
-  it to the board. It may be deliberate bait (the monster tempting you to say
-  its word), or it may be an accident. Your call: keep them as bait, or reword
-  them (e.g. "Go ahead, please." / "I'll try again later."). A test pins these
-  two as the ONLY lines that give anything away, so no new line can add one
-  unnoticed.
+- **R93: ANSWERED (2026-09-14) -- reword them. Done in R129.** `greeting`
+  ("Number, please.") and `givingUp` ("I'll try that number again later.")
+  gave the jack away when quoted. They are now "Operator. Go ahead, please."
+  and "I'll try that call again later.", checked clean, and the test no
+  longer allows ANY Operator line to give a secret away.
 
 - **R122: ANSWERED (2026-09-14) -- rename them. Done in R126.** The prompts
   that read "Directory", "Switchboard" and "Breaker" each gave their own
