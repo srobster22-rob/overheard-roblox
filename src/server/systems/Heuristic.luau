@@ -222,13 +222,33 @@ function Heuristic.novelTerms(utterance: Utterance, secrets: { Secret }): { stri
 	-- Everything contentful that is NOT already plain language for some secret
 	-- is a candidate coinage. The Operator does not understand these yet, but it
 	-- notices that they were said.
+	--
+	-- R130: a MULTI-word plain term is plain as a phrase, not word by word. Every
+	-- word of every term used to go into this set, which cost nothing while all
+	-- terms were single words. Once "phone line" and "take cover" joined the
+	-- pool, "line", "phone", "take" and "cover" could never be learned: "the red
+	-- line" said four times before a solve burned to 1.00 without them and to 0
+	-- with them, so a codeword built on any of those words could never burn. Only
+	-- the phrase itself is kept out now, by the same-phrase rule the matcher uses.
 	local plainStems: { [string]: boolean } = {}
+	local plainPhrases: { string } = {}
 	for _, secret in secrets do
 		for _, term in secret.plain do
-			for _, s in Lexicon.stemAll(Lexicon.tokenize(term)) do
-				plainStems[s] = true
+			local termStems = Lexicon.stemAll(Lexicon.tokenize(term))
+			if #termStems == 1 then
+				plainStems[termStems[1]] = true
+			elseif #termStems > 1 then
+				table.insert(plainPhrases, table.concat(termStems, " "))
 			end
 		end
+	end
+	local function isPlainPhrase(gram: string): boolean
+		for _, phrase in plainPhrases do
+			if Lexicon.samePhrase(gram, phrase) then
+				return true
+			end
+		end
+		return false
 	end
 
 	local novel: { string } = {}
@@ -249,7 +269,7 @@ function Heuristic.novelTerms(utterance: Utterance, secrets: { Secret }): { stri
 	for _, gram in Lexicon.ngrams(stems, 2) do
 		local a, b = string.match(gram, "^(%S+) (%S+)$")
 		if a and b and not (Lexicon.isStopword(a) and Lexicon.isStopword(b)) then
-			if not plainStems[a] and not plainStems[b] then
+			if not plainStems[a] and not plainStems[b] and not isPlainPhrase(gram) then
 				offer(gram)
 			end
 		end

@@ -18,15 +18,23 @@ local Round = {}
 -- `payload` MUST name a room that World.build actually returns, or Pursuit
 -- refuses the move and understanding has no visible effect. Only `board` and
 -- `archive` exist today; add rooms before adding payloads.
+--
+-- R130, the owner's answer to R85 (the middle net). The words and whole
+-- compounds players reached for when the plain ones were forbidden are plain
+-- now: "cable", "phone line", "circuit", "electrical", "doorway", "stairwell",
+-- "backdoor", "phonebook", "take cover", "crouch", "underneath". Left out on
+-- purpose: "run away", "wire" and a bare "line", the commonest panic chat, and
+-- any prefix/suffix matching ("support" is not the port). New words go at the
+-- END of a list: tests take `plain[1]` and `plain[2]` as each secret's own.
 local SECRET_POOL: { Secret } = {
 	{
 		concept = "jack_number",
-		plain = { "jack", "number", "socket", "port", "plug", "board", "switchboard" },
+		plain = { "jack", "number", "socket", "port", "plug", "board", "switchboard", "cable", "phone line" },
 		payload = "board",
 	},
 	{
 		concept = "breaker",
-		plain = { "breaker", "fuse", "fusebox", "power", "electric", "switch", "lever" },
+		plain = { "breaker", "fuse", "fusebox", "power", "electric", "switch", "lever", "circuit", "electrical" },
 		-- The Operator goes where the thing IS. The breaker panel is in the
 		-- records room, so understanding "breaker" sends it there — which is
 		-- also the room the reader is standing in.
@@ -34,17 +42,40 @@ local SECRET_POOL: { Secret } = {
 	},
 	{
 		concept = "exit",
-		plain = { "exit", "door", "out", "outside", "street", "leave", "escape", "stair" },
+		plain = {
+			"exit",
+			"door",
+			"out",
+			"outside",
+			"street",
+			"leave",
+			"escape",
+			"stair",
+			"doorway",
+			"stairwell",
+			"backdoor",
+		},
 		payload = "archive",
 	},
 	{
 		concept = "directory",
-		plain = { "directory", "address", "book", "listing", "ledger", "name" },
+		plain = { "directory", "address", "book", "listing", "ledger", "name", "phonebook" },
 		payload = "archive",
 	},
 	{
 		concept = "hiding",
-		plain = { "hide", "hiding", "closet", "locker", "cabinet", "under", "behind" },
+		plain = {
+			"hide",
+			"hiding",
+			"closet",
+			"locker",
+			"cabinet",
+			"under",
+			"behind",
+			"take cover",
+			"crouch",
+			"underneath",
+		},
 		payload = "archive",
 	},
 }

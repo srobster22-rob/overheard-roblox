@@ -767,6 +767,135 @@ check(
 	#Heuristic.conveyed(utterance("blue"), { intakePool[1] }, { longCoin :: any }) == 0
 )
 
+print("")
+print("the owner's middle net (R130)")
+
+-- R130, the owner's answer to R85: the paraphrases R85 measured slipping past
+-- the Operator are plain now, each heard as the concept it stands for (0 of
+-- these 11 before this round). No sentence holds any other plain word, so each
+-- is heard for its new term or not at all.
+local netPool = Round.dealSecrets(99)
+local function conceptsIn(text: string): { [string]: boolean }
+	local set: { [string]: boolean } = {}
+	for _, u in Heuristic.conveyed(utterance(text), netPool, {}) do
+		set[u.concept :: string] = true
+	end
+	return set
+end
+for _, case in
+	{
+		{ "jack_number", "grab the cable marked 47" },
+		{ "jack_number", "put the phone line through to 47" },
+		{ "breaker", "reset the circuit its 12" },
+		{ "breaker", "the electrical thing by the records" },
+		{ "exit", "meet me at the doorway" },
+		{ "exit", "everyone to the stairwell" },
+		{ "exit", "try the backdoor" },
+		{ "directory", "check the phonebook for her" },
+		{ "hiding", "take cover in here" },
+		{ "hiding", "crouch down and stay quiet" },
+		{ "hiding", "get underneath something" },
+	}
+do
+	check(`'{case[2]}' is heard as {case[1]}`, conceptsIn(case[2])[case[1]] == true)
+end
+
+-- The other edge of the net, which is the decision itself. "run away", "wire"
+-- and a bare "line" are the commonest panic chat and stay free; nothing is heard
+-- inside a longer word ("support" is not the port, "undercover" is not under);
+-- and each new term has a near miss here. Widening the net is the owner's call,
+-- and this list is what would change.
+local stillFree = {
+	"run",
+	"run away",
+	"the wire is loose",
+	"hold the line",
+	"take over the left side",
+	"take the cover off",
+	"my phone died and the line was long",
+	"the circus is in town",
+	"the doorbell rang",
+	"he went undercover",
+	"support the team",
+	"im on the phone",
+}
+local heardFree: { string } = {}
+for _, text in stillFree do
+	if next(conceptsIn(text)) ~= nil then
+		table.insert(heardFree, text)
+	end
+end
+check(`the words left out stay free and near misses convey nothing ({table.concat(heardFree, " | ")})`, #heardFree == 0)
+
+-- R130's cost, paid in the same round. "phone line" and "take cover" are the
+-- pool's first multi-word plain terms, and novelTerms kept EVERY word of every
+-- plain term out of the Lexicon. Measured before the fix: "the red line" said
+-- four times before a solve burned "red line" to 1.00 with the old pool and to 0
+-- with these words in it. Derived from the live pool, so the next phrase added
+-- is covered the day it lands.
+local singlePlain: { [string]: boolean } = {}
+local plainPhrases: { string } = {}
+for _, secret in netPool do
+	for _, term in secret.plain do
+		local termStems = Lexicon.stemAll(Lexicon.tokenize(term))
+		if #termStems == 1 then
+			singlePlain[termStems[1]] = true
+		elseif #termStems > 1 then
+			table.insert(plainPhrases, term)
+		end
+	end
+end
+check(`(guard) the live pool has multi-word plain terms ({#plainPhrases})`, #plainPhrases >= 2)
+
+local phraseOffered: { string } = {}
+local wordsOfPhrases: { [string]: boolean } = {}
+local phraseWords, alone, inCodeword = 0, 0, 0
+for _, term in plainPhrases do
+	local termStems = table.concat(Lexicon.stemAll(Lexicon.tokenize(term)), " ")
+	for _, text in { `check the {term}`, `check the {term}s` } do
+		for t in offered(text) do
+			if string.find(t, " ", 1, true) and Lexicon.samePhrase(t, termStems) then
+				table.insert(phraseOffered, text)
+			end
+		end
+	end
+	for _, word in Lexicon.tokenize(term) do
+		local s = Lexicon.stem(word)
+		wordsOfPhrases[s] = true
+		if Lexicon.isStopword(s) or #s <= 2 or singlePlain[s] then
+			continue
+		end
+		phraseWords += 1
+		if offered(`the {word}`)[s] then
+			alone += 1
+		end
+		if offered(`the zorpy {word}`)[`{Lexicon.stem("zorpy")} {s}`] then
+			inCodeword += 1
+		end
+	end
+end
+check(
+	`no plain phrase is offered as a coinage, even in the plural ({table.concat(phraseOffered, " | ")})`,
+	#phraseOffered == 0
+)
+check(`(guard) the plain phrases have learnable words ({phraseWords})`, phraseWords >= 4)
+check(`every word of a plain phrase is still offered on its own ({alone} of {phraseWords})`, alone == phraseWords)
+check(`...and inside a codeword ({inCodeword} of {phraseWords})`, inCodeword == phraseWords)
+
+check("(guard) 'line' is a word of a plain phrase in the live pool", wordsOfPhrases[Lexicon.stem("line")] == true)
+local burnOp = Operator.new(netPool)
+for t = 1, 4 do
+	burnOp:hear({ speaker = { UserId = 1 } :: any, text = "the red line", at = t })
+	burnOp:credit("jack_number", t)
+end
+local redLine = 0
+for _, c in burnOp:snapshot() do
+	if c.phrase == "red line" then
+		redLine = c.heat
+	end
+end
+check(`a codeword on a phrase word still burns: 'the red line' x4 before a solve ({redLine})`, redLine == 1)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

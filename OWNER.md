@@ -192,8 +192,8 @@ Write in plain English. One item per line. Top item goes first.
 > 2. ~~R93 + R122~~ answered: station labels renamed (R126), both station
 >    instructions reworded (R127-R128), the Operator's "number" lines reworded
 >    (R129). No on-screen text gives a secret away now.
-> 3. **R85 vocabulary breadth**: how wide the word net should be (it gates the
->    un- prefix, irregular verbs and compound words).
+> 3. ~~R85~~ answered: the middle net (R130). 11 of R85's 13 missed paraphrases
+>    are plain now; `run away`, `wire` and a bare `line` stay free by choice.
 > Anything you write under "## Next" above outranks all of this.
 
 Nothing below blocks the build; each is either a feel question Studio would
@@ -249,14 +249,16 @@ both sides. Full detail for each is in LOOP_LOG.md at the round named.
   30. Reversal (`kcaj`) was left alone on purpose: it is closer to a cipher two
   players agree on than to a typo. Catch it too, or leave it as a trick a group
   can discover?
-- **R85 - how wide should the Operator's vocabulary be?** 13 of 37 natural
-  paraphrases still get through because the words are not in the plain lists at
-  all: `cable`, `wire`, `phone line`, `circuit`, `take cover`, `crouch`, `run
-  away`, and compounds like `doorway`, `stairwell`, `backdoor`, `phonebook`.
-  Adding them is easy; the catch is that `run`, `line` or `wire` would make the
-  most common panic chat a giveaway, and matching compounds by prefix/suffix
-  would make `support`, `report` and `airport` mean the jack. How wide the net
-  is sets how hard the game is.
+- **R85: ANSWERED (2026-09-15) -- the middle net. Done in R130.** Asked in
+  chat as middle / wide / leave it; the question was interrupted and you said
+  "continue", taken as the recommended middle. Plain now: `cable`, `phone line`,
+  `circuit`, `electrical`, `doorway`, `stairwell`, `backdoor`, `phonebook`,
+  `take cover`, `crouch`, `underneath` (11 of R85's 13 misses heard, from 0).
+  Left free on purpose: `run away`, `wire` and a bare `line`, with no
+  prefix/suffix matching (`support` is still not the port). Want the wide net,
+  or a word back out? Each is one word in `Round.luau`; `tests/heuristic.luau`
+  lists what stays free. Not decided by this: the un- prefix (`unplug`) and
+  irregular verbs (`left`, `took cover`), which would need word lists.
 
 - **R93: ANSWERED (2026-09-14) -- reword them. Done in R129.** `greeting`
   ("Number, please.") and `givingUp` ("I'll try that number again later.")
