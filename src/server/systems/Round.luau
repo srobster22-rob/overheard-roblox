@@ -73,13 +73,15 @@ local STATIONS: { Station } = {
 	{
 		id = "board",
 		concept = "jack_number",
-		-- No word here may give away a concept other than this station's own.
+		-- No word here may give away any concept, this station's own included.
 		-- "Line is OUT" did: `out` is plain language for `exit`, whose payload is
 		-- the ARCHIVE, so a holder reading their board instruction aloud sent the
 		-- Operator to the other room. That is not a rule anyone can learn -- the
 		-- punishment names a room the prompt was never about. `tests/round.luau`
 		-- asserts it against the live pool rather than trusting this comment.
-		prompt = "Line is dead. Patch it to jack %s.",
+		-- R128: nor may it name this station's own concept -- "Patch it to jack
+		-- %s" handed the Operator the jack when the holder read it out.
+		prompt = "A caller is waiting. Patch them through to %s.",
 		actionText = "Patch",
 	},
 	{

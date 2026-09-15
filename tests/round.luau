@@ -162,7 +162,7 @@ for name in builtRooms do
 end
 
 print("")
-print("a station's prompt never gives away somebody else's room")
+print("a station's prompt gives no concept away, not even its own")
 
 -- R41. The prompts are free text and nothing checked them against the words the
 -- Operator listens for. `board` read *"Line is out. Patch it to jack 47."* and
@@ -171,9 +171,10 @@ print("a station's prompt never gives away somebody else's room")
 -- That is not a rule anyone can learn: the punishment names a room the prompt
 -- was never about, and it lands on a teammate working there.
 --
--- A prompt conveying its OWN concept is left alone. Learning not to read your
--- line verbatim is the game; being punished for a concept you never mentioned
--- is not.
+-- R41 left a prompt conveying its OWN concept alone. The owner ruled otherwise
+-- (R127 breaker, R128 board): the holder reads the line aloud to a teammate, so
+-- a prompt that names its own secret hands the Operator the word. Every prompt
+-- must now convey NOTHING.
 
 local Heuristic = rt.require(rt.systems.Heuristic)
 
@@ -188,11 +189,6 @@ local livePool = Round.dealSecrets(99)
 check(`(guard) the whole pool is in play ({#livePool} concepts)`, #livePool >= 3)
 
 local speaker = { UserId = 1 } :: any
--- R127. Stations whose prompt may convey NOTHING, not even their own concept:
--- the owner ruled the breaker's instruction must not name its secret, since the
--- holder reads it aloud ("Breaker 47 tripped" handed the Operator the word).
-local PROMPT_SAYS_NOTHING: { [string]: boolean } = { breaker = true }
-local silentSwept = 0
 local stationCount = 0
 for _, station in Round.STATIONS do
 	stationCount += 1
@@ -200,46 +196,40 @@ for _, station in Round.STATIONS do
 
 	-- Every concept the sentence conveys, via the same reader the Operator uses.
 	local conveyed = Heuristic.conveyed({ speaker = speaker, text = spoken, at = 1 }, livePool, {})
-	local strangers: { string } = {}
+	local given: { string } = {}
 	for _, reading in conveyed do
-		if reading.concept ~= station.concept then
-			table.insert(strangers, reading.concept :: string)
-		end
+		table.insert(given, reading.concept :: string)
 	end
 	check(
-		`'{station.id}' gives away nothing but its own concept ({if #strangers == 0
+		`'{station.id}' prompt gives away nothing at all, not even its own ({if #given == 0
 			then "none"
-			else table.concat(strangers, ", ")})`,
-		#strangers == 0
+			else table.concat(given, ", ")})`,
+		#given == 0
 	)
-
-	if PROMPT_SAYS_NOTHING[station.id] then
-		silentSwept += 1
-		local any: { string } = {}
-		for _, reading in conveyed do
-			table.insert(any, reading.concept :: string)
-		end
-		check(
-			`'{station.id}' prompt gives away nothing at all, not even its own ({if #any == 0
-				then "none"
-				else table.concat(any, ", ")})`,
-			#any == 0
-		)
-	end
 
 	-- The substitution must be exercised, or a prompt whose giveaway sits in the
 	-- number would slip through untested.
 	check(`(guard) '{station.id}' has a number substituted in`, string.find(spoken, "47", 1, true) ~= nil)
 end
 check(`(guard) stations were swept ({stationCount})`, stationCount >= 2)
-check(`(guard) every say-nothing station exists and was swept ({silentSwept})`, silentSwept == 1)
+
+-- Controls: the wordings the owner ruled out really did give their own secret
+-- away, so the sweep above is not passing because the reader is deaf to them.
+local function conveys(text: string, concept: string): boolean
+	for _, reading in Heuristic.conveyed({ speaker = speaker, text = text, at = 1 }, livePool, {}) do
+		if reading.concept == concept then
+			return true
+		end
+	end
+	return false
+end
 check(
 	"(control) the old breaker wording really did give the breaker away",
-	#Heuristic.conveyed(
-			{ speaker = speaker, text = "Breaker 47 tripped. Someone has to throw it.", at = 1 },
-			livePool,
-			{}
-		) > 0
+	conveys("Breaker 47 tripped. Someone has to throw it.", "breaker")
+)
+check(
+	"(control) the old board wording really did give the jack away",
+	conveys("Line is dead. Patch it to jack 47.", "jack_number")
 )
 
 -- The control: the words that WERE in that prompt really are dangerous, so the
