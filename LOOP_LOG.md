@@ -8669,3 +8669,13 @@ Verified: `lune run tools/playtest firsttimer 14 11`: 14/14 won, 44s rounds, cap
 Content: stations 2/5, rooms 2/5, entities 2/4, phases 1/4, outcomes 2/3, interactables 3/8, lines 10/16, concepts 5/8, plain terms 46/80.
 Decisions: D1, D2.
 Next: R133 is k=3 PLAYTEST (persona: returning player); R134 FIX = PT1 backlog #1 (a red codeword must bite); then EXPAND a third station with its own concept and room.
+
+
+## R133 · PLAYTEST · returning group and quiet group
+Pick: k=3 PLAYTEST, personas rotated from PT1's first-timers — why: cycle.
+Player notices: nothing (PLAYTEST).
+Built: PLAYTESTS.md PT2.
+Verified: `tools/playtest returning 14 23`: Operator moved in 1 round of 14 (round 9), 14/14 won. `tools/playtest quiet 14 5`: 0 lines understood, 0 captures, 0 Supervisor calls in 8.4 minutes, 14/14 won. PT1 #1 (red in round 4, hunted in round 9) reproduced on a second persona and seed.
+Content: unchanged.
+Decisions: none.
+Next: R134 FIX: a codeword the panel shows red must actually be hunted. Then EXPAND: third station with its own concept and room (PT2 #2).

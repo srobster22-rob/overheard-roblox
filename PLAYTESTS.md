@@ -1,5 +1,14 @@
 # PLAYTESTS — newest first. Run with `lune run tools/playtest <persona> <rounds> <seed>`.
 
+### PT2 · R133 · persona: returning group, then a quiet group · build 48502e2
+Session: `tools/playtest returning 14 23` (10.3 min) and `tools/playtest quiet 14 5` (8.4 min): 28 rounds in all. The returning group opens with a codeword; the quiet group says each codeword once per solve.
+Metrics: returning: won 14/14, the Operator moved in ONE round of 14 (round 9), 2 captures, 2 codeword swaps. Quiet: won 14/14, Operator understood 0 lines, captures 0, Supervisor calls 0: eight minutes with the monster standing at its post. Content seen 2/2 stations, 2/2 rooms, lines: greeting and completed only (quiet).
+Felt samey: everything. A group that never says a plain word has no opponent for 8 rounds out of 9; a quiet group has none at all. Every round is the same two asks in the same order of magnitude of time (36-44s).
+Confusing: the panel climbs (40, 48, 55, 63%!) and turns red and nothing happens for five more rounds; a returning player would conclude the panel is decoration.
+Broken: (1) PT1 #1 confirmed on a second persona and seed: red on the panel in round 4, first hunted in round 9. (2) One mention per solve is a complete, free, permanent defence (0 understood in 14 rounds). (3) The Supervisor cannot fire: no player is silent for 45s inside a 40s round, and a round restart resets every clock.
+Best moment: none for the quiet group. That is the finding.
+Backlog (ranked): 1. A red codeword must bite (FIX, R134). 2. The game needs pressure that does not depend on the group making a mistake: a longer round with more to do (third station, own room and concept) so the Supervisor's 45s can land. 3. A quiet group's single mention should still teach (credit by success count, not only recency-weighted heat). 4. Capture needs a cost. 5. A closing phase so rounds have an arc.
+
 ### PT1 · R132 · persona: first-timer group · build 2158fd0 + setup
 Session: 4 bots, 14 rounds, 10.3 simulated minutes (`tools/playtest firsttimer 14 11`). Round 1 in plain words, then one codeword per line, kept until the Operator came for it.
 Metrics: won 14/14, lost 0. Captures 4 (rounds 1 and 10 only). Operator understood 8 lines, 4 of them plain speech in round 1. Supervisor calls 0. Codeword swaps 2. A round lasts 44s. Content seen: 2/2 stations, 2/2 rooms, 8/10 Operator lines (never `lost`, never `traced`).
