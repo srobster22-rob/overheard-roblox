@@ -617,7 +617,7 @@ check("the tick is paced by a dial, not a literal", string.find(tickBody, "Confi
 check("the tick no longer forgets on its own clock", string.find(tickBody, "operator:decay", 1, true) == nil)
 check(
 	"forgetting is charged once per round instead",
-	string.find(serverCode, "operator:cool(Config.CoolPerRound)", 1, true) ~= nil
+	string.find(serverCode, "operator:coolRound(Config.CoolPerRound)", 1, true) ~= nil
 )
 
 -- R25. The room must be RELEASED, or capture-while-arrived (R24) becomes a

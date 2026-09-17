@@ -223,7 +223,9 @@ both sides. Full detail for each is in LOOP_LOG.md at the round named.
   **Correction (R132 playtest):** "4th round" is when the PANEL turns red. The
   round-start cool drops the word back under the line before it is next said,
   so the Operator first actually comes for it around its 9th round. Top of the
-  playtest backlog (PLAYTESTS.md PT1); being fixed in the next FIX round.
+  playtest backlog (PLAYTESTS.md PT1). **Fixed in R134:** a word that is red
+  and still being used no longer cools at the round start, so it is hunted the
+  next time it is said (round 5). Left unused for one round, it is safe again.
 - **R50-51's boolean-guards-hiding-a-degree family, including
   `anyFinishable`'s margin.** Several yes/no checks in the suite (is the round
   finishable, is the hum audible) may be hiding an unasked question of DEGREE

@@ -59,8 +59,12 @@ local Config = {
 	-- (0.30 gives 3, 0.34 gives 5). One mention a solve (0.225) never burns; a
 	-- third as the button is pressed (0.65) burns in the first round.
 	--
-	-- Known cost: a word the group retires is safe again when the next round
-	-- starts, not some seconds later mid-round. Anything it cools to zero leaves
+	-- R134: a word that is already understood AND was credited again this round
+	-- is exempt (`Operator.coolRound`), or red never bites: the first playtests
+	-- saw the panel red in round 4 and the Operator first come in round 9.
+	--
+	-- Known cost: a word the group retires is safe again after one whole round
+	-- unused, not some seconds later mid-round. Anything it cools to zero leaves
 	-- the register (`Operator.cool`), which is what keeps the panel small.
 	--
 	-- STILL NOT RECONCILED, and the owner's: GAME.md wants the Lexicon to persist

@@ -50,8 +50,8 @@ That is the whole feel of the game: your language decaying under you.
 > play: heat cooled per second, and a round took more out than one solve put in.
 > The owner's answer was to forget once per ROUND instead (`Config.CoolPerRound`).
 > A codeword the holder says about twice before each solve now works for three
-> rounds and is understood in its fourth, at any round pace; a word the group
-> retires is safe again the next round. It depends on how the group talks: said
+> rounds, turns red at its fourth solve, and brings the Operator the next time
+> it is said (R134); a word the group leaves unused for a round is safe again. It depends on how the group talks: said
 > once per solve it is never learned, said a third time as the button is pressed
 > it burns in its first round. Headless measurement only; how it feels is unplayed.
 

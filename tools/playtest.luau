@@ -253,7 +253,7 @@ while played < wantRounds do
 		board:reset()
 		line:clear()
 		operator:forgetObservations()
-		operator:cool(Config.CoolPerRound)
+		operator:coolRound(Config.CoolPerRound)
 		pursuit:sendHome(Layout.operatorPost())
 		supervisor:reset(now)
 		roomOf = { [1] = "board", [2] = "board", [3] = "archive", [4] = "archive" }

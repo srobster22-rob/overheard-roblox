@@ -494,7 +494,7 @@ local function beginRound()
 	operator:forgetObservations()
 	-- R131: the Operator forgets a little, once per round. The Lexicon goes out
 	-- to everyone at the end of this function either way.
-	operator:cool(Config.CoolPerRound)
+	operator:coolRound(Config.CoolPerRound)
 	-- Every clock starts again. R31: a player quiet through the eight-second
 	-- intermission must not be called in the first seconds of the round.
 	supervisor:reset(os.clock())

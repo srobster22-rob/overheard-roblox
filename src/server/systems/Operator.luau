@@ -33,6 +33,8 @@ export type Operator = typeof(setmetatable(
 		secrets: { Secret },
 		lexicon: { Coinage },
 		observations: { Observation },
+		-- Coinages credited since the last round boundary; see `coolRound`.
+		creditedSinceBoundary: { [Coinage]: boolean },
 		backend: Types.ComprehensionBackend,
 		onUnderstood: (concept: string, payload: string, confidence: number) -> ()?,
 		onBurned: (coinage: Coinage) -> ()?,
@@ -45,6 +47,7 @@ function Operator.new(secrets: { Secret }): Operator
 		secrets = secrets,
 		lexicon = {},
 		observations = {},
+		creditedSinceBoundary = {},
 		backend = Heuristic :: any,
 		onUnderstood = nil,
 		onBurned = nil,
@@ -154,6 +157,7 @@ function Operator.credit(self: Operator, concept: string, now: number)
 
 			local c = coinage :: Coinage
 			local wasBurned = c.heat >= 1
+			self.creditedSinceBoundary[c] = true
 			c.sightings += 1
 			c.heat = math.clamp(c.heat + Config.HeatPerCredit * recency, 0, 1)
 
@@ -234,6 +238,43 @@ function Operator.cool(self: Operator, amount: number): boolean
 			changed = true
 		end
 	end
+	return changed
+end
+
+-- The round boundary's forgetting (R134). Everything cools by `amount` EXCEPT a
+-- coinage that is already understood and was credited again since the last
+-- boundary: a word the group is still succeeding with stays understood.
+--
+-- R131 cooled everything, and the first playtests (PT1, PT2) showed what that
+-- cost: a codeword crossed the threshold at the solve in its fourth round, was
+-- cooled back under it seconds later at the restart, and so was safe every time
+-- it was actually SAID. The panel showed red from round 4; the Operator first
+-- came for the word in round 9. Red has to mean it is coming.
+--
+-- A word the group retires is not credited, so it cools like anything else and
+-- is safe again after a round of disuse. That is still the way back.
+function Operator.coolRound(self: Operator, amount: number): boolean
+	if amount <= 0 then
+		self.creditedSinceBoundary = {}
+		return false
+	end
+	local changed = false
+	for i = #self.lexicon, 1, -1 do
+		local c = self.lexicon[i]
+		if self.creditedSinceBoundary[c] and c.heat >= Config.ActThreshold then
+			continue
+		end
+		local cooled = math.max(0, c.heat - amount)
+		if cooled ~= c.heat then
+			c.heat = cooled
+			changed = true
+		end
+		if c.heat <= 0 then
+			table.remove(self.lexicon, i)
+			changed = true
+		end
+	end
+	self.creditedSinceBoundary = {}
 	return changed
 end
 

@@ -8679,3 +8679,13 @@ Verified: `tools/playtest returning 14 23`: Operator moved in 1 round of 14 (rou
 Content: unchanged.
 Decisions: none.
 Next: R134 FIX: a codeword the panel shows red must actually be hunted. Then EXPAND: third station with its own concept and room (PT2 #2).
+
+
+## R134 · FIX · a red codeword is hunted the next time it is said
+Pick: PT1/PT2 backlog #1 — why: the panel showed red from round 4 and the Operator first came in round 9; red was decoration.
+Player notices: the round after your codeword turns red, saying it brings the Operator; leave it unused for a round and it is safe again.
+Built: `Operator.coolRound` (a coinage that is understood and was credited since the last boundary skips that boundary's cooling; `creditedSinceBoundary` side table, the Coinage shape and save format untouched); server, soak and tools/playtest call it. Config, GAME.md, OWNER.md corrected.
+Verified: tests/lifecycle +3: "a codeword that went red in round 4 is hunted the next time it is said (round 5)", "...one the group retired for a round is safe to say again", "still understood in the round after it burned". Plant (exemption removed) FAILs the first by name, restored by sha256. Trace `tools/playtest firsttimer 14 11`: hunted in rounds 6 and 11 (codewords coined in rounds 2 and 7), swaps 2 -> 4, captures 4 -> 6; before the fix: round 10 only. Full test.cmd green, selene 0/0/0, rojo OK.
+Content: unchanged (FIX).
+Decisions: D3.
+Next: R135 RETRO, then R136/R137 EXPAND: a third station with its own concept and room (PT2 #2).

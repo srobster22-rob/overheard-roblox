@@ -442,7 +442,7 @@ check(`(pinned) a round offers one credit per station ({stations} stations)`, st
 
 check(
 	"the server forgets once per round, in beginRound",
-	string.find(serverCode, "operator:cool(Config.CoolPerRound)", 1, true) ~= nil
+	string.find(serverCode, "operator:coolRound(Config.CoolPerRound)", 1, true) ~= nil
 )
 check("...and no longer on a per-second clock", string.find(serverCode, "operator:decay", 1, true) == nil)
 
@@ -475,7 +475,7 @@ local function roundsUntilUnderstood(
 			end
 		end
 		op:forgetObservations()
-		op:cool(Config.CoolPerRound)
+		op:coolRound(Config.CoolPerRound)
 	end
 	return -1, top
 end
@@ -488,6 +488,45 @@ check(
 	`(pinned, R131) at the shipped dials that is the fourth round ({careful}, heat {string.format("%.2f", carefulPeak)})`,
 	careful == 4
 )
+
+-- R134 (PT1/PT2 #1). RED HAS TO MEAN IT IS COMING. R131 cooled everything at the
+-- boundary, so a codeword crossed the line at its fourth solve, was cooled back
+-- under it at the restart, and was safe every time it was actually SAID: the
+-- first playtests saw the Operator come for it in round 9, not round 5. What
+-- matters is the round in which SAYING the word first moves the Operator.
+local function firstRoundHunted(limit: number, keepUsing: boolean): number
+	local op = Operator.new(gapSecrets)
+	local acted = 0
+	op.onUnderstood = function()
+		acted += 1
+	end
+	local clock = 0
+	for round = 1, limit do
+		clock += 100
+		acted = 0
+		if keepUsing or round <= 4 then
+			op:hear({ speaker = gapTalker, text = "put the blue kettle on 47", at = clock - 6 })
+			op:hear({ speaker = gapTalker, text = "put the blue kettle on 47", at = clock - 2 })
+			if acted > 0 then
+				return round
+			end
+			op:credit("exit", clock)
+		elseif round >= 6 then
+			-- Retired after round 4, left alone for a round, then said again.
+			op:hear({ speaker = gapTalker, text = "the blue kettle", at = clock })
+			return if acted > 0 then round else -1
+		end
+		op:forgetObservations()
+		op:coolRound(Config.CoolPerRound)
+	end
+	return -1
+end
+local hunted = firstRoundHunted(20, true)
+check(
+	`a codeword that went red in round {careful} is hunted the next time it is said (round {hunted})`,
+	hunted == careful + 1
+)
+check("...and one the group retired for a round is safe to say again", firstRoundHunted(20, false) == -1)
 
 -- How fast the group plays is not an input at all: nothing above reads a clock
 -- between rounds. Stated as a check on the mechanism rather than re-simulated.
@@ -508,13 +547,18 @@ for _ = 1, careful do
 	retired:credit("exit", retiredClock)
 	if hottestOf(retired) < Config.ActThreshold then
 		retired:forgetObservations()
-		retired:cool(Config.CoolPerRound)
+		retired:coolRound(Config.CoolPerRound)
 	end
 end
 check("(guard) the codeword was burned before it was retired", hottestOf(retired) >= Config.ActThreshold)
-retired:cool(Config.CoolPerRound)
+retired:coolRound(Config.CoolPerRound)
 check(
-	`a codeword the group stops using is safe again next round ({string.format("%.2f", hottestOf(retired))})`,
+	`it is still understood in the round after it burned ({string.format("%.2f", hottestOf(retired))})`,
+	hottestOf(retired) >= Config.ActThreshold
+)
+retired:coolRound(Config.CoolPerRound)
+check(
+	`a codeword left unused for one whole round is safe again ({string.format("%.2f", hottestOf(retired))})`,
 	hottestOf(retired) < Config.ActThreshold
 )
 

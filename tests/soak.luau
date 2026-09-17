@@ -357,7 +357,7 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 			line:clear()
 			operator:forgetObservations()
 			-- R131: the server forgets once per round, here, not on a clock.
-			if operator:cool(Config.CoolPerRound) then
+			if operator:coolRound(Config.CoolPerRound) then
 				report.decayed += 1
 			end
 			if pursuit.pending ~= nil then
