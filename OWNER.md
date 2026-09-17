@@ -220,6 +220,10 @@ both sides. Full detail for each is in LOOP_LOG.md at the round named.
   never learned; a third time at the press: burns in round one). The three
   dials this entry named were each measured and none gives four rounds alone.
   Want it harsher or gentler? 0.30 gives 3 rounds, 0.34 gives 5.
+  **Correction (R132 playtest):** "4th round" is when the PANEL turns red. The
+  round-start cool drops the word back under the line before it is next said,
+  so the Operator first actually comes for it around its 9th round. Top of the
+  playtest backlog (PLAYTESTS.md PT1); being fixed in the next FIX round.
 - **R50-51's boolean-guards-hiding-a-degree family, including
   `anyFinishable`'s margin.** Several yes/no checks in the suite (is the round
   finishable, is the hum audible) may be hiding an unasked question of DEGREE

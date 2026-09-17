@@ -1,0 +1,10 @@
+# PLAYTESTS — newest first. Run with `lune run tools/playtest <persona> <rounds> <seed>`.
+
+### PT1 · R132 · persona: first-timer group · build 2158fd0 + setup
+Session: 4 bots, 14 rounds, 10.3 simulated minutes (`tools/playtest firsttimer 14 11`). Round 1 in plain words, then one codeword per line, kept until the Operator came for it.
+Metrics: won 14/14, lost 0. Captures 4 (rounds 1 and 10 only). Operator understood 8 lines, 4 of them plain speech in round 1. Supervisor calls 0. Codeword swaps 2. A round lasts 44s. Content seen: 2/2 stations, 2/2 rooms, 8/10 Operator lines (never `lost`, never `traced`).
+Felt samey: rounds 2-9 are identical: same two asks, same two sentences, 44 seconds, win. Nothing varies but the digits.
+Confusing: the panel shows a codeword red ("63%!") from its 4th round, but the Operator does NOT act on it: the round-start cool (0.32) drops it under 0.6 before it is next said, and it re-crosses only at the solve. The word first actually gives the group away in its 9TH round of use (round 10). So "burns in four rounds" (R131) is true of the panel and false of the monster.
+Broken: (1) plain speech in round 1 costs nothing: it arrives at 18.2s, after the line was restored at 18.0s, takes two players, and the round is still won 18s later. (2) Being on the line has no cost to the group: caught players keep relaying and rounds are won with half the group taken. (3) The Supervisor never fires: rounds end before its 45s deadline.
+Best moment: round 10, when "blue kettle" finally brings it to the board room mid-sentence and four BURNED lines land at once.
+Backlog (ranked): 1. A learned codeword must bite when the panel says red (FIX: R131's number measured the panel, not the hunt). 2. Rounds are too short and identical: a third station with its own concept and room. 3. Capture needs a cost (a caught holder cannot relay, or the round needs N free players to win). 4. A closing phase (The Call / Out) so a round has an arc. 5. Supervisor deadline unreachable in a 44s round.

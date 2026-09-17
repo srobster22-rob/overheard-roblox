@@ -1,0 +1,279 @@
+--!strict
+-- A full headless session with bot players and an event trace, for PLAYTEST
+-- rounds (AGENT_LOOP v2). Run from the project root:
+--     lune run tools/playtest [persona] [rounds] [seed]
+--
+-- It drives the REAL server modules the way `init.server` does (the wiring is
+-- the same as tests/soak.luau, which is kept honest against the server by
+-- tests/wiring.luau) and prints what a player would see and hear, in order.
+-- It is a reading instrument, not a test: nothing here asserts.
+--
+-- Personas are how the bots TALK, because talking is the game:
+--   firsttimer  says the plain word in round 1, then coins a codeword and keeps
+--               using it until the Operator shows up for it
+--   returning   starts with a codeword, swaps it the moment the panel shows red
+--   quiet       one mention per solve and one player who never speaks
+
+local process = require("@lune/process")
+
+local Harness = require("../tests/harness")
+
+local rt = Harness.build()
+local Objectives = rt.require(rt.systems.Objectives)
+local Connected = rt.require(rt.systems.Connected)
+local Lifecycle = rt.require(rt.systems.Lifecycle)
+local Operator = rt.require(rt.systems.Operator)
+local Pursuit = rt.require(rt.systems.Pursuit)
+local Round = rt.require(rt.systems.Round)
+local Supervisor = rt.require(rt.systems.Supervisor)
+local Layout = rt.require(rt.shared.Layout)
+local Config = rt.require(rt.shared.Config)
+
+local persona = process.args[1] or "firsttimer"
+local wantRounds = tonumber(process.args[2]) or 7
+local seed = tonumber(process.args[3]) or 11
+math.randomseed(seed)
+
+local NAMES = { [1] = "Ana", [2] = "Bo", [3] = "Cy", [4] = "Dee" }
+local CODEWORDS = { "blue kettle", "tin whistle", "green ladder", "old saddle", "paper moon", "brass owl" }
+local PLAIN = { jack_number = "jack", breaker = "breaker" }
+local STATION_ROOM = { board = "board", breaker = "archive" }
+
+local now = 0
+local function trace(text: string)
+	print(string.format("[%6.1fs] %s", now, text))
+end
+
+local rooms = { board = Layout.boardCentre(), archive = Layout.archiveCentre() }
+local secrets = Round.dealSecrets(3)
+local board = Objectives.new()
+for _, station in Round.STATIONS do
+	board:add(station.id, station.concept, station.prompt)
+end
+local line = Connected.new()
+local round = Lifecycle.new()
+local operator = Operator.new(secrets)
+local pursuit = Pursuit.new(rooms, Layout.operatorPost())
+local supervisor = Supervisor.new()
+
+local present = { 1, 2, 3, 4 }
+local standing: { [number]: any } = {}
+local roomOf: { [number]: string } = { [1] = "board", [2] = "board", [3] = "archive", [4] = "archive" }
+local function place()
+	for _, id in present do
+		standing[id] = rooms[roomOf[id]]
+	end
+end
+place()
+
+local stats = { won = 0, lost = 0, captures = 0, understood = 0, calls = 0, red = 0, swaps = 0 }
+local codeIndex: { [string]: number } = {}
+local redSeen: { [string]: boolean } = {}
+local function codewordFor(concept: string): string
+	local i = codeIndex[concept] or (if concept == "breaker" then 2 else 1)
+	codeIndex[concept] = i
+	return CODEWORDS[(i - 1) % #CODEWORDS + 1]
+end
+
+operator.onUnderstood = function(concept: string, payload: string, confidence: number)
+	stats.understood += 1
+	local _, onItsWay = pursuit:sendTo(payload)
+	trace(
+		`   >> THE OPERATOR UNDERSTOOD '{concept}' ({math.floor(confidence * 100)}%) and {if onItsWay
+			then "is walking to"
+			else "queues"} the {payload} room`
+	)
+	-- The group notices it came for their codeword, and coins another.
+	if confidence < 1 or persona ~= "firsttimer" then
+		redSeen[concept] = true
+	end
+end
+operator.onBurned = function(coinage)
+	trace(`   >> BURNED: "{coinage.phrase}" now means {coinage.concept}. "{Round.LINES.connecting}"`)
+end
+
+local function say(who: number, text: string)
+	trace(`{NAMES[who]}: "{text}"`)
+	supervisor:hear(who, now)
+	operator:hear({ speaker = { UserId = who } :: any, text = text, at = now })
+end
+
+local function panel()
+	local rows = {}
+	for _, c in operator:snapshot() do
+		if c.heat >= 0.3 then
+			table.insert(
+				rows,
+				`{c.phrase} {math.floor(c.heat * 100)}%{if c.heat >= Config.ActThreshold then "!" else ""}`
+			)
+		end
+	end
+	table.sort(rows)
+	trace(`   lexicon panel ({#operator:snapshot()} rows), warm ones: {table.concat(rows, ", ")}`)
+end
+
+local function tick(seconds: number)
+	local steps = math.floor(seconds / Config.TickSeconds)
+	for _ = 1, steps do
+		now += Config.TickSeconds
+		if not round:isPlaying() then
+			continue
+		end
+		local called, announce = supervisor:putThrough(pursuit, rooms, Config.Rooms, standing, now)
+		if called then
+			stats.calls += 1
+			if announce then
+				trace(`   >> THE SUPERVISOR put a call through to a silent player. "{Round.LINES.traced}"`)
+			end
+		end
+		local before = pursuit.state
+		pursuit:step(Config.TickSeconds)
+		pursuit:takePending()
+		if pursuit.state == "arrived" and before ~= "arrived" then
+			trace(`   >> it has ARRIVED. "{Round.LINES.taken}"`)
+		end
+		if pursuit.state == "arrived" then
+			local had = line:count()
+			line:takeInRoom(pursuit.position, standing, Layout.halfRoom(), now, supervisor)
+			if line:count() > had then
+				stats.captures += line:count() - had
+				local taken = {}
+				for _, id in present do
+					if line:isConnected(id) then
+						table.insert(taken, NAMES[id])
+					end
+				end
+				trace(`   >> "{Round.LINES.onTheLine}" On the line now: {table.concat(taken, ", ")}`)
+			end
+		end
+		if Lifecycle.nobodyCanWin(present, board, line) and round:finish("lost", now) then
+			stats.lost += 1
+			pursuit:stop()
+			trace(`   ROUND LOST. "{Round.LINES.lost}"`)
+		end
+		if pursuit:shouldLeave(Config.LingerSeconds) then
+			pursuit:withdrawTo(Layout.operatorPost())
+			trace(`   >> it gives the room up. "{Round.LINES.givingUp}"`)
+		end
+	end
+end
+
+local function freeActor(objective): number?
+	local room = STATION_ROOM[objective.id]
+	local fallback: number? = nil
+	for _, id in present do
+		if id ~= objective.holder and not objective.seenBy[id] and not line:isConnected(id) then
+			if roomOf[id] == room then
+				return id
+			end
+			fallback = fallback or id
+		end
+	end
+	return fallback
+end
+
+trace(`persona: {persona}, seed {seed}. Secrets it listens for: {#secrets}. "{Round.LINES.greeting}"`)
+board:deal(present)
+for _, id in present do
+	supervisor:watch(id, now)
+end
+
+local played = 0
+while played < wantRounds do
+	played += 1
+	trace(`===== ROUND {played} =====`)
+	for _, objective in board.list do
+		if not round:isPlaying() then
+			break
+		end
+		tick(12)
+		local holder = objective.holder
+		local actor = freeActor(objective)
+		if holder == nil or actor == nil or not round:isPlaying() then
+			trace(`   nobody free can work the {objective.id} line`)
+			continue
+		end
+		local concept = objective.concept
+		local word: string
+		if persona == "firsttimer" and played == 1 then
+			word = PLAIN[concept] or concept
+		else
+			if redSeen[concept] then
+				redSeen[concept] = false
+				codeIndex[concept] = (codeIndex[concept] or 1) + 2
+				stats.swaps += 1
+				trace(
+					`   (the group drops its old word for the {objective.id} line and coins "{codewordFor(concept)}")`
+				)
+			end
+			word = codewordFor(concept)
+		end
+		if line:isConnected(holder) then
+			trace(`   ({NAMES[holder]} is on the line but can still talk)`)
+		end
+		if roomOf[actor] ~= STATION_ROOM[objective.id] then
+			trace(`   {NAMES[actor]} runs to the {STATION_ROOM[objective.id]} room`)
+			roomOf[actor] = STATION_ROOM[objective.id]
+			place()
+			tick(8)
+		end
+		say(holder, `{NAMES[actor]} its the {word} {objective.answer}`)
+		if persona ~= "quiet" then
+			tick(4)
+			say(actor, "which one again")
+			say(holder, `the {word} {objective.answer} go`)
+		end
+		tick(2)
+		if not round:isPlaying() then
+			break
+		end
+		if line:isConnected(actor) then
+			trace(`   {NAMES[actor]} was taken before reaching the station`)
+			continue
+		end
+		local result = board:submit(objective.id, actor, objective.answer, now)
+		if result.ok then
+			operator:credit(objective.concept, now)
+			trace(`   {NAMES[actor]} restores the {objective.id} line.`)
+			panel()
+		else
+			trace(`   {NAMES[actor]} is refused: {tostring(result.reason)}`)
+		end
+	end
+	if round:isPlaying() and board:allSolved() and round:finish("won", now) then
+		stats.won += 1
+		trace(`   ROUND WON. "{Round.LINES.completed}"`)
+	elseif round:isPlaying() then
+		round:finish("lost", now)
+		stats.lost += 1
+		trace("   the round stalls out (counted as lost)")
+	end
+	now += Config.IntermissionSeconds
+	if round:readyToRestart(now, Config.IntermissionSeconds) and round:restart() then
+		board:reset()
+		line:clear()
+		operator:forgetObservations()
+		operator:cool(Config.CoolPerRound)
+		pursuit:sendHome(Layout.operatorPost())
+		supervisor:reset(now)
+		roomOf = { [1] = "board", [2] = "board", [3] = "archive", [4] = "archive" }
+		place()
+		for _, id in present do
+			supervisor:watch(id, now)
+		end
+		board:deal(present)
+	end
+end
+
+for _, c in operator:snapshot() do
+	if c.heat >= Config.ActThreshold then
+		stats.red += 1
+	end
+end
+print("")
+print(
+	`SUMMARY persona={persona} rounds={played} won={stats.won} lost={stats.lost} captures={stats.captures} understood={stats.understood} supervisorCalls={stats.calls} codewordSwaps={stats.swaps} redAtEnd={stats.red} minutes={string.format(
+		"%.1f",
+		now / 60
+	)}`
+)
