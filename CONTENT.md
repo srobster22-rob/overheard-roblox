@@ -21,3 +21,4 @@ Targets come from VISION.md.
 | round | stations | concepts w/ station | concepts | plain terms | rooms | interactables | entities | lines | outcomes | phases |
 |---|---|---|---|---|---|---|---|---|---|---|
 | R132 | 2 | 2 | 5 | 46 | 2 | 3 | 2 | 10 | 2 | 1 |
+| R135 | 2 | 2 | 5 | 46 | 2 | 3 | 2 | 10 | 2 | 1 |

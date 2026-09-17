@@ -8689,3 +8689,13 @@ Verified: tests/lifecycle +3: "a codeword that went red in round 4 is hunted the
 Content: unchanged (FIX).
 Decisions: D3.
 Next: R135 RETRO, then R136/R137 EXPAND: a third station with its own concept and room (PT2 #2).
+
+
+## R135 · RETRO · R131-R134
+Pick: k=0 RETRO — why: cycle.
+Player notices: nothing (RETRO).
+Built: scorecard: R131 owner build (forgetting per round; player-visible Y), R132 SETUP (N), R133 PLAYTEST (N), R134 FIX (Y). Player-visible 2 of 4 real rounds (target 3 of 5: MISSED, the cycle started mid-way with setup). Content did not grow (MISSED): stations 2, rooms 2, entities 2, phases 1. Playtest #1 acted on the very next round (MET). Rounds lost: 0 (MET); two turns died on usage limits during R131's analysis but nothing uncommitted was lost. PLAYBOOK: +1 KEEP (read the trace for when the monster acts), TRY re-dated to R136-R140. LOOP_LESSONS: one lesson shared.
+Verified: `lune run tools/inventory row R135` (no axis moved). Suite untouched since R134 (green there).
+Content: unchanged; history row R135 added.
+Decisions: none.
+Next: vision check: the last 10 rounds were wording, an owner build and a fix; none added a situation. R136 EXPAND (k=1): a third station with its own concept and its own room, so a round is longer than the Supervisor's deadline and no two rounds ask the same two things (PT2 #2).
