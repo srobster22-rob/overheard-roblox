@@ -477,8 +477,9 @@ end)
 -- permanently harmless: a player could walk in beside it and stay for a minute
 -- untouched. Occupancy is a continuous fact, so it has to be asked continuously.
 --
--- DECAY stays on its one-second beat. It is time-based, so a faster tick would
--- be correct but would replicate the whole lexicon four times a second.
+-- FORGETTING is not on this clock any more. R131: heat cools once per round, in
+-- `beginRound`, so how long a codeword lasts is counted in rounds and does not
+-- depend on how fast the group plays.
 -- Begin the next round. The LEXICON deliberately survives: a group's shared
 -- vocabulary carrying between rounds is the retention mechanic GAME.md is built
 -- on, and resetting it would make every round a first round with strangers.
@@ -491,6 +492,9 @@ local function beginRound()
 	-- that list from the source rather than trusting this comment.
 	desk:clear()
 	operator:forgetObservations()
+	-- R131: the Operator forgets a little, once per round. The Lexicon goes out
+	-- to everyone at the end of this function either way.
+	operator:cool(Config.CoolPerRound)
 	-- Every clock starts again. R31: a player quiet through the eight-second
 	-- intermission must not be called in the first seconds of the round.
 	supervisor:reset(os.clock())
@@ -517,7 +521,6 @@ end
 
 local running = true
 task.spawn(function()
-	local sinceDecay = 0
 	while running do
 		task.wait(Config.TickSeconds)
 		if not running then
@@ -572,14 +575,6 @@ task.spawn(function()
 			-- be learned reads as unfair. It also says so, in its own register.
 			pursuit:withdrawTo(built.operatorStart)
 			heardRemote:FireAllClients(Round.LINES.givingUp, "", 0)
-		end
-
-		sinceDecay += Config.TickSeconds
-		if sinceDecay >= Config.DecaySeconds then
-			sinceDecay = 0
-			if operator:decay(os.clock()) then
-				broadcastLexicon()
-			end
 		end
 	end
 end)

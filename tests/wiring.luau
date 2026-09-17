@@ -612,7 +612,13 @@ check("(guard) found the tick in raw source too", #rawTick > 0)
 check("and compares it against arrived", string.find(rawTick, "arrived", 1, true) ~= nil)
 check("the tick runs capture", string.find(tickBody, "takeWhoeverIsHere()", 1, true) ~= nil)
 check("the tick is paced by a dial, not a literal", string.find(tickBody, "Config.TickSeconds", 1, true) ~= nil)
-check("decay keeps its own slower beat", string.find(tickBody, "Config.DecaySeconds", 1, true) ~= nil)
+-- R131: forgetting left this clock. It is charged once per round in beginRound,
+-- and a second, per-second clock here would cool everything twice.
+check("the tick no longer forgets on its own clock", string.find(tickBody, "operator:decay", 1, true) == nil)
+check(
+	"forgetting is charged once per round instead",
+	string.find(serverCode, "operator:cool(Config.CoolPerRound)", 1, true) ~= nil
+)
 
 -- R25. The room must be RELEASED, or capture-while-arrived (R24) becomes a
 -- permanent softlock: one plain word parks the Operator on an objective and

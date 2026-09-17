@@ -12,10 +12,10 @@ local Config = {
 
 	-- Comprehension. How sure the Operator must be before it acts.
 	--
-	-- NOTHING CURRENTLY REACHES THIS. R46 measured it: burning a coinage takes
-	-- four credited uses, a round supplies two, and heat is cold after 100s. The
-	-- threshold is fine; the gap is between what the game credits and what
-	-- burning costs. See LOOP_LOG R46 before retuning this dial to chase it.
+	-- R46 found no codeword could reach this in normal play; R131 closed that by
+	-- changing how heat is FORGOTTEN (`CoolPerRound` below), not this dial.
+	-- Measured then: lowering the threshold only switches a codeword between
+	-- "never understood" and "understood in the round it was coined".
 	--
 	-- Low enough that plain speech is always punished. This used to add "high
 	-- enough that a half-learned coinage is a gamble rather than a certainty",
@@ -41,36 +41,37 @@ local Config = {
 	-- is the number a reader would plan around.
 	HeatPerCredit = 0.25,
 
-	-- Forgetting. Heat bleeds off in REAL TIME, not per round, so a phrase the
-	-- group stops using becomes safe to say again without waiting for a round
-	-- boundary. At 0.01/s a term burned to 1.0 sits EXACTLY on ActThreshold after
-	-- 40s of disuse — still understood, since the test is `>=` — and is under it
-	-- a second later, fully cold after 100s. Measured in `tests/lifecycle.luau`,
-	-- not divided here: this comment said "falls back under ActThreshold after
-	-- 40s", and the boundary second is precisely the sort of thing prose gets
-	-- wrong. This is what keeps a long-running group from ending up mute.
+	-- Forgetting. Every coinage loses this much heat ONCE PER ROUND, when the next
+	-- round begins. R131, the owner's answer to R46.
 	--
-	-- (The parenthetical here used to read "there is no round flow yet — see
-	-- R9". R29 built it: rounds now end, wait out an intermission and begin
-	-- again. A stale note like that is worse than none — it sends the next
-	-- reader off to build something that already exists.)
+	-- Until R131 heat bled off per second (`CoolPerSecond = 0.01`), and a round
+	-- cooled a codeword by more than one credit could add, so heat never carried
+	-- from one round to the next: a codeword either never burned or burned in the
+	-- round it was coined. Measured on a simulated session through the real
+	-- Operator, no per-second rate gave GAME.md's "works for four rounds and then
+	-- doesn't" at more than one round pace (0.0025/s: 2 rounds at a solve every
+	-- 30s, 4 at 60s, never at 120s). Charged per round, 0.32 gives 4 rounds at a
+	-- solve every 15, 30, 60 and 120 seconds, with ordinary chat left alone.
 	--
-	-- NOT RECONCILED, and left for the owner: GAME.md says burned terms "cool
-	-- slowly over real days", which would need about 0.0000116 — some 860x
-	-- slower than this. At the rate above nothing accumulates across a session,
-	-- so the escalation GAME.md is built on (a coinage that works for several
-	-- rounds and then one night does not) cannot happen. Cooling over days also
-	-- needs the Lexicon to outlive the server, which is the unbuilt DataStore
-	-- work. Both are balance and scope calls, not defects to fix unilaterally.
-	CoolPerSecond = 0.01,
+	-- What that number assumes, so nobody retunes it blind: the holder says the
+	-- codeword about twice shortly before the solve, worth 0.40 heat a round at
+	-- `HeatPerCredit` 0.25. The band for 4 rounds is 0.30 < CoolPerRound <= 0.333
+	-- (0.30 gives 3, 0.34 gives 5). One mention a solve (0.225) never burns; a
+	-- third as the button is pressed (0.65) burns in the first round.
+	--
+	-- Known cost: a word the group retires is safe again when the next round
+	-- starts, not some seconds later mid-round. Anything it cools to zero leaves
+	-- the register (`Operator.cool`), which is what keeps the panel small.
+	--
+	-- STILL NOT RECONCILED, and the owner's: GAME.md wants the Lexicon to persist
+	-- per group and cool over real days. That needs the unbuilt DataStore work and
+	-- an answer to R73 (what counts as the same group).
+	CoolPerRound = 0.32,
 
 	-- The server clock. Capture is asked every tick, because occupancy is a
 	-- continuous fact: before R24 the Operator took whoever was in the room at
 	-- the one instant it arrived, then stood there permanently harmless.
 	TickSeconds = 0.25,
-	-- Decay keeps its own slower beat. It is time-based, so ticking it faster
-	-- would be correct but would replicate the whole lexicon four times a second.
-	DecaySeconds = 1,
 
 	-- How long the Operator stands in the room it understood before losing
 	-- interest. Until R25 the answer was FOREVER, and since R24 it captures the

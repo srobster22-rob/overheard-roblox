@@ -3,7 +3,8 @@
 --
 -- R46, R47 and R48 were each found by simulating a session by hand, and none of
 -- them was visible to any rule-level test in this suite:
---   R46  the Operator can never learn — two credits a round against four needed
+--   R46  the Operator could never learn — a round cooled more than it taught
+--        (closed in R131: forgetting is charged per round)
 --   R47  five joins and no line can be patched by anybody
 --   R48  three captures and the round ends neither way, forever
 -- All three are the same family: `seenBy` grew, `held` grew, heat only fell,
@@ -355,6 +356,10 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 			end
 			line:clear()
 			operator:forgetObservations()
+			-- R131: the server forgets once per round, here, not on a clock.
+			if operator:cool(Config.CoolPerRound) then
+				report.decayed += 1
+			end
 			if pursuit.pending ~= nil then
 				report.queuedDropped += 1
 			end
@@ -379,10 +384,6 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 			placeEveryone()
 			watchEveryone(now)
 			board:deal(present)
-		end
-
-		if operator:decay(now) then
-			report.decayed += 1
 		end
 
 		for _, objective in board.list do
@@ -528,7 +529,7 @@ check(`the Supervisor runs in a normal session ({long.silenceCalls} calls)`, lon
 -- heard and really understood.
 check(`the Operator is heard and learns ({long.worstLexicon} coinages at the high-water mark)`, long.worstLexicon > 0)
 check(`lines actually get solved ({long.solved})`, long.solved > 0)
-check(`heat actually decays ({long.decayed} ticks changed the Lexicon)`, long.decayed > 0)
+check(`heat is actually forgotten ({long.decayed} round starts changed the Lexicon)`, long.decayed > 0)
 check(`(measured) rooms were queued behind a busy Operator ({long.everQueued} ticks)`, long.everQueued >= 0)
 -- MEASURED, NOT ASSERTED. `takePending` works -- `tests/pursuit.luau` drives it
 -- busy, queued, arrived, withdrawn, idle and watches it promote -- but across
@@ -555,9 +556,10 @@ check(`no live round is ever unfinishable ({long.unfinishableTicks} ticks)`, lon
 -- R47: the seen set must not grow with the size of the server.
 check(`the seen set stays bounded ({long.worstSeen} readers per line)`, long.worstSeen <= 2)
 
--- R46 is a FILED gap, not a fixed one, so it is recorded rather than asserted
--- as correct: nothing burns, and the Lexicon stays small because of it.
-check(`(recorded, see R46) the Lexicon never runs away ({long.worstLexicon})`, long.worstLexicon < 200)
+-- R46's gap was closed in R131 (forgetting is per round now), so coinages can
+-- burn; the register must still stay bounded, because every round start cools
+-- it and drops what reaches zero.
+check(`the Lexicon never runs away ({long.worstLexicon})`, long.worstLexicon < 200)
 
 print("")
 print("a group that never says a word in-game")

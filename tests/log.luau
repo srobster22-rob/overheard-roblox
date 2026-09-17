@@ -146,8 +146,16 @@ check(`every commit stamp is a hash and nothing else ({bad} bad)`, bad == 0)
 check("(control) an unsubstituted placeholder in a stamp is rejected", not stampIsAHash("**Commit** `%%HASH%%`"))
 check("(control) ...and a real stamp is accepted", stampIsAHash("**Commit** `5792c1b`"))
 
+-- From R131 the loop makes ONE commit per round with the entry inside it
+-- (AGENT_LOOP v2), so an entry cannot name its own hash. For those rounds the
+-- commit is found the other way round: git must hold a commit titled `R<n>:`,
+-- which is what `shipped` already is. Earlier rounds keep the stamp rule.
+local ONE_COMMIT_FROM = 131
 local unstamped: { number } = {}
 for round = 1, highest do
+	if round >= ONE_COMMIT_FROM and shipped[round] then
+		continue
+	end
 	if not hashFor(log, round) then
 		table.insert(unstamped, round)
 	end
@@ -160,7 +168,7 @@ end
 -- The hashes have to be real commits, not plausible-looking text.
 local sampled = 0
 local unreal = 0
-for _, round in { 1, math.floor(highest / 2), highest } do
+for _, round in { 1, math.floor(highest / 2), math.min(highest, 130) } do
 	local hash = hashFor(log, round)
 	if hash then
 		sampled += 1

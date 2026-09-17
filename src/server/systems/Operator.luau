@@ -33,7 +33,6 @@ export type Operator = typeof(setmetatable(
 		secrets: { Secret },
 		lexicon: { Coinage },
 		observations: { Observation },
-		lastDecayAt: number?,
 		backend: Types.ComprehensionBackend,
 		onUnderstood: (concept: string, payload: string, confidence: number) -> ()?,
 		onBurned: (coinage: Coinage) -> ()?,
@@ -46,7 +45,6 @@ function Operator.new(secrets: { Secret }): Operator
 		secrets = secrets,
 		lexicon = {},
 		observations = {},
-		lastDecayAt = nil,
 		backend = Heuristic :: any,
 		onUnderstood = nil,
 		onBurned = nil,
@@ -239,22 +237,10 @@ function Operator.cool(self: Operator, amount: number): boolean
 	return changed
 end
 
--- Real-time forgetting, ticked by the server. This is the half of the
--- acquisition loop that makes coining worth doing twice: heat you stop feeding
--- bleeds away, so a phrase the group retires becomes safe again. Without it
--- heat is monotonic and every coinage the group ever lands on is burned for the
--- lifetime of the server.
---
--- The first call only takes a timestamp; there is no elapsed time to charge for
--- yet, and charging from zero would wipe the lexicon on the first tick.
-function Operator.decay(self: Operator, now: number): boolean
-	local last = self.lastDecayAt
-	self.lastDecayAt = now
-	if last == nil or now <= last then
-		return false
-	end
-	return self:cool((now - last) * Config.CoolPerSecond)
-end
+-- `Operator.decay` (per-second forgetting on the server's clock) was DELETED in
+-- R131 with `Config.CoolPerSecond`. The server now calls `cool` once per round
+-- with `Config.CoolPerRound`; leaving `decay` exported would have kept a second
+-- clock one call away from cooling everything twice.
 
 -- What the client needs to render the Lexicon panel.
 function Operator.snapshot(self: Operator): { Coinage }

@@ -29,7 +29,8 @@ local LexiconSave = {}
 -- players back the WRONG words for the wrong concepts.
 LexiconSave.VERSION = 1
 
--- A generous backstop, not a design number. R46 measured a session's Lexicon
+-- A generous backstop, not a design number. (Re-measured for R131: about 43 at the high-water mark in a simulated
+-- session, up to ~170 for a very chatty group.) R46 measured a session's Lexicon
 -- settling at roughly 10 coinages because heat decay prunes dead ones long
 -- before this would ever bind — this exists only so a bug that stops pruning
 -- cannot also grow the saved payload without limit.

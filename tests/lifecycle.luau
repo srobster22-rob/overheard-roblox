@@ -349,83 +349,75 @@ check(`(guard) a delayed group still burns terms ({slow}, {slower})`, slow > 0 a
 check(`a five-second gap costs more uses than none ({slow} > {instant})`, slow > instant)
 check(`and ten seconds costs more still ({slower} > {slow})`, slower > slow)
 
--- Cooling, measured rather than divided in a comment.
+-- Forgetting, measured rather than divided in a comment. R131: it is charged
+-- once per ROUND (`Config.CoolPerRound`), not per second, so these are counted
+-- in rounds.
 local hot = Operator.new(secrets)
 for use = 1, 8 do
 	hot:hear({ speaker = talker, text = "head for the purple lantern", at = use })
 	hot:credit("exit", use + 0.1)
 end
-local peak = 0
-for _, coinage in hot:snapshot() do
-	if coinage.heat > peak then
-		peak = coinage.heat
+local function hottestOf(op): number
+	local top = 0
+	for _, coinage in op:snapshot() do
+		if coinage.heat > top then
+			top = coinage.heat
+		end
 	end
+	return top
 end
+local peak = hottestOf(hot)
 check(`(guard) something is fully burned to start from ({string.format("%.2f", peak)})`, peak >= 1)
 
--- The BOUNDARY, measured. 1.0 - 40 * 0.01 lands exactly ON the threshold, and
--- `Heat.isUnderstood` is `>=`, so at exactly 40 seconds the term is still
--- understood. The comment said it "falls back under ActThreshold after 40s of
--- disuse"; it does so a moment later. That is the whole point of measuring a
--- number instead of dividing it in prose.
-hot:cool(40 * Config.CoolPerSecond)
-local atForty = 0
-for _, coinage in hot:snapshot() do
-	if coinage.heat > atForty then
-		atForty = coinage.heat
-	end
-end
+hot:cool(Config.CoolPerRound)
+local afterOne = hottestOf(hot)
 check(
-	`at exactly 40s it is ON the threshold, still understood ({string.format("%.2f", atForty)})`,
-	atForty >= Config.ActThreshold
+	`one round of disuse leaves a burned term understood ({string.format("%.2f", afterOne)})`,
+	afterOne >= Config.ActThreshold
 )
 
-hot:cool(Config.CoolPerSecond)
-local pastForty = 0
-for _, coinage in hot:snapshot() do
-	if coinage.heat > pastForty then
-		pastForty = coinage.heat
-	end
+local roundsToSafe = math.ceil((1 - Config.ActThreshold) / Config.CoolPerRound)
+if (1 - roundsToSafe * Config.CoolPerRound) >= Config.ActThreshold then
+	roundsToSafe += 1
 end
+for _ = 2, roundsToSafe do
+	hot:cool(Config.CoolPerRound)
+end
+local safeAgain = hottestOf(hot)
 check(
-	`one second later it is under it ({string.format("%.2f", pastForty)} < {Config.ActThreshold})`,
-	pastForty < Config.ActThreshold
+	`{roundsToSafe} rounds of disuse give it back ({string.format("%.2f", safeAgain)} < {Config.ActThreshold})`,
+	safeAgain < Config.ActThreshold
 )
 
-hot:cool(59 * Config.CoolPerSecond)
-local afterHundred = 0
-for _, coinage in hot:snapshot() do
-	if coinage.heat > afterHundred then
-		afterHundred = coinage.heat
-	end
+-- One more than the division says: 1 - 5 * 0.2 is a hair above zero in floats.
+for _ = roundsToSafe + 1, math.ceil(1 / Config.CoolPerRound) + 1 do
+	hot:cool(Config.CoolPerRound)
 end
-check(`100s of disuse leaves nothing at all ({string.format("%.2f", afterHundred)})`, afterHundred <= 0)
+check(`and it leaves the register entirely ({#hot:snapshot()} left)`, #hot:snapshot() == 0)
 
--- The relationship the comment rests on, stated so a dial change moves both.
+-- The relationship the dial rests on: a round must forget LESS than a careful
+-- round teaches, or nothing carries from one round to the next (R46's state).
 check(
-	`a burned term outlives one intermission ({Config.IntermissionSeconds * Config.CoolPerSecond} lost)`,
-	Config.IntermissionSeconds * Config.CoolPerSecond < 1
+	`a round forgets less than one full credit teaches ({Config.CoolPerRound} < {Config.HeatPerCredit * 2})`,
+	Config.CoolPerRound > 0 and Config.CoolPerRound < Config.HeatPerCredit * 2
 )
 
 print("")
-print("the learning gap, pinned")
+print("the learning loop, measured (R46, closed in R131)")
 
--- R46. The Operator can never learn a coinage. Measured over a simulated
--- session — twelve sentences a minute, an objective solved every twenty seconds
--- — nothing ever reaches ActThreshold, and by minute three the whole vocabulary
--- has cooled to nothing. The structure behind it:
+-- R46 found that no codeword could ever be learned: a concept is credited once
+-- per round, and per-second cooling took more out of a round than that credit
+-- put in, so heat never carried from one round to the next. R131 (the owner's
+-- pick) charges forgetting once per round instead.
 --
---   credits a round supplies    = one per objective = 2
---   credited uses to burn       = 4 at best, 5-8 in practice
---   heat fully cold after       = 100 seconds, shorter than a round
+-- Rounds are played here the way the server plays them -- hear, credit on the
+-- solve, then `forgetObservations` and `cool(CoolPerRound)` at the restart --
+-- and heat is read AFTER EVERY CREDIT. The check this replaces read it once,
+-- after a final decay, and so reported "nothing understood (0.40)" for a loop in
+-- which the phrase had reached 1.00 three times.
 --
--- So the red state is unreachable and "your language decaying under you" — the
--- mechanic on GAME.md's first page — never happens.
---
--- THESE CHECKS PIN THE GAP RATHER THAN ASSERT IT IS FINE. Closing it is a
--- design decision (more credits, more heat, or slower cooling — three different
--- games) and belongs to the owner. If one of these fails, the numbers have
--- moved: re-read this entry rather than adjusting the check.
+-- What is asserted is the rule; what is only RECORDED is how it depends on how
+-- often the holder says the codeword, which is the group's choice, not a dial.
 
 local serverSource = fs.readFile("src/server/init.server.luau")
 local serverCode = LuauCode.stripNonCode(serverSource)
@@ -448,59 +440,101 @@ for _ in RoundModule.STATIONS do
 end
 check(`(pinned) a round offers one credit per station ({stations} stations)`, stations == 2)
 
--- The other side of the gap, measured through the real Operator rather than
--- divided from the dial.
+check(
+	"the server forgets once per round, in beginRound",
+	string.find(serverCode, "operator:cool(Config.CoolPerRound)", 1, true) ~= nil
+)
+check("...and no longer on a per-second clock", string.find(serverCode, "operator:decay", 1, true) == nil)
+
 local gapSecrets = { { concept = "exit", plain = { "exit" }, payload = "archive" } }
 local gapTalker = { UserId = 1 } :: any
-local function burnCost(gap: number): number
+
+-- Rounds until `phrase` is understood, saying `line` at each of `mentions`
+-- seconds before every solve. -1 if it never is, within `limit` rounds.
+local function roundsUntilUnderstood(
+	line: string,
+	phrase: string,
+	mentions: { number },
+	limit: number
+): (number, number)
 	local op = Operator.new(gapSecrets)
-	for use = 1, 40 do
-		op:hear({ speaker = gapTalker, text = "head for the purple lantern", at = use })
-		op:credit("exit", use + gap)
+	local clock = 0
+	local top = 0
+	for round = 1, limit do
+		clock += 100
+		for _, before in mentions do
+			op:hear({ speaker = gapTalker, text = line, at = clock - before })
+		end
+		op:credit("exit", clock)
 		for _, coinage in op:snapshot() do
-			if coinage.heat >= 1 then
-				return use
+			if coinage.phrase == phrase then
+				top = math.max(top, coinage.heat)
+				if coinage.heat >= Config.ActThreshold then
+					return round, top
+				end
 			end
 		end
+		op:forgetObservations()
+		op:cool(Config.CoolPerRound)
 	end
-	return -1
+	return -1, top
 end
-local best = burnCost(0)
-check(`(pinned) burning a coinage takes {best} credited uses at best`, best == 4)
-check(`(pinned) which is more than a round supplies ({best} > {stations})`, best > stations)
 
--- And the heat that IS gained does not survive to the next round's credits.
-local roundish = 100
+local careful, carefulPeak = roundsUntilUnderstood("put the blue kettle on 47", "blue kettle", { 6, 2 }, 20)
+check(`a codeword said twice before each solve IS learned ({careful} rounds)`, careful > 0)
+check(`...after working for a few rounds first, not in the round it was coined ({careful})`, careful >= 3)
+check(`...and soon enough to meet in one session ({careful} <= 6)`, careful <= 6)
 check(
-	`(pinned) heat is fully cold after {roundish}s, and a round is longer than that`,
-	1 / Config.CoolPerSecond <= roundish
+	`(pinned, R131) at the shipped dials that is the fourth round ({careful}, heat {string.format("%.2f", carefulPeak)})`,
+	careful == 4
 )
 
--- A session's worth of ordinary talk reaches nothing. This is the finding in one
--- line, run against the real modules.
-local session = Operator.new(gapSecrets)
-local clock = 0
-for minute = 1, 3 do
-	for i = 1, 12 do
-		clock += 5
-		session:hear({ speaker = gapTalker, text = "meet me by the purple lantern", at = clock })
-		if i % 4 == 0 then
-			session:credit("exit", clock + 1)
-		end
+-- How fast the group plays is not an input at all: nothing above reads a clock
+-- between rounds. Stated as a check on the mechanism rather than re-simulated.
+local slowOp = Operator.new(gapSecrets)
+slowOp:hear({ speaker = gapTalker, text = "the blue kettle", at = 0 })
+slowOp:credit("exit", 1)
+local beforeWait = hottestOf(slowOp)
+slowOp:hear({ speaker = gapTalker, text = "unrelated words entirely", at = 5000 })
+check("time passing inside a round forgets nothing", hottestOf(slowOp) == beforeWait and beforeWait > 0)
+
+-- A retired codeword is given back, which is what keeps a group from ending up mute.
+local retired = Operator.new(gapSecrets)
+local retiredClock = 0
+for _ = 1, careful do
+	retiredClock += 100
+	retired:hear({ speaker = gapTalker, text = "put the blue kettle on 47", at = retiredClock - 6 })
+	retired:hear({ speaker = gapTalker, text = "put the blue kettle on 47", at = retiredClock - 2 })
+	retired:credit("exit", retiredClock)
+	if hottestOf(retired) < Config.ActThreshold then
+		retired:forgetObservations()
+		retired:cool(Config.CoolPerRound)
 	end
-	session:decay(clock)
-	local _ = minute
 end
-local hottest = 0
-for _, coinage in session:snapshot() do
-	if coinage.heat > hottest then
-		hottest = coinage.heat
-	end
-end
+check("(guard) the codeword was burned before it was retired", hottestOf(retired) >= Config.ActThreshold)
+retired:cool(Config.CoolPerRound)
 check(
-	`(pinned) three minutes of ordinary talk leaves nothing understood ({string.format("%.2f", hottest)} < {Config.ActThreshold})`,
-	hottest < Config.ActThreshold
+	`a codeword the group stops using is safe again next round ({string.format("%.2f", hottestOf(retired))})`,
+	hottestOf(retired) < Config.ActThreshold
 )
+
+-- Ordinary talk: a line somebody happens to say once before each solve must
+-- never become understood, read at its PEAK.
+local chatter, chatterPeak = roundsUntilUnderstood("i think it saw me", "saw", { 9 }, 30)
+check(
+	`a remark made once before every solve is never learned (peak {string.format("%.2f", chatterPeak)} over 30 rounds)`,
+	chatter == -1 and chatterPeak < Config.ActThreshold
+)
+
+-- RECORDED, not asserted either way: both follow from the arithmetic and both
+-- are the group's behaviour rather than the game's. See LOOP_LOG R131.
+local once = roundsUntilUnderstood("put the blue kettle on 47", "blue kettle", { 2 }, 30)
+local thrice = roundsUntilUnderstood("put the blue kettle on 47", "blue kettle", { 6, 2, 0 }, 30)
+check(
+	`(recorded) said once per solve, a codeword is understood after {once} rounds (-1 = never)`,
+	once == -1 or once > 0
+)
+check(`(recorded) said a third time as the button is pressed, after {thrice}`, thrice >= 1)
 
 print("")
 print("a lost round says it was lost")

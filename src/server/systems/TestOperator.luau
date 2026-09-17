@@ -68,34 +68,31 @@ return function()
 	say("everyone to jakes spot")
 	assert(#understood == 0, "a fully cooled coinage must be forgotten again")
 
-	-- 6. Real-time decay gives it back too, without waiting for a round to end.
-	-- Re-burn the phrase, then let clock time pass with no further credit.
+	-- 6. Round by round (R131): a burned phrase the group stops using outlives
+	-- one round's forgetting and is given back after enough of them.
 	for _ = 1, uses do
 		say("head for jakes spot")
 		op:credit("exit", t + 0.5)
 	end
 	understood = {}
 	say("everyone to jakes spot")
-	assert(#understood > 0, "setup: the phrase must be burned again before decay")
+	assert(#understood > 0, "setup: the phrase must be burned again before cooling")
 
-	local clock = 1000
-	assert(op:decay(clock) == false, "the first decay tick only takes a timestamp")
-
-	-- Not yet enough elapsed time to drop under the act threshold.
-	local partial = (1 - Config.ActThreshold) / Config.CoolPerSecond
-	assert(op:decay(clock + partial * 0.5) == true, "decay must report that heat moved")
+	assert(op:cool(Config.CoolPerRound) == true, "a round's forgetting must report that heat moved")
 	understood = {}
 	say("everyone to jakes spot")
-	assert(#understood > 0, "a partly cooled coinage is still understood")
+	assert(#understood > 0, "one round of forgetting does not give a burned phrase back")
 
-	-- Past the threshold, the phrase is safe to say again.
-	op:decay(clock + partial + 10)
+	local roundsToSafe = math.ceil((1 - Config.ActThreshold) / Config.CoolPerRound) + 1
+	for _ = 2, roundsToSafe do
+		op:cool(Config.CoolPerRound)
+	end
 	understood = {}
 	say("everyone to jakes spot")
-	assert(#understood == 0, "a coinage left alone long enough must be forgotten")
+	assert(#understood == 0, "a coinage left alone for enough rounds must be forgotten")
 
-	-- Time going backwards (or standing still) must never ADD heat.
-	assert(op:decay(clock) == false, "decay must not credit heat for negative elapsed time")
+	-- Forgetting by nothing (or a negative amount) must never ADD heat.
+	assert(op:cool(0) == false and op:cool(-1) == false, "cooling by nothing must change nothing")
 
 	-- 7. Stale evidence must not be credited, or unrelated chatter would burn.
 	local fresh = Operator.new(secrets)
@@ -184,10 +181,11 @@ return function()
 	flood:hear({ speaker = fakeSpeaker, text = table.concat(words, " "), at = 0 })
 	flood:credit("exit", 0.5)
 	assert(#flood.lexicon > 20, `setup: one long message must flood the register, got {#flood.lexicon} (guard)`)
-	-- Real time passes with nobody saying any of it again.
-	flood:decay(2000)
-	flood:decay(2000 + (1 / Config.CoolPerSecond))
-	assert(#flood.lexicon == 0, `the flood must drain with time, {#flood.lexicon} left`)
+	-- Rounds pass with nobody saying any of it again.
+	for _ = 1, math.ceil(1 / Config.CoolPerRound) do
+		flood:cool(Config.CoolPerRound)
+	end
+	assert(#flood.lexicon == 0, `the flood must drain over rounds, {#flood.lexicon} left`)
 	assert(#flood:snapshot() == 0, "and the client must stop being sent it")
 
 	print("[TestOperator] all assertions passed")

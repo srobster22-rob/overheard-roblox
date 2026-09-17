@@ -46,14 +46,14 @@ while being hunted.
 
 That is the whole feel of the game: your language decaying under you.
 
-> **As built, this does not happen yet.** Measured in R46: a coinage needs four
-> credited uses to burn, a round supplies two (one per objective), and heat is
-> fully cold after 100 seconds — shorter than a round. So nothing ever reaches
-> the threshold and the red state is unreachable. The hunt, the arrival, the
-> capture and the retreat all work; it is specifically the LEARNING that does
-> not. Closing the gap is a dial choice — more credit events, more heat per
-> credit, or slower cooling — and those are three different games, so it is the
-> owner's call. `tests/lifecycle.luau` pins both sides of the gap meanwhile.
+> **As built (R131).** R46 measured that no codeword could be learned in normal
+> play: heat cooled per second, and a round took more out than one solve put in.
+> The owner's answer was to forget once per ROUND instead (`Config.CoolPerRound`).
+> A codeword the holder says about twice before each solve now works for three
+> rounds and is understood in its fourth, at any round pace; a word the group
+> retires is safe again the next round. It depends on how the group talks: said
+> once per solve it is never learned, said a third time as the button is pressed
+> it burns in its first round. Headless measurement only; how it feels is unplayed.
 
 ## Why the objectives force you to speak
 
@@ -117,12 +117,12 @@ discovery now works, which weights players returning within 24-48 hours.
 
 Burned terms cool over time — the Operator forgets, a little.
 
-**As built it forgets fast.** At `Config.CoolPerSecond` a term burned to 1.0
-falls under the threshold after 40 seconds of disuse and is fully cold after
-100. So the decay is real, but nothing accumulates across a session yet, and the
-escalation described above cannot build. Cooling "over real days" would also
+**As built it forgets by the round.** Every term loses `Config.CoolPerRound`
+(0.32) when a round begins: a fully burned term is still understood after one
+round of disuse, safe after two, and gone from the register after four. Heat
+now accumulates across rounds within a session. Cooling "over real days" would
 need the Lexicon to outlive the server — the DataStore work that has not been
-done. Both are open questions rather than descriptions of the game today.
+done, and an answer to what counts as the same group (R73).
 
 ## Tone
 

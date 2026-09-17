@@ -23,6 +23,8 @@ Write in plain English. One item per line. Top item goes first.
   never did this before: once a phrase was burned it stayed burned for the
   life of the server. Also added a test that fails if a tuning dial is not
   actually read by the game (three of them were not).
+  *(R131: forgetting is now charged once per round, not per second; see R46
+  under Open questions.)*
 
 - R5 - the second station (the breaker) is in, and the round's two lists were
   wired together. Before this, 4 servers in 10 ran the only objective for a
@@ -210,10 +212,14 @@ both sides. Full detail for each is in LOOP_LOG.md at the round named.
   coinage still works in the plural ("the blue wires" for "blue wire"). No
   suffix rule had to be chosen: a match on any reading of a word counts.
   Irregular plurals (leaf/leaves) still slip; that needs a word list, not a rule.
-- **R46 - the Operator can never actually learn a coinage in real play.**
-  Measured: a normal session credits about 2 uses toward burning a phrase; 4
-  are needed. `ActThreshold`/`HeatPerCredit`/`CreditWindow` are all candidates
-  to retune, and it's your call which.
+- **R46: ANSWERED (2026-09-16) -- "build 5b". Done in R131.** Heat is now
+  forgotten once per round (`Config.CoolPerRound = 0.32`) instead of per
+  second. Measured: a codeword said about twice before each solve is understood
+  in its 4th round at any pace, ordinary chat is left alone, and a retired word
+  is safe again next round. It depends on how the group talks (once per solve:
+  never learned; a third time at the press: burns in round one). The three
+  dials this entry named were each measured and none gives four rounds alone.
+  Want it harsher or gentler? 0.30 gives 3 rounds, 0.34 gives 5.
 - **R50-51's boolean-guards-hiding-a-degree family, including
   `anyFinishable`'s margin.** Several yes/no checks in the suite (is the round
   finishable, is the hum audible) may be hiding an unasked question of DEGREE
