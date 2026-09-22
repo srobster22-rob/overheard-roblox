@@ -8699,3 +8699,16 @@ Verified: `lune run tools/inventory row R135` (no axis moved). Suite untouched s
 Content: unchanged; history row R135 added.
 Decisions: none.
 Next: vision check: the last 10 rounds were wording, an owner build and a fix; none added a situation. R136 EXPAND (k=1): a third station with its own concept and its own room, so a round is longer than the Supervisor's deadline and no two rounds ask the same two things (PT2 #2).
+
+
+## R136 · MARKET SETUP · Roblox co-op horror vs DOORS, Pressure, The Mimic, Phasmophobia, be quiet.
+Pick: first round under AGENT_LOOP v3 (MARKET.md missing). No leftovers: tree clean at e912e06.
+Player notices: nothing (MARKET SETUP).
+Impact: n/a
+Built: MARKET.md: 5 comparables from WebSearch (never WebFetch), a 14-row weighted matrix with evidence for every one of our scores, the differentiator, and a Roblox discovery launch checklist (1 of 10 met). VISION.md axes now carry the comparable's number, plus a new "modes / run variants" axis. OWNER.md: R136 question (audio and publishing need the owner's account).
+Quality: docs only.
+Verified: every "Us" score cites a CONTENT.md count, a PT1/PT2 metric, or a grep of src (1 Sound instance, 0 touch/gamepad refs, no DataStore wiring). Studio MCP: not connected in this session (ToolSearch "roblox studio": no tools), so device-blocked.
+Market: us 23.3/100; DOORS 87.3, Phasmophobia 82.7, Pressure 79.3, The Mimic 72.0, be quiet 44.0. Top gaps: hook 12, content 12, audio 12 (owner-gated), progression 10, release 10 (owner-gated).
+Content: unchanged.
+Decisions: none.
+Next: R137 (k=2) EXPAND: the third station with its own concept and room, on the content row (gap 12). It also lengthens rounds past the Supervisor's 45 s (PT2 #2).

@@ -19,13 +19,14 @@ words, the Operator walks in and takes the room. The group learns to coin a
 word. Two stations, ~45 seconds a round, and then the same round again.
 
 ## Content axes and targets (counts live in CONTENT.md)
-| axis | target | why |
-|---|---|---|
-| stations | 5 | GAME.md names five objectives; two exist, so every round is the same two asks |
-| rooms | 5 | two rooms means no routes, no hiding, nowhere to run |
-| entities | 4 | one new listener per expansion; #2 Party Line and #6 Echo are next |
-| round phases | 4 | Cutover, Work, The Call, Out: only Work exists |
-| round outcomes | 3 | won / lost today; an escape ending is the missing third |
-| interactables | 8 | hiding places, doors, lights: the concepts `hiding`/`exit` have no object |
-| Operator lines | 16 | one per new event so nothing shares a sentence |
-| concepts / plain terms | 8 / 80 | each new station brings its own forbidden vocabulary |
+| axis | target | comparable (MARKET.md) | why |
+|---|---|---|---|
+| stations | 5 | Pressure: puzzle rooms among 115; DOORS: keys, levers, books every floor | GAME.md names five objectives; two exist, so every round is the same two asks |
+| rooms | 5 | DOORS/Pressure: procedural rooms by the hundred | two rooms means no routes, no hiding, nowhere to run |
+| entities | 4 | DOORS ~14 hostile entities; Phasmophobia ~24 ghost types | one new listener per expansion; #2 Party Line and #6 Echo are next |
+| round phases | 4 | DOORS: floors with a finale; The Mimic: chapters with set pieces | Cutover, Work, The Call, Out: only Work exists |
+| round outcomes | 3 | DOORS: death, escape, revive | won / lost today; an escape ending is the missing third |
+| interactables | 8 | DOORS/Pressure: lockers, closets, vents, drawers in most rooms | hiding places, doors, lights: the concepts `hiding`/`exit` have no object |
+| Operator lines | 16 | Pressure: full voice acting | one per new event so nothing shares a sentence |
+| concepts / plain terms | 8 / 80 | Phasmophobia: ~2 dozen phrases per device | each new station brings its own forbidden vocabulary |
+| modes / run variants | 3 | DOORS: Daily Runs, Chaos, Rush, Endless | not tracked yet; the first variant adds the axis |
