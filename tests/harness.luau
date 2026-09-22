@@ -94,6 +94,8 @@ function Harness.build()
 			"Supervisor",
 			"TestOperator",
 			"Escape",
+			"ChatFeed",
+			"Censor",
 		}
 	do
 		adopt(systems, handle(name, `src/server/systems/{name}.luau`))

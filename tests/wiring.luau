@@ -660,10 +660,18 @@ check("capture is gated on the round still being played", string.find(tickBody, 
 -- audibly through an intermission it could take nobody in. The FEED has to be
 -- gated too, or the hum means nothing some of the time -- which is worse than
 -- no hum, because the hum is the game.
-local chatBody = string.match(serverCode, "TextChatService.OnIncomingMessage = function.-" .. NL .. "end") or ""
+local chatBody = string.match(serverCode, "local function hearChat%(.-" .. NL .. "end") or ""
 check("(guard) found the chat handler", #chatBody > 0)
 check("...and it is the one that feeds the Operator (control)", string.find(chatBody, "operator:hear", 1, true) ~= nil)
 check("the Operator only listens while a round is live", string.find(chatBody, "round:isPlaying()", 1, true) ~= nil)
+-- R139 (COACH.md C1): the handler is fed on the SERVER, through ChatFeed, which
+-- tests/chatfeed.luau drives with fake players. Until R139 it was fed by
+-- `TextChatService.OnIncomingMessage`, which Roblox runs only on the client,
+-- and this check REQUIRED that hook. PLATFORM.md now decides the side (below).
+check(
+	"every player's chat reaches the handler through ChatFeed",
+	string.find(serverCode, "ChatFeed.new(hearChat):follow(Players)", 1, true) ~= nil
+)
 
 -- R42. The Operator's OWN lines once contained plain giveaways -- its greeting
 -- was "Number, please." until R129, and `number` is plain language for
@@ -748,10 +756,14 @@ for name, module in string.gmatch(serverCode, "local ([%a][%w_]*) = (%u[%w_]*)%.
 end
 check(`(guard) found the per-round holders ({table.concat(holders, ", ")})`, #holders >= 4)
 
+-- Two exemptions, each named with its reason.
 -- `round` is the lifecycle itself: the TICK restarts it, and beginRound runs
--- after that, so it is handled by construction rather than reset here. It is
--- the only exemption, and it is named with its reason.
-local EXEMPT: { [string]: boolean } = { round = true }
+-- after that, so it is handled by construction rather than reset here.
+-- `broadcastLexicon` (R139) is a sender, not a round's state: it remembers what
+-- the phrases on the Lexicon panel filtered to, and the Lexicon deliberately
+-- outlives the round (GAME.md's retention engine). Clearing it each round would
+-- only send every phrase back through the filter.
+local EXEMPT: { [string]: boolean } = { round = true, broadcastLexicon = true }
 
 for _, name in holders do
 	if EXEMPT[name] then
@@ -1843,6 +1855,100 @@ for text in serverSaid do
 end
 check(`(guard) found the server's player-facing reasons ({serverCount})`, serverCount >= 7)
 check(`no server reason gives a concept away ({table.concat(serverLeaks, " | ")})`, #serverLeaks == 0)
+
+print("")
+print("the Lexicon panel shows only filtered words")
+
+-- R139 (COACH.md C2). The panel's phrases are words players typed, and Roblox
+-- requires them filtered before another player sees them. Censor does the
+-- filtering and the sending (tests/censor.luau runs both); these hold the
+-- server, which cannot run here, to sending the panel only that way.
+check(
+	"the panel is sent through Censor's sender, with the server's filter",
+	string.find(serverCode, "local broadcastLexicon = Censor.new(filterForEveryone):sender(", 1, true) ~= nil
+)
+local lexiconSends = select(2, string.gsub(serverCode, "lexiconRemote:Fire", ""))
+check(`the panel remote is fired from one place ({lexiconSends})`, lexiconSends == 1)
+check(
+	"...which sends what the sender filtered",
+	string.find(serverCode, "lexiconRemote:FireAllClients(visible)", 1, true) ~= nil
+)
+local filterBody = string.match(serverCode, "local function filterForEveryone%(.-" .. NL .. "end") or ""
+check("(guard) found the server's filter", #filterBody > 0)
+check(
+	"...which uses Roblox's filter for text everyone can see",
+	string.find(filterBody, ":FilterStringAsync(text, authorId):GetNonChatStringForBroadcastAsync()", 1, true) ~= nil
+)
+check(
+	"...inside a pcall, so a failed web call leaves the phrase out",
+	string.find(filterBody, "pcall(", 1, true) ~= nil
+)
+check("...and says so", string.find(filterBody, "warn(", 1, true) ~= nil)
+
+print("")
+print("every engine API on its own side (PLATFORM.md)")
+
+-- R139 (COACH.md C1). The suite mocks Roblox, so it cannot see an API used on
+-- the side it does not run on: the chat hook was a client-only callback set in
+-- the server script for 138 rounds, and the chat check above REQUIRED it. This
+-- is a lint, not a behaviour test: which side a file runs on is only visible in
+-- its source. PLATFORM.md lists each side-restricted API with the source that
+-- says where it runs; this sweeps every source file against that table.
+local platform = fs.readFile("PLATFORM.md")
+local onlyOn: { [string]: { string } } = { client = {}, server = {} }
+for api, side in string.gmatch(platform, "| `([%a][%w_]*)` | (%a+) |") do
+	local list = onlyOn[side]
+	if list then
+		table.insert(list, api)
+	end
+end
+check(`(guard) PLATFORM.md names client-only APIs ({#onlyOn.client})`, #onlyOn.client >= 4)
+check(`(guard) ...and server-only ones ({#onlyOn.server})`, #onlyOn.server >= 4)
+
+local function luauFiles(dir: string, into: { string }): { string }
+	for _, name in fs.readDir(dir) do
+		local path = `{dir}/{name}`
+		if fs.isDir(path) then
+			luauFiles(path, into)
+		elseif string.sub(name, -5) == ".luau" then
+			table.insert(into, path)
+		end
+	end
+	return into
+end
+-- Used as a member (`x.Api`, `x:Api`), in code: comments and strings are
+-- stripped first, so a comment naming an API is not a use of it.
+local function uses(code: string, api: string): boolean
+	return string.find(code, "[.:]" .. api .. "[^%w_]") ~= nil
+end
+local wrongSide: { string } = {}
+local swept = 0
+local function sweep(dir: string, banned: { string })
+	for _, path in luauFiles(dir, {}) do
+		swept += 1
+		local code = LuauCode.stripNonCode(fs.readFile(path))
+		for _, api in banned do
+			if uses(code, api) then
+				table.insert(wrongSide, `{path}: {api}`)
+			end
+		end
+	end
+end
+sweep("src/server", onlyOn.client)
+sweep("src/client", onlyOn.server)
+-- Shared modules run on both sides, so neither list may appear there.
+sweep("src/shared", onlyOn.client)
+sweep("src/shared", onlyOn.server)
+check(`(guard) swept the source ({swept} files)`, swept >= 20)
+check(`no engine API is used where it does not run ({table.concat(wrongSide, "; ")})`, #wrongSide == 0)
+check(
+	"(control) the sweep sees the pre-R139 hook",
+	uses(LuauCode.stripNonCode("TextChatService.OnIncomingMessage = function() end" .. NL), "OnIncomingMessage")
+)
+check(
+	"(control) ...and not a mention in a comment",
+	not uses(LuauCode.stripNonCode("-- .OnIncomingMessage" .. NL), "OnIncomingMessage")
+)
 
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then

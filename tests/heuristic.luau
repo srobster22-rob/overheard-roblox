@@ -17,6 +17,7 @@
 -- actually calls, rather than an exported helper -- a private matcher tested
 -- directly can be correct while the caller stops using it.
 
+local fs = require("@lune/fs")
 local process = require("@lune/process")
 
 local Harness = require("./harness")
@@ -697,6 +698,28 @@ check(`no ordinary line conveys a secret ({table.concat(benignHits, " | ")})`, #
 check(
 	"(control) the same pool still hears 'meet at the exit'",
 	#Heuristic.conveyed(utterance("meet at the exit"), benignPool, {}) > 0
+)
+
+-- R139 (COACH.md C9). The lines above were chosen to avoid the pool's words,
+-- so they measure over-eager matching, not how people chat. tests/blind_chat.txt
+-- holds 160 lines written by someone who never saw the word lists, told only
+-- what a player can see. 30 of them convey a secret: 17 name a station, which
+-- is the game's intended trap, and 13 are panic or ending chatter ("get me out",
+-- "BEHIND U", "everyone to the front door"). The count is a CEILING: a widening
+-- that makes more natural lines trip fails here, so it has to be chosen, not
+-- stumbled into.
+local BLIND_CEILING = 30
+local blindLines, blindTrips = 0, 0
+for line in string.gmatch(fs.readFile("tests/blind_chat.txt"), "[^\r\n]+") do
+	blindLines += 1
+	if #Heuristic.conveyed(utterance(line), benignPool, {}) > 0 then
+		blindTrips += 1
+	end
+end
+check(`(guard) read the blind corpus ({blindLines} lines)`, blindLines == 160)
+check(
+	`blind chat trips a secret no more often than R139 measured ({blindTrips} of {blindLines}, ceiling {BLIND_CEILING})`,
+	blindTrips <= BLIND_CEILING
 )
 
 print("")

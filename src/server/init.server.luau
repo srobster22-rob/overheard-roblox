@@ -5,7 +5,7 @@
 -- into the Operator's learning. Deliberately thin: thinking lives in systems/.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TextChatService = game:GetService("TextChatService")
+local TextService = game:GetService("TextService")
 local Players = game:GetService("Players")
 
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -20,6 +20,8 @@ local Round = require(script.systems.Round)
 local Connected = require(script.systems.Connected)
 local Lifecycle = require(script.systems.Lifecycle)
 local Escape = require(script.systems.Escape)
+local ChatFeed = require(script.systems.ChatFeed)
+local Censor = require(script.systems.Censor)
 local Keypad = require(ReplicatedStorage.Shared.Keypad)
 local Station = require(script.systems.Station)
 local Supervisor = require(script.systems.Supervisor)
@@ -118,9 +120,27 @@ local function pushPhase(player: Player?)
 	phaseRemote:FireAllClients(payload)
 end
 
-local function broadcastLexicon()
-	lexiconRemote:FireAllClients(operator:snapshot())
+-- The phrases on the Lexicon panel are words players typed, so each one goes
+-- through Roblox's text filter, for the player who typed it, before any client
+-- sees it (R139, COACH.md C2; PLATFORM.md). A phrase that cannot be filtered is
+-- left off the panel (Censor); the failure is reported, never hidden.
+local function filterForEveryone(text: string, authorId: number): string?
+	local ok, result = pcall(function(): string
+		return TextService:FilterStringAsync(text, authorId):GetNonChatStringForBroadcastAsync()
+	end)
+	-- An empty result is a failure too: Roblox's forum reports the broadcast
+	-- filter returning "" often, and Censor leaves such a phrase out.
+	if not ok or result == "" then
+		warn(`[lexicon] a phrase could not be filtered and is not shown: {if ok then "empty result" else result}`)
+		return nil
+	end
+	return result
 end
+local broadcastLexicon = Censor.new(filterForEveryone):sender(function()
+	return operator:snapshot()
+end, function(visible)
+	lexiconRemote:FireAllClients(visible)
+end, task.spawn)
 
 -- Everyone in the server right now, by user id.
 local function presentUserIds(): { number }
@@ -320,17 +340,11 @@ board.onSolved = function(objective, _actor: number)
 	end
 end
 
--- Everything a player says is evidence.
-TextChatService.OnIncomingMessage = function(message: TextChatMessage)
-	local source = message.TextSource
-	if not source then
-		return nil
-	end
-	local player = Players:GetPlayerByUserId(source.UserId)
-	if not player then
-		return nil
-	end
-
+-- Everything a player says is evidence, heard on the server through ChatFeed
+-- (`Player.Chatted`). Until R139 this was `TextChatService.OnIncomingMessage`,
+-- a callback Roblox runs only on the client, so on a live server nothing
+-- reached either listener (COACH.md C1).
+local function hearChat(player: Player, text: string)
 	-- It is only listening while a round is being played. R29 gated CAPTURE on
 	-- this and nothing else, so during the intermission a plain giveaway still
 	-- made the Operator announce itself and walk audibly toward a room it could
@@ -339,7 +353,7 @@ TextChatService.OnIncomingMessage = function(message: TextChatMessage)
 	-- means nothing is worse than no hum. Gating the FEED also keeps lobby
 	-- chatter out of the observation buffer.
 	if not round:isPlaying() then
-		return nil
+		return
 	end
 
 	-- Both listeners, from the one utterance. The Supervisor does not care
@@ -349,11 +363,11 @@ TextChatService.OnIncomingMessage = function(message: TextChatMessage)
 	supervisor:hear(player.UserId, os.clock())
 	operator:hear({
 		speaker = player,
-		text = message.Text,
+		text = text,
 		at = os.clock(),
 	})
-	return nil
 end
+ChatFeed.new(hearChat):follow(Players)
 
 built.readerPrompt.Triggered:Connect(function(player: Player)
 	-- Reading is private. The holder sees their own line; nobody else does.

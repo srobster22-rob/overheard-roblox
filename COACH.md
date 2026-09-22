@@ -19,9 +19,11 @@ Treat these as owner-reported bugs. Each one ends the current round: fix it, pro
    - The headless suites pass only because the harness calls the hook directly, and tests/wiring.luau:652 *requires* the wrong hook.
    - **Fix:** feed chat through a server-side path (`TextChannel.ShouldDeliverCallback`, or `Player.Chatted`), and flip the wiring test so it rejects `OnIncomingMessage` on the server.
    - **Prove it:** cite the Roblox doc line for the side each chat API runs on (P2), and add a harness check that fails if a client-only callback is assigned in server code.
+   → R139: taken (see C1 under Corrections).
 2. **C2 — unfiltered player text is shown to other players.**
    - The Lexicon panel broadcasts raw typed phrases to every client (init.server.luau:118-119), and nothing in src calls `TextService:FilterStringAsync`. That breaks Roblox's rules.
    - **Fix:** filter each phrase for each recipient (`GetNonChatStringForBroadcastAsync` or `GetChatForUserAsync`) before any client sees it. Test that nothing unfiltered is ever sent.
+   → R139: taken (see C2 under Corrections).
 3. **C11 — tools/playtest.luau:188 calls `escape:release`, which no longer exists.** Every PLAYTEST depends on that tool. Add a short playtest run to test.cmd (P4) so this can't recur.
    → R138: taken (see C11 under Corrections).
 
@@ -35,34 +37,44 @@ Scope: R136 (market setup), R137 (committed) and R138 (staged but not committed;
   - Every player also counts as silent, so about 45 s into every round the Supervisor starts sending the Operator after them, whatever they type.
   - `tests/wiring.luau:652` *requires* this hook, and tools/playtest drives the modules without it. That is how ~138 green rounds missed it.
   - Fix: move the feed to a server-side hook: `TextChannel.ShouldDeliverCallback` on RBXGeneral (dedupe by MessageId, return true) or `Player.Chatted`. Invert the wiring guard. Make this the first check of any Studio session.
+  → R139: taken. Chat is heard through `Player.Chatted` in ChatFeed, which follows the Players service (tests/chatfeed.luau drives it with fake players). The wiring check that REQUIRED `OnIncomingMessage` now rejects it through PLATFORM.md: each side-restricted API with its source, and tests/wiring.luau sweeps every source file against that table (plants Q10, Q14).
 - C2 **Unfiltered player text goes to every client.** `init.server.luau:118-119` sends `operator:snapshot()` to all clients for the Lexicon panel, and that snapshot holds raw typed `phrase` n-grams plus `coinedBy` (Operator.luau:287-298). There are 0 `TextService`/`FilterStringAsync` calls in src.
   - Roblox requires text one user creates to pass `FilterStringAsync` → `GetNonChatStringForBroadcastAsync` before other users see it. Fix: filter each phrase by its author before broadcasting it, and add this to the launch checklist.
+  → R139: taken. Censor filters each phrase for the player who typed it (FilterStringAsync, then GetNonChatStringForBroadcastAsync), leaves out any it cannot filter, and sends only the newest panel (tests/censor.luau; plants Q5-Q9, Q11, Q12).
 - C3 **Audio is not owner-gated** (MARKET.md:43-44, OWNER.md:258-264). `Presence.luau:52` already plays a built-in `rbxasset://sounds/…` sound with no upload, and RESEARCH.md:10-13 records Speech-to-Text (full release 11 May 2026) and Text-to-Speech as fully released.
   - `AudioTextToSpeech` can speak the Operator's lines, and stingers can come from built-in sounds plus Audio API effects. Fix: withdraw the audio half of R136. Audio (gap 12, tied for top) is the loop's own work.
+  → R139: taken. MARKET.md and OWNER.md no longer call audio owner-gated: built-in `rbxasset://` sounds and Text-to-Speech are the loop's to use.
 - C4 **The category leader is missing from the comparables.** MARKET.md:11 names DOORS as leader.
   - 99 Nights in the Forest: 26 B visits in Apr 2026 (29.5 B in later counts), 14 M+ peak concurrent players, and Best Horror Experience at the 2025 Roblox Innovation Awards.
   - Blair is Roblox's own ghost hunt: players type questions to the Spirit Box in chat. It is the on-platform version of the Phasmophobia row.
   - Silent Mansion and West Wood also have monsters that hear your mic, so that is a whole sub-genre rather than one small game ("be quiet.").
   - Fix: add 99 Nights as leader, and add Blair. Keep Phasmophobia (off-platform, paid) as a note on voice. The Mimic (linear chapters, no round loop) fits least well.
+  → R139: taken. 99 Nights (leader by audience) and Blair (the typed Spirit Box) added; Phasmophobia kept as the voice note; The Mimic marked as the weakest fit; Silent Mansion and West Wood noted as the mic sub-genre.
 - C5 **Six numbers spot-checked; four are wrong or out of date.**
   - DOORS "7.6 B visits": searches give 7.2 B visits and 7.6 M *favourites*.
   - DOORS "~14 hostile entities" is one guide page's count, and it is low: the Mines update alone added 4, and the Outdoors has 5 instakill entities.
   - Phasmophobia has had 27 ghost types since Winter's Jest (16 Dec 2025), not ~24.
   - "be quiet." has had a second map (a warehouse that needs voice chat) since 15 Sep 2024, not one map.
   - Pressure's 115 rooms and The Mimic's 9 chapters in 3 books both check out.
+  → R139: taken, one number corrected further: DOORS 7.2 B visits (7.6 M was favorites), 20+ entities, "be quiet." 2 maps; Phasmophobia is at 30 ghost types by July 2026 per its wiki, not 27.
 - C6 **Arithmetic.** Variety's gap value still reads 6 (MARKET.md:26), but R137 moved us 1→2, so it is 2×(4−2) = **4**. Everything else adds up: us 37/150 = 24.7, DOORS 131 = 87.3, Phasmophobia 124 = 82.7, Pressure 119 = 79.3, The Mimic 108 = 72.0, be quiet. 66 = 44.0.
+  → R139: taken. tools/market.luau computes every total and gap value from the matrix, and test.cmd fails if MARKET.md states any other number (plants M1-M3).
 - C7 **Inflated rows.**
   - Variety 2 → 1: every round deals all three stations (`Round.secretsPerRound` = #STATIONS+1 at Round.luau:156-157; init.server.luau:72-73). R137's own evidence says "rounds still one shape", and captures and Supervisor calls measure pressure, not variety.
   - Performance 2 → 1: fps has never been measured and the game has never run on the platform.
   - Social 2 → 1: it has never run with 2 clients, which is CLAUDE.md's own minimum bar. There is no invite or party feature, and the "clip-shaped" moment is a text trace.
   - Core loop 2 and Differentiator 3 → 1 each until C1 is fixed: their evidence is module traces, and the shipped build cannot feed those modules.
   - Deflated: Accessibility 0 → 1. tests/hud.luau:32-43 checks layouts from 640×360 landscape up, "understood" is shown as text rather than colour alone, and ProximityPrompts work natively with touch and gamepad.
+  → R139: taken. Variety, performance and social 2 to 1, accessibility 0 to 1. Core loop and differentiator keep 2 and 3 because R139 fixes C1, which their evidence rests on. Market score 24.7 to 22.0.
 - C8 **VISION was not re-targeted (§2b step 8).** VISION.md:21-32 kept the v2 numbers and only added a comparable column: rooms 5 against "procedural rooms by the hundred", entities 4 against 27 ghost types.
   - Hitting every target would still leave Content volume at 1. Fix: next to each target, state the matrix score it would earn.
+  → R139: taken. Each VISION.md target now states the matrix score hitting it would earn; hitting all of them moves content volume from 1 to 2 at most.
 - C9 **"0 of 45 everyday lines trip a secret" (OWNER.md:169) claims more than it tests.** The corpus (tests/heuristic.luau:639-684) avoids every word in the pool, so it tests over-eager stemming, not how people actually chat.
   - Since D4, `exit` is dealt every round and `out` is one of its whole-word plain terms (Round.luau:44-59). So "watch out", "get out", "I'm out" and "figure it out" all send the Operator to the lobby, and nobody has measured how often. Fix: relabel the claim and measure a realistic corpus (P3).
+  → R139: taken. The OWNER.md claim is corrected. 160 lines written blind to the word lists name a secret 30 times (17 name a station, 13 are panic or ending chatter), and tests/heuristic.luau keeps that as a ceiling (plant Q15).
 - C10 **The launch checklist (MARKET.md:54-66) misses three Roblox gates.** (a) Since 7 Jan 2026, chat requires an age check and only works within similar age bands. OVERHEARD cannot be played without chat, and the code never calls `CanUserChatAsync`.
   - (b) A 2026 guide says the chat filter tags nearly all numbers for under-13 accounts, and every answer in the game is a 2-digit code; check this on a device. (c) Text filtering (C2).
+  → R139: taken. Three launch-checklist rows: chat needs an age check (CanUserChatAsync, not yet asked), codes against the number filter (OWNER.md question 2), and player text filtered before others see it (done, R139).
 - C11 **§5 duplication in R138 (staged).** The escape tick exists in three copies: `workTheWayOut` in init.server, `workTheWayOut` in tests/soak.luau (which also reads the private `escape.openedAt`), and tools/playtest.luau:187-197. That is the drift R110-R112 had to fix (OWNER.md:177-181).
   → R138: taken. One rule in `Escape.step`, called by the server, the soak and the bots; the soak no longer reads `openedAt`. tests/wiring.luau pins that the soak and tools/playtest.luau call `escape:step(`, and test.cmd now runs 2 bot rounds: planting the old `escape:release` call fails the gate (plant P23).
   - The unstaged tree is folding the logic into `Escape.step`, but tools/playtest.luau:188 still calls `escape:release`, which the working-tree Escape.luau no longer defines. test.cmd never runs tools/, so the gate will not notice.
@@ -72,26 +84,32 @@ Scope: R136 (market setup), R137 (committed) and R138 (staged but not committed;
   - Why: in round 1 a group only sees that plain words bring it, plus a panel of percentages. The first real bite comes in a codeword's 4th or 5th round (MARKET.md:36), long after the first-play bounce that Roblox's 2026 recommendation algorithm scores.
   - First slice: the first time a coinage is credited, the Operator repeats it once, e.g. "'Blue kettle.' Thank you, caller." (a new `Round.LINES` entry, filtered per C2). The round-over screen gains `Readout.heardTonight`: which plain words brought it and who said them, plus the 3 coinages it is learning. It is all pure code and testable headlessly.
   - Est. gain: +2.0 (hook 1→2), plus +1.3 if the differentiator row also rises. This is not in the backlog.
+  → R139: ranked (gap 12, hook), with the differentiator; a candidate for the R142 BIG SWING panel.
 - S2 **Give the Operator a voice and give every event a sound.** Rows: Audio (W3), Hook.
   - Why: C3, and GAME.md:140 says "The sound design is the game." The audio gap is tied for top, and it was parked on a false premise.
   - First slice: a pure `Voice.luau` (line key → TTS text, voice and speed, plus a telephone band-pass) spoken through `AudioTextToSpeech` at the Operator's body. Add a `Cues` table with a built-in sound plus an effect for burn, arrival, capture, ring, win, loss and each silence band, and a test that every `Round.LINES` key and every event has a cue.
   - Est. gain: +2.0 (audio 1→2, backed by the coverage test). This is not in the backlog.
+  → R139: ranked (gap 12, audio).
 - S3 **Make "Out" a relay: GAME.md's Four Doors (GAME.md:69-70).** Rows: Core loop (W3), Variety (W2).
   - Why: R138's escape shows its destination on screen (Readout.ESCAPE_NOTE: "everyone to the lobby"), so nobody has to talk. A group that runs at once has about 9 s to spare (Config.luau:88-97). Pillar 1 says every objective forces a fact across the building.
   - First slice: 3-4 street doors defined as data, one live per round, shown only to a player outside the lobby. The relay happens while the call rings, and saying an `exit` word brings the Operator.
   - Est. gain: +3.3 over 2 rounds.
+  → R139: ranked (gap 9, core loop).
 - S4 **Answer R73 with the evidence, then key the Lexicon to the private server.** Rows: Progression (W2), Social.
   - Why: Roblox's 2026 recommendation algorithm scores D1, D2-7 and D8-28 retention, and "intentional co-play days" (joins, invites, private servers). GAME.md:115-123 already calls the Lexicon the retention engine, and LexiconSave exists but is not wired up.
   - First slice: put R73 to the owner as one A/B line with a recommendation (the private-server id, else the sorted set of UserIds). Then build a DataStore adapter, faked in tests.
   - Est. gain: +2.7 over 2 rounds once the owner answers.
+  → R139: ranked (gap 10, progression); the choice is OWNER.md question 3.
 - S5 **Deal 3 of 5 stations each round.** Rows: Variety (W2), Content.
   - Why: every round currently asks the same three things.
   - First slice: add 2 station entries (data only, thanks to R137's registries) and deal a different subset each round. A trace should show round 2 differs from round 1.
   - Est. gain: +1.3 (variety 1→2); the stations axis goes 3→5.
+  → R139: ranked (gap 12, content).
 - S6 **A way to play without free text.** Rows: Accessibility (W2), Hook.
   - Why: C10 (a) and (b).
   - First slice: call `CanUserChatAsync` when a player joins and show an honest HUD line if they cannot chat. Make answers 1950s exchange names (KLONDIKE, BUTTERFIELD) instead of digits: they fit the tone and survive the number filter. Later, a lamp-signal board with fixed symbols that the Operator learns the way it learns coinages.
   - Est. gain: +1.3. Not in the backlog.
+  → R139: ranked (gap 6, accessibility); its exchange-name half is OWNER.md question 2.
 
 ## Direction check
 - **R136 (market setup):**
@@ -120,10 +138,15 @@ Scope: R136 (market setup), R137 (committed) and R138 (staged but not committed;
 
 ## Process notes (for AGENT_LOOP.md)
 - **P1 Spell out the unblock.** "Device-blocked" appears 70 times in LOOP_LOG. The 8 Sep setup notes say the unblock is two owner clicks: Studio › File › Studio Settings › Beta Features › MCP Server, then Connect in the Rojo plugin. OWNER.md never says so. §7 should require every device block to be filed at the top of OWNER.md as numbered steps, with the rows and claims it blocks.
+  → R139: taken. The Studio unblock is OWNER.md question 1, as numbered steps.
 - **P2 Check the platform, not just the mock.** C1, C2 and C10 survived because the harness mocks Roblox. Add to the Roblox SHIP gate a PLATFORM.md row for every engine API the game uses, giving the side it runs on and the doc line that says so. The reviewer rejects any new API without a row.
+  → R139: taken. PLATFORM.md, swept by tests/wiring.luau.
 - **P3 Don't let the builder write the evidence.** The bots, their timings and the "ordinary chat" corpus are all written in the same round that ships the feature. For a language game, PLAYTEST personas should be subagents that write chat using only what a player can see, with the real Heuristic and Operator judging it. Report how often natural chat trips a secret and how long a group takes to coin its first word.
+  → R139: taken in part. The corpus was written by a subagent blind to the word lists; the unscripted playtest persona is R140's.
 - **P4 Gate the playtest tool.** tools/ is not run by test.cmd, so the PLAYTEST instrument can break without anyone noticing (C11). Add a 2-round smoke run of `tools/playtest` to test.cmd.
+  → R138: taken. test.cmd runs 2 bot rounds and fails if they crash or win none.
 - **P5 Make "owner-gated" cite its reason.** A gap labelled owner-gated must name the platform fact behind it, and the blind re-scorer at RETRO should check it. R136's audio label contradicted RESEARCH.md and Presence.luau.
+  → R139: taken. OWNER.md's parked line and MARKET.md's gap notes name the owner action or platform fact behind every owner-gated label.
 
 ## Market score as you would score it: 17.3/100 (theirs: 24.7/100)
 - **Rows I changed:** Core loop 2→1, Variety 2→1, Performance 2→1, Social 2→1, Differentiator 3→1, Accessibility 0→1 (reasons in C7). Σ(weight × score) = 26/150.

@@ -8740,3 +8740,19 @@ Market: core loop not raised (2). The escape is a real decision, run now or wait
 Content: round phases 1→3 (probed through `Escape.step`); Operator lines 10→11.
 Decisions: D6 (rewritten), D7 (the door opens after the ring; the time limit). COACH.md's DO FIRST asked C1 and C2 to end this round; AGENT_LOOP v3.1 says corrections are fixed "this round or the next", so R139 takes them.
 Next: R139 FIX: COACH.md C1 (hear chat through `Player.Chatted` on the server) and C2 (filter every phrase before the Lexicon panel shows it), then corrections C3-C10.
+
+
+## R139 · FIX · the game hears chat on a live server, and filters what it shows
+Pick: COACH.md C1 (the chat feed was a client-only callback set in the server script, so the live game heard nothing) and C2 (typed phrases went to every client unfiltered), then corrections C3-C10 — COACH C1-C10 (v3.3: a CORRECTION about a live defect takes the next slot) · impact planned 3/3/+1. Sync: AGENT_LOOP read at v3.3 (re-read in full); Studio MCP not live (the roblox-studio server exposes no tools; the unblock is one owner action, now filed); no unbuilt owner orders (R46, R85, R93, R122 all shipped); R140 runs the PLAYTEST postponed from R138, and the RETRO moves to R141.
+
+Player notices: On a live server the Operator now hears what the group types: plain words bring it, codewords burn, and the Supervisor stops treating talking players as silent. The Lexicon panel shows other players' phrases only after Roblox's filter.
+Impact: planned 3/3/+1 → shipped 3/3/+1 (biggest file tests/wiring.luau 1,850→1,956)
+Built: ChatFeed.luau (`Player.Chatted`, follows the Players service); Censor.luau (filters each phrase for its author, sends only the newest panel); the server's `hearChat` and `filterForEveryone`; PLATFORM.md plus a wiring sweep that fails on any API used on the wrong side; tests/chatfeed.luau, tests/censor.luau; tests/blind_chat.txt as a ceiling in tests/heuristic.luau; tools/market.luau, checked by test.cmd. Docs: MARKET.md re-scored (C3-C7, C10: 99 Nights and Blair added); VISION.md targets state the score each earns (C8), plus headline metrics; OWNER.md rebuilt to v3.3 (five closed-form questions on top, 303→82 lines); DECISIONS D8.
+Quality: my review added a warning for the filter's empty result, which was dropped silently. The per-round reset check names `broadcastLexicon` as its second exemption, with the reason. No independent review (FIX). Biggest function touched: `hearChat`, 28 lines.
+Verified: test.cmd exit 0 (23 suites, 1,813 counted checks, the bot gate, the market check); selene src 0/0; rojo build OK; plants Q1-Q15 and M1-M3 each failed BY NAME, restored byte-identical. Live chat is device-blocked (Studio not connected: OWNER.md question 1); proven headless with fakes that behave like the server-side signals, each API's side cited in PLATFORM.md.
+Headline: rounds won 5/6/6 → 5/6/6; taken per round 1.7 → 1.7; Supervisor calls per round 1.9 → 1.9; codewords replaced 4 → 4; natural chat naming a secret, first measured: 30 of 160; rounds that end 21/21 → 21/21. The bots feed the Operator directly, so the live-chat fix cannot show in them.
+Market: 24.7 → 22.0 (COACH.md C7: variety, performance and social 2→1, accessibility 0→1). Core loop and differentiator keep 2 and 3 because the live build now feeds them. Best comparable DOORS 87.3; 99 Nights 83.3.
+Content: unchanged (FIX).
+Coach: C1-C10 taken; S1-S6 ranked; P1-P3 and P5 taken (P4 in R138). No note disagreed with a recorded owner answer.
+Decisions: D8 (a phrase the filter cannot pass is left off the panel, not shown hashed).
+Next: R140 PLAYTEST (postponed from R138, now three building rounds since R136): three personas, one unscripted and writing its own chat; then R141 RETRO.
