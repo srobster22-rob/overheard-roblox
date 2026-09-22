@@ -73,10 +73,22 @@ silent and win.
 
 Four players, roughly ten minutes, one exchange building.
 
-1. **Cutover.** The lights go. The board wakes up. It says "Number, please."
+1. **Cutover.** The lights go. The board wakes up. It says "Operator. Go ahead,
+   please." (It said "Number, please." until R129: quoting it gave the jack away.)
 2. **Work.** Complete three switchboard objectives. Each needs a transfer.
 3. **The Call.** Place the outside call. This is loud and it *will* come.
 4. **Out.** Reach the street door before it reaches you.
+
+> **As built (R138):** Cutover is only the Operator's greeting. Work is three
+> stations in three rooms. When the last line is restored the call rings for
+> `Config.CallRingSeconds` with the street door shut; then the door opens and
+> the Operator is sent for the lobby, which holds it. The round is won the
+> moment everyone still free stands in the lobby with the door open; anyone in
+> there when it arrives is taken. A group that waits in the lobby for the door
+> must not say the lobby's plain words (door, out, leave), which bring the
+> Operator to it. `Config.EscapeSeconds` after the door opens the round ends
+> anyway: won if anyone still free got out, lost if nobody did (DECISIONS D6,
+> D7).
 
 Losing is being **connected** — it puts you on the line and you can only be
 heard, not spoken to, for the rest of the round. Your teammates hear you. You
@@ -136,7 +148,7 @@ specifically.
 
 Its voice is polite. It only ever says operator lines:
 
-> "Number, please."
+> "Operator. Go ahead, please."
 > "I'm connecting you now."
 > "Go ahead, caller."
 > "That line is busy."

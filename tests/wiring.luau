@@ -572,7 +572,18 @@ end
 local NL = string.char(10)
 local capture = string.match(serverCode, "local function takeWhoeverIsHere%(.-" .. NL .. "end") or ""
 check("(guard) found the capture function", #capture > 0)
-check("the loss stops the Operator", string.find(capture, "pursuit:stop()", 1, true) ~= nil)
+-- R138: every ending goes through `endTheRound`, which finishes the round, says
+-- so, pushes the phase and stops the Operator, so no path can do three of four.
+local ending = string.match(serverCode, "local function endTheRound%(.-" .. NL .. "end") or ""
+check("(guard) found the round's one ending", #ending > 0)
+check("the ending goes through the lifecycle", string.find(ending, "round:finish(outcome", 1, true) ~= nil)
+check("the ending stops the Operator", string.find(ending, "pursuit:stop()", 1, true) ~= nil)
+check("the ending pushes the phase", string.find(ending, "pushPhase(nil)", 1, true) ~= nil)
+check(
+	"the ending says the win and the loss in their own lines",
+	string.find(ending, "LINES.completed", 1, true) ~= nil and string.find(ending, "LINES.lost", 1, true) ~= nil
+)
+check("the loss ends the round that way", string.find(capture, "endTheRound(", 1, true) ~= nil)
 -- R49 moved the losing rule into `endTheRoundIfNobodyCanWin`, which the capture
 -- path and the tick both ask, so the capture path no longer calls `allTaken`
 -- directly. The rule's own checks are further down; this one only has to say
@@ -1180,7 +1191,7 @@ local NOT_THE_SOAKS_JOB: { [string]: boolean } = {
 
 -- R110: the dispatch is no longer copied into the soak -- both call it.
 check("the soak runs the server's own dispatch", string.find(soakCode, ":putThrough(", 1, true) ~= nil)
-for _, path in { "takeWhoeverIsHere" } do
+for _, path in { "takeWhoeverIsHere", "workTheWayOut" } do
 	local body = string.match(serverCode, `local function {path}%(%).-` .. NL .. "end") or ""
 	check(`(guard) read the server's '{path}'`, #body > 0)
 
@@ -1226,6 +1237,12 @@ check(
 	-- R112: through the server's own capture, which is reachedInRoom inside.
 	string.find(soakCode, ":takeInRoom(", 1, true) ~= nil
 )
+-- R138: the way out, through the same step as the server. The bot playtest's
+-- traces are quoted as evidence in the log, so it is held to the same rule.
+check("...and settles the way out with the server's own step", string.find(soakCode, "escape:step(", 1, true) ~= nil)
+local botCode = LuauCode.stripNonCode(fs.readFile("tools/playtest.luau"))
+check("(guard) read the bot playtest", #botCode > 0)
+check("the bot playtest settles the way out with that step too", string.find(botCode, "escape:step(", 1, true) ~= nil)
 
 -- (control) a member no server path reaches for must not be reported as covered.
 check("(control) the reader does not invent coverage", string.find(soakCode, ".neverWrittenMember", 1, true) == nil)
@@ -1429,13 +1446,44 @@ check(
 -- NL built with string.char, never an escape: this repo's patching has turned
 -- "\n" inside a Luau string into a real line break three times now (R22, R24,
 -- and again this round).
+-- R138 moved the win out of `board.onSolved`: the last line OPENS the way out,
+-- and the round is won on the tick, in `workTheWayOut`, once everyone still free
+-- is in the lobby.
 local solvedBlock = string.match(serverCode, "if board:allSolved%(%).-" .. NL .. "\tend") or ""
-check("(guard) found the win path", #solvedBlock > 0)
-check("winning goes through the lifecycle", string.find(solvedBlock, "round:finish", 1, true) ~= nil)
-check("winning stops the Operator", string.find(solvedBlock, "pursuit:stop()", 1, true) ~= nil)
--- R33. And the client has to be TOLD. Every place the phase changes must push it, or
--- the panel is stale exactly when it matters.
-check("the phase is pushed when the round is won", string.find(solvedBlock, "pushPhase", 1, true) ~= nil)
+check("(guard) found the last-line path", #solvedBlock > 0)
+check("the last line opens the way out", string.find(solvedBlock, "escape:open", 1, true) ~= nil)
+check("...and does not end the round by itself", string.find(solvedBlock, "round:finish", 1, true) == nil)
+local winBlock = string.match(serverCode, "local function workTheWayOut%(%).-" .. NL .. "end") or ""
+check("(guard) found the win path", #winBlock > 0)
+-- R29 (winning stops the monster) and R33 (the client is TOLD, or the panel is
+-- stale exactly when it matters) live in `endTheRound`, checked above. The way
+-- out has to end the round through it, with whatever the step settled.
+check(
+	"the way out ends the round with whatever the step settled",
+	string.match(winBlock, "if outcome then%s+endTheRound%(outcome%)") ~= nil
+)
+-- The rule itself -- when the Operator is sent, who is out, the time limit --
+-- lives in `Escape.step`, which the soak and the bots call too. A copy of it
+-- here is how R138's first draft ended up with three rules that disagreed.
+check("the way out is one beat of the shared step", string.find(winBlock, "escape:step(", 1, true) ~= nil)
+-- ...asked about everyone present and where their bodies really are. Passing an
+-- empty list for either would end every live escape lost at the time limit
+-- with every suite green (R138 review).
+check(
+	"...asked about everyone present, where they really stand",
+	string.find(
+		winBlock,
+		"escape:step(os.clock(), pursuit, presentUserIds(), line, livePositions(), built.rooms)",
+		1,
+		true
+	) ~= nil
+)
+check("the tick asks the way out", string.find(tickBody, "workTheWayOut()", 1, true) ~= nil)
+-- Capture before the way out: a player who reaches the lobby on the beat the
+-- Operator arrives there is taken, not let out.
+local captureAt = string.find(tickBody, "takeWhoeverIsHere()", 1, true)
+local wayOutAt = string.find(tickBody, "workTheWayOut()", 1, true)
+check("the tick takes whoever is caught before it lets anyone out", (captureAt or math.huge) < (wayOutAt or 0))
 
 -- R48/R49. Everyone taken is one way to lose; nobody LEFT being able to finish
 -- anything is the other. Three of four caught in one arrival strands a line with
@@ -1488,11 +1536,25 @@ check("...and only when play stranded it", string.find(loseBody, "line:count() >
 local captureBody = string.match(serverCode, "local function takeWhoeverIsHere%(%).-" .. NL .. "end") or ""
 check("(guard) found the capture path", #captureBody > 0)
 check("the capture path asks the losing rule", string.find(captureBody, "endTheRoundIfNobodyCanWin", 1, true) ~= nil)
-check("...and announces it (control)", string.find(captureBody, "LINES.lost", 1, true) ~= nil)
+check("...and announces it through the one ending (control)", string.find(captureBody, "endTheRound(", 1, true) ~= nil)
 -- RAW source: the remote name is a string body and the lexer strips those, so
 -- against `clientCode` this reads `Remotes.get()` and never matches. Fifth time
 -- this project has hit that; the remote-names block above says the same thing.
 check("the client listens for the phase", string.find(clientSource, 'Remotes.get("Phase")', 1, true) ~= nil)
+-- R138: every kind of row the objectives panel is given has its own style. A
+-- kind without one falls back to the small grey note, which is how the way-out
+-- row would read if its style were lost. Kinds read from Readout's RAW source:
+-- they are string bodies, which the stripped source blanks.
+local rowKinds = 0
+local unstyled: { string } = {}
+for kind in string.gmatch(fs.readFile("src/shared/Readout.luau"), 'kind = "(%a+)"') do
+	rowKinds += 1
+	if not string.find(clientSource, NL .. "%s*" .. kind .. " = { size = ") then
+		table.insert(unstyled, kind)
+	end
+end
+check(`(guard) found the panel's row kinds ({rowKinds})`, rowKinds >= 5)
+check(`every row kind has its own style ({table.concat(unstyled, ", ")})`, #unstyled == 0)
 -- CONNECTED, not merely defined. The first version of this check looked for the
 -- handler's name and passed against a client that declared `onPhase` and never
 -- subscribed to anything -- the same weakness R20 found in its ramp check.
@@ -1572,9 +1634,10 @@ end
 -- Text the game shows only while the Operator is NOT listening. R32 gates the
 -- chat feed on the round being live, and `tests/wiring.luau` asserts that gate,
 -- so this exemption is earned rather than asserted.
-local AFTER_THE_ROUND: { [string]: boolean } = {
-	["The board was restored."] = true,
-}
+-- R138 retired its one entry, "The board was restored.": the win text that
+-- replaced it says nothing the Operator hears, and the sweep below holds it to
+-- that like any other string.
+local AFTER_THE_ROUND: { [string]: boolean } = {}
 
 -- Three shapes, because the client displays text three ways. The first draft
 -- collected only two and found THREE strings while the client shows six -- the
@@ -1587,10 +1650,27 @@ local clientRaw = fs.readFile("src/client/init.client.luau")
 -- was taken.
 local lostText = string.match(clientRaw, NL .. '%s*lost = "([^"]+)"')
 check(`(guard) found the loss text ({lostText or "none"})`, lostText ~= nil)
-check(
-	"the loss text does not claim everyone was taken",
-	lostText ~= nil and not string.find(string.lower(lostText :: string), "everyone", 1, true)
-)
+-- R138: every way of saying "all of you", not only the one word. The review
+-- found "All of you reached the lobby." would have passed a check for
+-- "everyone" alone.
+local function claimsEveryone(text: string?): boolean
+	local lower = string.lower(text or "")
+	for _, phrase in { "everyone", "everybody", "all of you", "every one of you", "the whole group" } do
+		if string.find(lower, phrase, 1, true) then
+			return true
+		end
+	end
+	return false
+end
+check("(control) the reader hears it said another way", claimsEveryone("All of you reached the lobby."))
+check("the loss text does not claim everyone was taken", lostText ~= nil and not claimsEveryone(lostText))
+-- R138, the same rule for the other ending. A round is won two ways too
+-- (Escape.step: everyone still free in the lobby, OR anyone free in it at the
+-- time limit), and the server sends only "won". A win at the limit leaves
+-- somebody outside, so the text may not claim everyone got out.
+local wonText = string.match(clientRaw, NL .. '%s*won = "([^"]+)"')
+check(`(guard) found the win text ({wonText or "none"})`, wonText ~= nil)
+check("the win text does not claim everyone got out", wonText ~= nil and not claimsEveryone(wonText))
 local displayed: { [string]: boolean } = {}
 for text in string.gmatch(clientRaw, 'label%([%w_.]+, "([^"]+)"') do
 	displayed[text] = true
@@ -1658,6 +1738,7 @@ local TITLE_NEVER_SHOWN: { [string]: boolean } = { ["The board"] = true }
 local sharedShown: { string } = {
 	ReadoutModule.PRIVATE_NOTE,
 	ReadoutModule.NOTHING_HELD,
+	ReadoutModule.ESCAPE_NOTE,
 	ReadoutModule.TITLE_WON,
 	ReadoutModule.TITLE_LOST,
 	SilenceModule.note("clear"),

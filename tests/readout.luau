@@ -87,8 +87,26 @@ check("...and the count reflects the solved one", none[#none - 1].text == "resto
 local solvedHeld = Readout.lineRows({
 	{ id = "board", solved = true, holding = true, prompt = "jack %s", answer = "47" },
 })
-check("a solved line you hold is not listed", kinds(solvedHeld) == "count,empty")
+-- R138: with every line restored the way out replaces the empty message.
+check("a solved line you hold is not listed", kinds(solvedHeld) == "count,escape")
 check("...and the count sees it", solvedHeld[1].text == "restored 1/1")
+check("every line restored says where to go", solvedHeld[2].text == Readout.ESCAPE_NOTE)
+local escapeRows = 0
+for _, row in none do
+	if row.kind == "escape" then
+		escapeRows += 1
+	end
+end
+check("(control) a board with a line left shows no way out", escapeRows == 0)
+-- Nothing dealt is not "every line restored": 0 of 0 would otherwise send the
+-- group to the lobby before a round has any lines at all.
+local emptyEscape = 0
+for _, row in Readout.lineRows({}) do
+	if row.kind == "escape" then
+		emptyEscape += 1
+	end
+end
+check("a panel with no lines at all shows no way out", emptyEscape == 0)
 
 print("")
 print("against the real Objectives payload, not a hand-made one")

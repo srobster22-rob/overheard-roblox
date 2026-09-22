@@ -12,9 +12,9 @@ Targets come from VISION.md.
 | rooms | 3 | 5 | Config.Rooms |
 | world interactables (prompts) | 4 | 8 | Round.STATIONS + literal station(...) calls in World |
 | entities built (Operator, Supervisor) | 2 | 4 | GAME.md roster vs src/server/systems |
-| Operator lines | 10 | 16 | Round.LINES |
+| Operator lines | 11 | 16 | Round.LINES |
 | round outcomes | 2 | 3 | Lifecycle Outcome type |
-| round phases / variants | 1 | 4 | one phase today: work the stations (GAME.md names 4) |
+| round phases (work, the call, out) | 3 | 4 | stations; Escape.step probed with a player at the door (GAME.md names 4) |
 
 ## History
 

@@ -93,6 +93,7 @@ function Harness.build()
 			"Station",
 			"Supervisor",
 			"TestOperator",
+			"Escape",
 		}
 	do
 		adopt(systems, handle(name, `src/server/systems/{name}.luau`))

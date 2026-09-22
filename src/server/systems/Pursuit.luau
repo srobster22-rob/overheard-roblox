@@ -102,6 +102,23 @@ local function setCourse(self: Tracker, target: Point)
 	self.route = if self.routeFor then table.clone(self.routeFor(self.position, target)) else {}
 end
 
+-- Set off for a named room. The state is derived, never asserted: re-sending it
+-- somewhere it is already close to must not make it loud again, and re-sending
+-- it where it already stands must not re-fire `arrived` (setState ignores a
+-- repeat, so its time there is kept too).
+local function headFor(self: Tracker, payload: string, room: Point)
+	local target = { x = room.x, z = room.z }
+	setCourse(self, target)
+	self.targetName = payload
+	-- A request queued for this room is served by this trip. Kept, it would send
+	-- the Operator back once it had given the room up and walked home: R138's
+	-- review found it back in the lobby inside the escape's time limit.
+	if self.pending == payload then
+		self.pending = nil
+	end
+	self:setState(self:classify(distance(self.position, target)))
+end
+
 function Pursuit.setState(self: Tracker, state: State)
 	if self.state == state then
 		return
@@ -178,14 +195,22 @@ function Pursuit.sendTo(self: Tracker, payload: string): (boolean, boolean)
 		self.pending = payload
 		return true, false
 	end
-	local target = { x = room.x, z = room.z }
-	setCourse(self, target)
-	self.targetName = payload
-	-- Derived, never asserted. Re-sending it somewhere it is already close to
-	-- must not make it loud again, and re-sending it where it already stands
-	-- must not re-fire `arrived`.
-	self:setState(self:classify(distance(self.position, target)))
+	headFor(self, payload, room)
 	return true, true
+end
+
+-- Sent somewhere it must go NOW, whatever call it is on (R138: the outside
+-- call). Unlike `sendTo` it is never queued behind a call in progress, and a
+-- retreat is turned round too. Unlike `stop` then `sendTo` it keeps a room
+-- already queued, and an Operator already standing in that room stays
+-- `arrived` with its time there intact, rather than arriving again.
+function Pursuit.sendNow(self: Tracker, payload: string): boolean
+	local room = self.rooms[payload]
+	if not room then
+		return false
+	end
+	headFor(self, payload, room)
+	return true
 end
 
 function Pursuit.stop(self: Tracker)

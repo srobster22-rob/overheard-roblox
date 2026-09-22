@@ -254,6 +254,8 @@ local ROW_STYLE: { [string]: { size: number, color: Color3 } } = {
 	note = { size = 10, color = DIM },
 	count = { size = 11, color = BRASS },
 	empty = { size = 11, color = DIM },
+	-- R138: every line is restored; the way out is open. Loud on purpose.
+	escape = { size = 13, color = BRASS },
 }
 
 local function renderObjectives(entries: { any })
@@ -395,7 +397,11 @@ overNext.Position = UDim2.fromOffset(8, 56)
 overNext.Size = UDim2.new(1, -16, 0, 28)
 
 local OUTCOME_TEXT = {
-	won = "The board was restored.",
+	-- R138: winning means getting out. There are two ways (Escape.step): everyone
+	-- still free in the lobby, or anyone free in it at the time limit, and the
+	-- server sends only "won", so this must be true of both -- as R118 made the
+	-- loss text true of both losses. tests/wiring.luau holds it to that.
+	won = "Every line restored. Someone reached the lobby in time.",
 	-- R118: true of BOTH losses. Since R48 a round is also lost when nobody
 	-- still free can finish, with players not on the line, and "Everyone was
 	-- put on the line" told them something false. The server sends only

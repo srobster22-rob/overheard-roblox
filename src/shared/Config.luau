@@ -85,6 +85,24 @@ local Config = {
 	-- one is not.
 	LingerSeconds = 20,
 
+	-- THE CALL (R138). When the last line is restored the outside call rings for
+	-- this long with the street door shut; then the door opens and the Operator
+	-- is sent for the lobby, where the door is. The round is won when everyone
+	-- still free stands in the lobby. Measured (tests/escape.luau's race): the
+	-- Operator reaches the lobby about 16 s after the ring starts from its post,
+	-- 23 s from a room, and the longest run to the lobby, from a far corner of
+	-- the board room or the archive, is 123 studs: under 8 s at Roblox's walking
+	-- 16 studs/s. So a group that runs at once has about 8 s in hand, and one
+	-- that talks longer than that walks into it. A tuning dial, set without a
+	-- Studio playtest.
+	CallRingSeconds = 10,
+	-- How long after the door opens the round is settled anyway: won if anyone
+	-- still free got out, lost if nobody did. Without it one player who never
+	-- comes holds the round open for good. Long enough to wait the Operator out:
+	-- it stays LingerSeconds once it gets there, and even when it set off from a
+	-- room it has left with more than that run to spare (the same race).
+	EscapeSeconds = 45,
+
 	-- Breath between rounds. Until R29 there was no next round at all: both
 	-- endings fired a line and left the server a dead lobby, and a WIN did not
 	-- even stop the Operator hunting.

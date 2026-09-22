@@ -13,6 +13,10 @@ local Harness = require("../tests/harness")
 local rt = Harness.build()
 local Round = rt.require(rt.systems.Round)
 local Config = rt.require(rt.shared.Config)
+local Layout = rt.require(rt.shared.Layout)
+local Escape = rt.require(rt.systems.Escape)
+local Connected = rt.require(rt.systems.Connected)
+local Pursuit = rt.require(rt.systems.Pursuit)
 
 -- GAME.md's roster: one comprehension rule each. An entity counts as built when
 -- its module exists in src/server/systems.
@@ -53,6 +57,31 @@ local world = fs.readFile("src/server/systems/World.luau")
 -- builds with a literal `station("Name", ...)` call (the reader) counts too.
 local interactables = #Round.STATIONS + select(2, string.gsub(world, 'station%("', ""))
 
+-- GAME.md's round shape is Cutover, Work, The Call, Out. Each counts when the
+-- game DOES it, not when a dial for it exists: stations to work; a call that
+-- keeps a player already standing at the street door in while it rings; and a
+-- way out once it has rung (R138). The last two are probed through
+-- `Escape.step` itself.
+local phaseNames: { string } = {}
+if #Round.STATIONS > 0 then
+	table.insert(phaseNames, "work")
+end
+local rooms = Layout.rooms()
+local exitRoom = rooms[Escape.ROOM]
+if exitRoom then
+	local probe = Escape.new()
+	probe:open(0)
+	local operator = Pursuit.new(rooms, Layout.operatorPost(), Layout.route)
+	local nobodyCaught = Connected.new()
+	local waiting = { [1] = exitRoom }
+	if probe:step(0, operator, { 1 }, nobodyCaught, waiting, rooms) == nil then
+		table.insert(phaseNames, "the call")
+	end
+	if probe:step(Config.CallRingSeconds, operator, { 1 }, nobodyCaught, waiting, rooms) == "won" then
+		table.insert(phaseNames, "out")
+	end
+end
+
 local axes = {
 	{ "stations (objectives a round deals)", #Round.STATIONS, 5, "Round.STATIONS" },
 	{ "concepts with a station", countKeys(stationConcepts), 5, "Round.STATIONS[].concept" },
@@ -68,7 +97,12 @@ local axes = {
 	},
 	{ "Operator lines", countKeys(Round.LINES), 16, "Round.LINES" },
 	{ "round outcomes", outcomes, 3, "Lifecycle Outcome type" },
-	{ "round phases / variants", 1, 4, "one phase today: work the stations (GAME.md names 4)" },
+	{
+		"round phases (" .. table.concat(phaseNames, ", ") .. ")",
+		#phaseNames,
+		4,
+		"stations; Escape.step probed with a player at the door (GAME.md names 4)",
+	},
 }
 
 local out = {

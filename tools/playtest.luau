@@ -1,12 +1,14 @@
 --!strict
 -- A full headless session with bot players and an event trace, for PLAYTEST
 -- rounds (AGENT_LOOP v2). Run from the project root:
---     lune run tools/playtest [persona] [rounds] [seed]
+--     lune run tools/playtest [persona] [rounds] [seed] [gate]
 --
--- It drives the REAL server modules the way `init.server` does (the wiring is
--- the same as tests/soak.luau, which is kept honest against the server by
--- tests/wiring.luau) and prints what a player would see and hear, in order.
--- It is a reading instrument, not a test: nothing here asserts.
+-- It drives the REAL server modules the way `init.server` does, in the
+-- server's order within a beat (see `tick`), and prints what a player would see
+-- and hear, in order. tests/wiring.luau holds it to the server's escape step.
+-- It is a reading instrument, not a test. The one exception is `gate`, which
+-- test.cmd passes: then it exits non-zero if the bots won no round at all, so
+-- an escape nobody can win fails the ship gate rather than printing quietly.
 --
 -- Personas are how the bots TALK, because talking is the game:
 --   firsttimer  says the plain word in round 1, then coins a codeword and keeps
@@ -28,6 +30,7 @@ local Round = rt.require(rt.systems.Round)
 local Supervisor = rt.require(rt.systems.Supervisor)
 local Layout = rt.require(rt.shared.Layout)
 local Config = rt.require(rt.shared.Config)
+local Escape = rt.require(rt.systems.Escape)
 
 local persona = process.args[1] or "firsttimer"
 local wantRounds = tonumber(process.args[2]) or 7
@@ -71,6 +74,15 @@ local round = Lifecycle.new()
 local operator = Operator.new(secrets)
 local pursuit = Pursuit.new(rooms, Layout.operatorPost(), Layout.route)
 local supervisor = Supervisor.new()
+local escape = Escape.new()
+
+-- R138: how long each group takes to react once the outside call rings, and
+-- how long the run to the lobby takes: 93 studs from the middle of the board
+-- room or the archive, 123 from a far corner, so 6 to 8 s at Roblox's default
+-- walk of 16 studs/s. The bots take 7. First-timers stand around asking what
+-- the ringing means.
+local RUN_AFTER: { [string]: number } = { firsttimer = 10, returning = 3, quiet = 6 }
+local RUN_TRAVEL_SECONDS = 7
 
 local present = { 1, 2, 3, 4 }
 local standing: { [number]: any } = {}
@@ -135,16 +147,11 @@ local function tick(seconds: number)
 		if not round:isPlaying() then
 			continue
 		end
-		local called, announce = supervisor:putThrough(pursuit, rooms, Config.Rooms, standing, now)
-		if called then
-			stats.calls += 1
-			if announce then
-				trace(`   >> THE SUPERVISOR put a call through to a silent player. "{Round.LINES.traced}"`)
-			end
-		end
+		-- The server's order within a beat: capture, the loss, the silent line,
+		-- the way out, a queued room, the linger. (The Operator's own walk runs
+		-- on Heartbeat there; here it goes first.)
 		local before = pursuit.state
 		pursuit:step(Config.TickSeconds)
-		pursuit:takePending()
 		if pursuit.state == "arrived" and before ~= "arrived" then
 			trace(`   >> it has ARRIVED. "{Round.LINES.taken}"`)
 		end
@@ -167,10 +174,53 @@ local function tick(seconds: number)
 			pursuit:stop()
 			trace(`   ROUND LOST. "{Round.LINES.lost}"`)
 		end
+		if round:isPlaying() then
+			local called, announce = supervisor:putThrough(pursuit, rooms, Config.Rooms, standing, now)
+			if called then
+				stats.calls += 1
+				if announce then
+					trace(`   >> THE SUPERVISOR put a call through to a silent player. "{Round.LINES.traced}"`)
+				end
+			end
+		end
+		-- R138: the server's way out, one beat of the same `Escape.step`.
+		if round:isPlaying() and escape:isOpen() then
+			local outcome, sent = escape:step(now, pursuit, present, line, standing, rooms)
+			if sent then
+				trace(`   >> the call has rung. The door is open and it is coming for the {Escape.ROOM}.`)
+			end
+			if outcome and round:finish(outcome, now) then
+				pursuit:stop()
+				local out, free = 0, 0
+				for _, id in present do
+					if not line:isConnected(id) then
+						free += 1
+						out += if roomOf[id] == Escape.ROOM then 1 else 0
+					end
+				end
+				if outcome == "won" then
+					stats.won += 1
+					trace(`   ROUND WON: {out} of {free} still free got out. "{Round.LINES.completed}"`)
+				else
+					stats.lost += 1
+					trace(`   ROUND LOST: the door was open {Config.EscapeSeconds}s and nobody got out.`)
+				end
+			end
+		end
+		pursuit:takePending()
 		if pursuit:shouldLeave(Config.LingerSeconds) then
 			pursuit:withdrawTo(Layout.operatorPost())
 			trace(`   >> it gives the room up. "{Round.LINES.givingUp}"`)
 		end
+	end
+end
+
+-- Tick until the round is over, or `seconds` pass.
+local function tickUntilOver(seconds: number)
+	local waited = 0
+	while round:isPlaying() and waited < seconds do
+		tick(Config.TickSeconds)
+		waited += Config.TickSeconds
 	end
 end
 
@@ -256,10 +306,30 @@ while played < wantRounds do
 			trace(`   {NAMES[actor]} is refused: {tostring(result.reason)}`)
 		end
 	end
-	if round:isPlaying() and board:allSolved() and round:finish("won", now) then
-		stats.won += 1
-		trace(`   ROUND WON. "{Round.LINES.completed}"`)
-	elseif round:isPlaying() then
+	-- R138: the last line opens the way out. The group hears the call, reacts,
+	-- runs, and the round is won only if everyone free gets into the lobby.
+	if round:isPlaying() and board:allSolved() and escape:open(now) then
+		trace(`   every line is through. "{Round.LINES.ringing}"`)
+		tickUntilOver(RUN_AFTER[persona] or 6)
+		if round:isPlaying() then
+			local runners = {}
+			for _, id in present do
+				if not line:isConnected(id) then
+					table.insert(runners, NAMES[id])
+				end
+			end
+			trace(`   {table.concat(runners, ", ")} run for the {Escape.ROOM}`)
+			tickUntilOver(RUN_TRAVEL_SECONDS)
+			for _, id in present do
+				if not line:isConnected(id) then
+					roomOf[id] = Escape.ROOM
+				end
+			end
+			place()
+			tickUntilOver(60)
+		end
+	end
+	if round:isPlaying() then
 		round:finish("lost", now)
 		stats.lost += 1
 		trace("   the round stalls out (counted as lost)")
@@ -268,6 +338,7 @@ while played < wantRounds do
 	if round:readyToRestart(now, Config.IntermissionSeconds) and round:restart() then
 		board:reset()
 		line:clear()
+		escape:reset()
 		operator:forgetObservations()
 		operator:coolRound(Config.CoolPerRound)
 		pursuit:sendHome(Layout.operatorPost())
@@ -293,3 +364,7 @@ print(
 		now / 60
 	)}`
 )
+if process.args[4] == "gate" and stats.won == 0 then
+	print(`GATE: the bots won none of {played} rounds`)
+	process.exit(1)
+end

@@ -262,6 +262,15 @@ both sides. Full detail for each is in LOOP_LOG.md at the round named.
   (release readiness, gap value 10), are both owner actions. If you upload
   sounds, give me their asset ids and I will wire them in. Until then the loop
   works on the gaps it can close itself.
+- **R138 - two rules for the way out, both reversible (DECISIONS D7).** When
+  the last line is restored the call rings for 10 s with the street door shut,
+  then the Operator comes for the lobby. (1) The door opens only after the
+  ring, so a group already standing in the lobby must wait ten seconds without
+  saying door, out or leave, which bring the Operator there. (2) If someone
+  never comes (away, or hiding), the round ends 45 s after the door opens: won
+  if anyone still free got out, lost if nobody did. The alternatives are lost
+  unless everyone got out, or no limit at all. Both numbers are dials in
+  `Config.luau`, set without a Studio playtest.
 - **R83 - does a word read backwards count as shared context?** Players can no
   longer dodge the Operator by spelling a giveaway out (`j a c k`), leeting it
   (`j4ck`) or stretching it (`jackkk`); those were beating it 30 times out of

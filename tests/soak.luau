@@ -34,6 +34,7 @@ local Supervisor = rt.require(rt.systems.Supervisor)
 local Silence = rt.require(rt.shared.Silence)
 local Layout = rt.require(rt.shared.Layout)
 local Config = rt.require(rt.shared.Config)
+local Escape = rt.require(rt.systems.Escape)
 
 local failures = 0
 local checks = 0
@@ -78,6 +79,8 @@ export type Report = {
 	cleanStarts: number,
 	everQueued: number,
 	queuedDropped: number,
+	-- R138: rounds whose last line was restored, opening the way out.
+	escapes: number,
 }
 
 -- The soak's OWN answer to "can anybody still finish anything", computed from
@@ -100,6 +103,39 @@ local function anybodyCouldFinish(board, able: { number }): boolean
 	end
 	return false
 end
+
+-- R138: the group's run for the way out. This is the soak's model of PLAYERS,
+-- not server logic (the server never knows where anyone means to go): once the
+-- call has been ringing `runAfter` seconds, everyone still free stands in the
+-- exit room. They arrive together; the soak does not model walking. Called at
+-- the TOP of a beat, so the server's order holds: capture before the way out.
+local function runForTheExit(escape, present, line, standing, rooms, now, runAfter)
+	if escape:isOpen() and escape:openFor(now) >= runAfter then
+		for _, userId in present do
+			if not line:isConnected(userId) then
+				standing[userId] = rooms[Escape.ROOM]
+			end
+		end
+	end
+end
+
+-- R138: one beat of the server's `workTheWayOut` -- the escape's own step, then
+-- the round's ending. Returns the outcome it settled this beat, if any.
+local function workTheWayOut(escape, round, pursuit, present, line, standing, rooms, now): string?
+	if not (round:isPlaying() and escape:isOpen()) then
+		return nil
+	end
+	local outcome = escape:step(now, pursuit, present, line, standing, rooms)
+	if outcome and round:finish(outcome, now) then
+		pursuit:stop()
+		return outcome
+	end
+	return nil
+end
+
+-- How long after the call starts ringing the sessions' groups run: well inside
+-- the Operator's arrival. The race in tests/escape.luau sweeps the rest.
+local RUN_AFTER = 6
 
 -- `rejoinEvery` models the thing R47 tripped over: one player with a bad
 -- connection, whose every return fires `PlayerAdded` and re-deals the board.
@@ -136,6 +172,7 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 	local round = Lifecycle.new()
 	local operator = Operator.new(secrets)
 	local pursuit = Pursuit.new(rooms, Layout.operatorPost(), Layout.route)
+	local escape = Escape.new()
 	operator.onUnderstood = function(_concept: string, payload: string)
 		pursuit:sendTo(payload)
 	end
@@ -200,6 +237,7 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 		cleanStarts = 0,
 		everQueued = 0,
 		queuedDropped = 0,
+		escapes = 0,
 	}
 	local now = 0
 
@@ -215,6 +253,7 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 
 	for tick = 1, ticks do
 		now += Config.TickSeconds
+		runForTheExit(escape, present, line, standing, rooms, now, RUN_AFTER)
 
 		if tick % 8 == 0 then
 			-- One utterance, both listeners. The server's chat handler feeds
@@ -315,9 +354,16 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 					end
 				end
 			end
-			if board:allSolved() and round:finish("won", now) then
-				report.won += 1
+			-- R138: the last line opens the way out; the beat below settles it.
+			if board:allSolved() and escape:open(now) then
+				report.escapes += 1
 			end
+		end
+		local settled = workTheWayOut(escape, round, pursuit, present, line, standing, rooms, now)
+		if settled == "won" then
+			report.won += 1
+		elseif settled == "lost" then
+			report.lost += 1
 		end
 
 		-- A player rejoining. Every return re-deals the whole board.
@@ -355,6 +401,7 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 				report.cleanStarts += 1
 			end
 			line:clear()
+			escape:reset()
 			operator:forgetObservations()
 			-- R131: the server forgets once per round, here, not on a clock.
 			if operator:coolRound(Config.CoolPerRound) then
@@ -423,6 +470,7 @@ local function acrossSeeds(ticks: number, rejoinEvery: number, takeAllButOne: bo
 		cleanStarts = 0,
 		everQueued = 0,
 		queuedDropped = 0,
+		escapes = 0,
 	}
 	for _, seed in SEEDS do
 		local one = soak(ticks, rejoinEvery, takeAllButOne, seed)
@@ -439,6 +487,7 @@ local function acrossSeeds(ticks: number, rejoinEvery: number, takeAllButOne: bo
 		total.cleanStarts += one.cleanStarts
 		total.everQueued += one.everQueued
 		total.queuedDropped += one.queuedDropped
+		total.escapes += one.escapes
 		-- These three are failures, so they ACCUMULATE rather than average: one
 		-- bad seed must not be diluted by six good ones.
 		total.unfinishableTicks += one.unfinishableTicks
@@ -545,6 +594,9 @@ check(`(recorded, see R63) queued rooms taken up ({long.pendingTaken})`, long.pe
 check(`(recorded, see R63) queued rooms thrown away instead ({long.queuedDropped})`, long.queuedDropped >= 0)
 check(`(guard) the queue really does fill up ({long.everQueued} ticks with a room waiting)`, long.everQueued > 0)
 check(`the Operator gives rooms up ({long.gaveUp} times)`, long.gaveUp > 0)
+-- R138: a normal session reaches the way out, or none of it is evidence.
+check(`(guard) sessions reach the way out ({long.escapes} escapes)`, long.escapes > 0)
+check(`...and escapes are won ({long.won} won of {long.escapes})`, long.won > 0)
 check(
 	`every restart hands over a clean board ({long.cleanStarts} of {long.rounds})`,
 	long.rounds > 0 and long.cleanStarts == long.rounds
@@ -587,6 +639,7 @@ local function silentGroup(ticks: number, seed: number): (number, number, boolea
 	local operator = Operator.new(secrets)
 	local pursuit = Pursuit.new(rooms, Layout.operatorPost(), Layout.route)
 	local supervisor = Supervisor.new()
+	local escape = Escape.new()
 	operator.onUnderstood = function(_concept: string, payload: string)
 		pursuit:sendTo(payload)
 	end
@@ -609,12 +662,17 @@ local function silentGroup(ticks: number, seed: number): (number, number, boolea
 	-- clock runs out together and `overdue` breaks the tie by id -- put them last
 	-- and the dispatch serves somebody in a room first and never reaches them, so
 	-- the corridor case would go unexercised while looking fine.
-	local standing: { [number]: { x: number, z: number } } = {
-		[1] = Layout.spawn(),
-		[2] = rooms.board,
-		[3] = rooms.board,
-		[4] = rooms.archive,
-	}
+	local function homePositions(): { [number]: { x: number, z: number } }
+		return {
+			[1] = Layout.spawn(),
+			[2] = rooms.board,
+			[3] = rooms.board,
+			[4] = rooms.archive,
+		}
+	end
+	-- R138: the escape moves everyone to the lobby, so each round starts again
+	-- from these places.
+	local standing = homePositions()
 
 	local won, calls, unreachable, announced = 0, 0, 0, 0
 	local everMoved = false
@@ -622,6 +680,7 @@ local function silentGroup(ticks: number, seed: number): (number, number, boolea
 
 	for tick = 1, ticks do
 		now += Config.TickSeconds
+		runForTheExit(escape, present, line, standing, rooms, now, RUN_AFTER)
 
 		-- Nobody says anything, ever. `operator:hear` is never called.
 		--
@@ -694,14 +753,19 @@ local function silentGroup(ticks: number, seed: number): (number, number, boolea
 					end
 				end
 			end
-			if board:allSolved() and round:finish("won", now) then
-				won += 1
+			if board:allSolved() then
+				escape:open(now)
 			end
+		end
+		if workTheWayOut(escape, round, pursuit, present, line, standing, rooms, now) == "won" then
+			won += 1
 		end
 
 		if round:readyToRestart(now, Config.IntermissionSeconds) and round:restart() then
 			board:reset()
 			line:clear()
+			escape:reset()
+			standing = homePositions()
 			pursuit:sendHome(Layout.operatorPost())
 			supervisor:reset(now)
 			roundsPlayed += 1

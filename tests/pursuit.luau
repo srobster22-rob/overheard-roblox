@@ -677,6 +677,82 @@ for _ = 1, 400 do
 end
 check("on a turn inside the silence radius it is silent", audibleOnTurn == false)
 
+print("")
+print("sent somewhere it must go now (R138)")
+
+-- `sendNow` is how the outside call sends it: never queued, a queued room kept,
+-- and no second arrival where it already stands.
+local urgent = tracker()
+urgent:sendTo("board")
+urgent:step(1)
+urgent:sendTo("archive")
+check("(guard) a second room was queued behind the first", urgent.pending == "archive")
+check("an unknown room is refused", urgent:sendNow("nowhere") == false)
+check("sending it now is accepted", urgent:sendNow("archive") == true)
+check("...and it turns for that room at once", urgent.targetName == "archive" and urgent.state == "approaching")
+
+local fresh = { board = ROOMS.board, archive = ROOMS.archive, lobby = { x = 0, z = 60 } }
+local withLobby = Pursuit.new(fresh, { x = 0, z = 0 })
+withLobby:sendTo("board")
+withLobby:step(1)
+withLobby:sendTo("archive")
+withLobby:sendNow("lobby")
+check("a room already queued stays queued", withLobby.pending == "archive")
+
+-- A request queued for the room it is now sent to is served by that trip.
+local served = tracker()
+served:sendTo("board")
+served:step(1)
+served:sendTo("archive")
+check("(guard) the archive was queued behind the board", served.pending == "archive")
+served:sendNow("archive")
+check("a queued request for the room it is sent to now is served, not kept", served.pending == nil)
+local heardAgain = tracker()
+heardAgain:sendTo("board")
+heardAgain:step(1)
+heardAgain:sendTo("archive")
+for _ = 1, 40 do
+	heardAgain:step(1)
+	if heardAgain.state == "arrived" then
+		break
+	end
+end
+heardAgain:sendTo("archive")
+check(
+	`...and so is one heard again once it stands elsewhere ({tostring(heardAgain.pending)})`,
+	heardAgain.targetName == "archive" and heardAgain.pending == nil
+)
+
+local standingThere = tracker()
+standingThere:sendTo("board")
+for _ = 1, 40 do
+	standingThere:step(1)
+	if standingThere.state == "arrived" then
+		break
+	end
+end
+standingThere:step(3)
+local arrivedAgain = 0
+standingThere.onStateChanged = function(state: string)
+	if state == "arrived" then
+		arrivedAgain += 1
+	end
+end
+local dwelt = standingThere.dwell
+standingThere:sendNow("board")
+check("sending it now where it stands does not arrive again", arrivedAgain == 0)
+check("...and keeps its time there", standingThere.dwell == dwelt and dwelt > 0)
+
+-- Walking out of a room is not being on a call to it: sent back now, it turns.
+standingThere:withdrawTo({ x = 0, z = 0 })
+standingThere:step(1)
+check("(guard) it is walking out of the board room", standingThere.state == "leaving")
+standingThere:sendNow("board")
+check(
+	`sent back now, it turns round ({tostring(standingThere.targetName)}, {standingThere.state})`,
+	standingThere.targetName == "board" and standingThere.state ~= "leaving"
+)
+
 -- (control) with no route function it walks straight, as it always did.
 local straight = tracker()
 straight:sendTo("board")

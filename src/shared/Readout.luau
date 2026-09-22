@@ -24,7 +24,8 @@ local Readout = {}
 export type Row = {
 	text: string,
 	-- "line" is a fact only you can act on, "note" explains the line above it,
-	-- "count" is the progress line, "empty" is the nothing-to-do message.
+	-- "count" is the progress line, "empty" is the nothing-to-do message,
+	-- "escape" says every line is through and where to go (R138).
 	kind: string,
 }
 
@@ -35,6 +36,10 @@ Readout.PRIVATE_NOTE = "only you can see this"
 -- connection to that concept and no way to link cause to effect when the
 -- monster arrived. `tests/readout.luau` checks it against the live pool.
 Readout.NOTHING_HELD = "nothing on your line - listen for somebody else's"
+-- R138: shown to everyone once every line is restored. Derived from the board
+-- the client already receives, so no second message can disagree with it.
+-- Like every string here it may give no concept away (tests/wiring checks).
+Readout.ESCAPE_NOTE = "every line is through - everyone to the lobby"
 
 -- `entries` is the payload from `Objectives.viewFor`: one row per objective,
 -- with `prompt` and `answer` present only on the ones this player holds.
@@ -76,8 +81,11 @@ function Readout.lineRows(entries: { any }): { Row }
 	end
 
 	table.insert(rows, { text = `restored {solved}/{#entries}`, kind = "count" })
-
-	if held == 0 then
+	-- With every line restored there is nothing left to hold, and "listen for
+	-- somebody else's" would be the wrong advice: the note says where to go.
+	if #entries > 0 and solved == #entries then
+		table.insert(rows, { text = Readout.ESCAPE_NOTE, kind = "escape" })
+	elseif held == 0 then
 		table.insert(rows, { text = Readout.NOTHING_HELD, kind = "empty" })
 	end
 

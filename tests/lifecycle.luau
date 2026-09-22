@@ -708,7 +708,9 @@ do
 	o.solved = true
 	l:connect(1, 0)
 	l:connect(2, 0)
-	check("...unless the board is already won", Lifecycle.nobodyCanWin({ 1, 2 }, b, l) == false)
+	-- R138: a solved board no longer wins the round; it opens the way out, and
+	-- being taken to the last player during the escape is still a loss.
+	check("...even with every line restored", Lifecycle.nobodyCanWin({ 1, 2 }, b, l) == true)
 
 	b, _, l = setup({ 1 })
 	l:connect(2, 0)

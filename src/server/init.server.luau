@@ -19,6 +19,7 @@ local Pursuit = require(script.systems.Pursuit)
 local Round = require(script.systems.Round)
 local Connected = require(script.systems.Connected)
 local Lifecycle = require(script.systems.Lifecycle)
+local Escape = require(script.systems.Escape)
 local Keypad = require(ReplicatedStorage.Shared.Keypad)
 local Station = require(script.systems.Station)
 local Supervisor = require(script.systems.Supervisor)
@@ -68,6 +69,8 @@ local supervisor = Supervisor.new()
 local line = Connected.new()
 -- Whether a round is being played. See systems/Lifecycle.
 local round = Lifecycle.new()
+-- The way out, opened when the last line is restored (R138). See systems/Escape.
+local escape = Escape.new()
 
 for _, station in Round.STATIONS do
 	board:add(station.id, station.concept, station.prompt)
@@ -119,6 +122,15 @@ local function broadcastLexicon()
 	lexiconRemote:FireAllClients(operator:snapshot())
 end
 
+-- Everyone in the server right now, by user id.
+local function presentUserIds(): { number }
+	local present: { number } = {}
+	for _, p in Players:GetPlayers() do
+		table.insert(present, p.UserId)
+	end
+	return present
+end
+
 -- Where each player's body actually is, server-side. Never the client's word
 -- for it: the whole point of being caught is that you cannot talk your way out
 -- of having been in the room.
@@ -158,6 +170,23 @@ local function endTheRoundIfNobodyCanWin(present: { number }): boolean
 	return Lifecycle.nobodyCanWin(present, board, line)
 end
 
+-- The round is over: finish it, say so, tell every panel and stop the
+-- Operator. Nothing is said twice: a round already over is left alone. A win
+-- says `completed`, not `taken`: `taken` is what it says when the MONSTER
+-- arrives, and firing the same string for winning made the two opposite events
+-- render as one sentence on the client. It STOPS either way: until R29 winning
+-- left the Operator hunting, so a group could finish and then be taken by a
+-- monster that had no idea the round was over, and a loss that left it
+-- travelling kept the hum going over a finished round.
+local function endTheRound(outcome: Lifecycle.Outcome)
+	if not round:finish(outcome, os.clock()) then
+		return
+	end
+	heardRemote:FireAllClients(if outcome == "won" then Round.LINES.completed else Round.LINES.lost, "", 1)
+	pushPhase(nil)
+	pursuit:stop()
+end
+
 local function takeWhoeverIsHere()
 	-- The ROOM it arrived in, not a circle around it. See Connected.reachedInRoom:
 	-- a circle big enough to cover the square also covers 9.94 studs of corridor
@@ -191,16 +220,8 @@ local function takeWhoeverIsHere()
 	-- WON but never LOST: the Operator could take every player and the game
 	-- would sit there, the board still open, nothing said. Checked against who
 	-- is actually present, so a player leaving cannot strand the round.
-	local present: { number } = {}
-	for _, p in Players:GetPlayers() do
-		table.insert(present, p.UserId)
-	end
-	if endTheRoundIfNobodyCanWin(present) and round:finish("lost", os.clock()) then
-		heardRemote:FireAllClients(Round.LINES.lost, "", 1)
-		pushPhase(nil)
-		-- It stops hunting once there is nobody left to hunt. Leaving it
-		-- travelling would keep the hum going over a finished round.
-		pursuit:stop()
+	if endTheRoundIfNobodyCanWin(presentUserIds()) then
+		endTheRound("lost")
 	end
 end
 
@@ -291,16 +312,11 @@ board.onSolved = function(objective, _actor: number)
 	operator:credit(objective.concept, os.clock())
 	pushObjectives(nil)
 	broadcastLexicon()
-	if board:allSolved() and round:finish("won", os.clock()) then
-		-- `completed`, not `taken`. `taken` is what it says when the MONSTER
-		-- arrives; firing the same string for winning made the two opposite
-		-- events render as one sentence on the client.
-		heardRemote:FireAllClients(Round.LINES.completed, "", 1)
-		pushPhase(nil)
-		-- And it STOPS. Until R29 winning left the Operator hunting, so a group
-		-- could finish the board and then be taken by a monster that had no idea
-		-- the round was over.
-		pursuit:stop()
+	-- R138: the last line opens the way out rather than winning. The outside
+	-- call rings, and once it has the Operator comes for the lobby; see
+	-- `workTheWayOut`, which the tick asks.
+	if board:allSolved() and escape:open(os.clock()) then
+		heardRemote:FireAllClients(Round.LINES.ringing, "", 1)
 	end
 end
 
@@ -469,6 +485,21 @@ Players.PlayerRemoving:Connect(function(player: Player)
 	end
 end)
 
+-- THE WAY OUT (R138). Asked on the tick, AFTER capture and the loss, like
+-- them: one beat of `Escape.step`, the rule the soak and the bots also run.
+-- It sends the Operator for the lobby once the call has rung, and says when the
+-- round is settled -- won when everyone still free is in the lobby, or at the
+-- escape's time limit.
+local function workTheWayOut()
+	if not (round:isPlaying() and escape:isOpen()) then
+		return
+	end
+	local outcome = escape:step(os.clock(), pursuit, presentUserIds(), line, livePositions(), built.rooms)
+	if outcome then
+		endTheRound(outcome)
+	end
+end
+
 -- The server's clock. Two jobs at two rates.
 --
 -- CAPTURE runs every tick, because until R24 it ran ONCE — from
@@ -496,6 +527,8 @@ local function beginRound()
 	-- R131: the Operator forgets a little, once per round. The Lexicon goes out
 	-- to everyone at the end of this function either way.
 	operator:coolRound(Config.CoolPerRound)
+	-- R138: the way out shuts again until the new board is done.
+	escape:reset()
 	-- Every clock starts again. R31: a player quiet through the eight-second
 	-- intermission must not be called in the first seconds of the round.
 	supervisor:reset(os.clock())
@@ -544,16 +577,8 @@ task.spawn(function()
 		-- the round and nobody could ever finish that station.
 		-- Losing is checked every beat, not only when the Operator arrives: a
 		-- round stranded by a capture stayed live until it came back.
-		if round:isPlaying() then
-			local here: { number } = {}
-			for _, p in Players:GetPlayers() do
-				table.insert(here, p.UserId)
-			end
-			if endTheRoundIfNobodyCanWin(here) and round:finish("lost", os.clock()) then
-				heardRemote:FireAllClients(Round.LINES.lost, "", 1)
-				pushPhase(nil)
-				pursuit:stop()
-			end
+		if round:isPlaying() and endTheRoundIfNobodyCanWin(presentUserIds()) then
+			endTheRound("lost")
 		end
 
 		-- Silence, which is the one thing the Operator cannot hear. Asked every
@@ -563,6 +588,8 @@ task.spawn(function()
 			showEveryoneTheirClock()
 			putThroughTheSilentLine()
 		end
+
+		workTheWayOut()
 
 		-- A room it heard about while it was busy. Taken up only once it is idle
 		-- again, so it finishes one call before answering the next -- see

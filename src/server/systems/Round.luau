@@ -249,6 +249,10 @@ Round.LINES = {
 	-- every line here is real switchboard phrasing, and the operator's sign-off
 	-- for a call that went through is exactly this.
 	completed = "Your call has been completed.",
+	-- R138: every line is restored and the outside call is ringing. Polite, and
+	-- a clock: when the moment is over it comes for the lobby. Kept clear of
+	-- "the line", which is what being caught is called.
+	ringing = "Ringing your party now. One moment, please.",
 }
 
 return Round
