@@ -49,7 +49,9 @@ for _ in string.gmatch(lifecycle, "export type Outcome = ([^\n]+)") do
 	outcomes = select(2, string.gsub(string.match(lifecycle, "export type Outcome = ([^\n]+)") or "", '"', "")) // 2
 end
 local world = fs.readFile("src/server/systems/World.luau")
-local interactables = select(2, string.gsub(world, "station%(", "")) - 1 -- minus the function's own definition
+-- Objective stations are built from Round.STATIONS (R137); anything else World
+-- builds with a literal `station("Name", ...)` call (the reader) counts too.
+local interactables = #Round.STATIONS + select(2, string.gsub(world, 'station%("', ""))
 
 local axes = {
 	{ "stations (objectives a round deals)", #Round.STATIONS, 5, "Round.STATIONS" },
@@ -57,7 +59,7 @@ local axes = {
 	{ "secret concepts the Operator listens for", #pool, 8, "Round.dealSecrets pool" },
 	{ "plain giveaway terms", plainWords, 80, "sum of secret.plain" },
 	{ "rooms", #Config.Rooms, 5, "Config.Rooms" },
-	{ "world interactables (prompts)", interactables, 8, "station(...) calls in World" },
+	{ "world interactables (prompts)", interactables, 8, "Round.STATIONS + literal station(...) calls in World" },
 	{
 		"entities built (" .. table.concat(builtNames, ", ") .. ")",
 		entities,

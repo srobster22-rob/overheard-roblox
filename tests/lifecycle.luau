@@ -438,7 +438,8 @@ local stations = 0
 for _ in RoundModule.STATIONS do
 	stations += 1
 end
-check(`(pinned) a round offers one credit per station ({stations} stations)`, stations == 2)
+-- R137 added the third (the night latch).
+check(`(pinned) a round offers one credit per station ({stations} stations)`, stations == 3)
 
 check(
 	"the server forgets once per round, in beginRound",

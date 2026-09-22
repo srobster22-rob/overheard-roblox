@@ -22,8 +22,8 @@ research above and memory.
 |---|---|---|---|---|---|---|---|---|---|
 | Hook & onboarding | 3 | 1 | PT1: plain speech in round 1 costs nothing (arrives 0.2 s after the solve); no tutorial or lobby | 5 | 4 | 4 | 3 | 3 | **12** |
 | Core loop depth | 3 | 2 | PT2: coining words is a real decision, but a quiet group met 0 opposition in 14 rounds | 4 | 4 | 3 | 5 | 2 | 9 |
-| Content volume | 3 | 1 | CONTENT.md: 2 stations, 2 rooms, 2 entities, 1 phase | 5 | 5 | 4 | 5 | 1 | **12** |
-| Variety across a session | 2 | 1 | PT1: rounds 2-9 identical, 44 s each | 4 | 4 | 3 | 4 | 1 | 6 |
+| Content volume | 3 | 1 | CONTENT.md: 3 stations, 3 rooms (R137), 2 entities, 1 phase; still far below any comparable | 5 | 5 | 4 | 5 | 1 | **12** |
+| Variety across a session | 2 | 2 | R137 trace (`playtest firsttimer 14 11`): 3 lines in 3 rooms; Supervisor calls 0 → 14, captures 6 → 22, 3 of 14 rounds lost; rounds still one shape | 4 | 4 | 3 | 4 | 1 | 6 |
 | Progression & meta | 2 | 0 | no persistence wired (LexiconSave format only), no currency or unlocks | 5 | 4 | 3 | 5 | 1 | 10 |
 | Game feel | 1 | 1 | no evidence (device-blocked) | 5 | 4 | 4 | 4 | 2 | 4 |
 | Art direction | 2 | 1 | primitive parts, 4 Material uses; no screenshot possible | 5 | 5 | 5 | 4 | 2 | 8 |
@@ -35,7 +35,7 @@ research above and memory.
 | Release readiness | 2 | 0 | no icon, thumbnails, description, or published place | 5 | 5 | 5 | 5 | 3 | 10 |
 | **Differentiator: learned language** | 2 | 3 | R134 trace: a codeword burns in round 4 and is hunted in round 5; plain speech hunted at once | 0 | 0 | 0 | 2 | 1 | — (ours is best) |
 
-**Market score:** us **23.3/100** (35/150). DOORS **87.3**, Phasmophobia 82.7,
+**Market score:** us **24.7/100** (37/150, R137; 23.3 at R136). DOORS **87.3**, Phasmophobia 82.7,
 Pressure 79.3, The Mimic 72.0, be quiet 44.0.
 
 **Top gaps by value:** hook 12, content 12, audio 12, progression 10,
@@ -69,5 +69,6 @@ Every BIG SWING must close a top gap or deepen this.
 | round | us | best (DOORS) | note |
 |---|---|---|---|
 | R136 | 23.3 | 87.3 | setup |
+| R137 | 24.7 | 87.3 | variety 1→2 (third line and room); content unchanged at 1 |
 
 Sources: [DOORS Floors](https://doors-game.fandom.com/wiki/Floors), [DOORS (Roblox Wiki)](https://roblox.fandom.com/wiki/LSPLASH/DOORS), [DOORS hostile entities](https://bloxguidesgg.com/games/doors), [DOORS modifiers](https://doors-game.fandom.com/wiki/Modifiers), [Pressure guide](https://www.exitlag.com/blog/how-many-rooms-pressure-roblox/), [Pressure wiki](https://pressure.fandom.com/wiki/Pressure), [Pressure review](https://lva-accolades.net/4468/arts-and-entertainment/game-review-pressure/), [The Mimic wiki](https://mimic.fandom.com/wiki/The_Mimic), [Phasmophobia voice recognition](https://screenrant.com/phasmophobia-ghost-voice-recognition-phrases-talking-microphone-chat/), [be quiet. on Roblox](https://www.roblox.com/games/130673851809455/be-quiet), [Roblox: optimizing discovery (2026)](https://about.roblox.com/newsroom/2026/06/optimizing-discovery-great-games-reach-millions-players-roblox), [Recommended-for-you 28-day retention](https://zehn-studio26.com/news/recommended-for-you-retention-update/).

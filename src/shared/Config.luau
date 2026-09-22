@@ -163,7 +163,7 @@ local Config = {
 	-- Rooms the Operator can be sent to. World.build must return a position for
 	-- every one of these, and every secret payload must name one of them.
 	-- tests/round.luau enforces the second half of that.
-	Rooms = { "board", "archive" },
+	Rooms = { "board", "archive", "lobby" },
 
 	-- Dials for systems that are not built yet. Nothing reads these, and the
 	-- config test does not require anything to. Move a key up into the table

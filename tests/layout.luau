@@ -144,12 +144,23 @@ print("you can actually walk to the stations")
 -- nothing caught it because World needs Roblox instances to load.
 
 local spawn = Layout.spawn()
-local offset = Layout.stationOffset()
 local walls = Layout.allWalls()
 check(`(guard) the building has walls to be blocked by ({#walls})`, #walls >= 8)
 
-for name, centre in { board = Layout.boardCentre(), archive = Layout.archiveCentre() } do
-	local station = { x = centre.x + offset.x, z = centre.z + offset.z }
+-- Every place a player walks up to: each Round.STATIONS entry and the reader.
+local placeIds = { "reader" }
+for _, s in rt.require(rt.systems.Round).STATIONS do
+	table.insert(placeIds, s.id)
+end
+check(`(guard) there are places to walk to ({#placeIds})`, #placeIds >= 4)
+for _, name in placeIds do
+	local roomName = Layout.stationRoom(name)
+	local centre = roomName and Layout.rooms()[roomName]
+	local station = Layout.stationPoint(name)
+	check(`(guard) '{name}' has a place and a room`, centre ~= nil and station ~= nil)
+	if not (centre and station) then
+		continue
+	end
 	check(`the {name} station is inside its room (guard)`, Layout.inRoom(centre, station))
 
 	-- The route, not a straight line. The station sits 18 studs off the room's
@@ -158,7 +169,7 @@ for name, centre in { board = Layout.boardCentre(), archive = Layout.archiveCent
 	-- station. Demanding a clear straight line here would have reported the
 	-- building unplayable and argued for a 22-stud door -- fixing the model
 	-- instead of the game.
-	local route = Layout.routeToStation(centre)
+	local route = Layout.routeToStationId(name) or {}
 	check(`(guard) the {name} route has legs ({#route})`, #route >= 3)
 	check(`you can walk from the corridor to the {name} station`, Layout.routeIsClear(route))
 
@@ -211,7 +222,7 @@ print("every approach starts where you can hear it")
 
 local Pursuit = rt.require(rt.systems.Pursuit)
 local post = Layout.operatorPost()
-local rooms = { board = Layout.boardCentre(), archive = Layout.archiveCentre() }
+local rooms = Layout.rooms()
 
 local roomCount = 0
 for _ in rooms do
@@ -228,7 +239,7 @@ for name, roomCentre in rooms do
 
 	-- The invariant is about being HEARD, so sweep the real walk rather than
 	-- trusting the distance.
-	local walker = Pursuit.new(rooms, post)
+	local walker = Pursuit.new(rooms, post, Layout.route)
 	walker:sendTo(name)
 	local everAudible = walker:isAudible()
 	local steps = 0
@@ -281,17 +292,20 @@ check(`no part of a doorway approach is unfloored ({unfloored} gaps)`, unfloored
 
 -- The edges themselves. Walking sideways out of the corridor must be stopped.
 local corridorWalls = Layout.corridorWalls()
-check(`(guard) the corridor has walls ({#corridorWalls})`, #corridorWalls == 2)
-local midCorridor = { x = 0, z = 0 }
-local offTheSide = { x = 0, z = corridorHalf + 20 }
+-- R137: south wall plus the north wall in two pieces, cut where the passage
+-- to the lobby leaves. Walked off the side away from that cut.
+check(`(guard) the corridor has walls ({#corridorWalls})`, #corridorWalls == 3)
+local midCorridor = { x = Layout.corridorHalfLength() / 2, z = 0 }
+local offTheSide = { x = midCorridor.x, z = corridorHalf + 20 }
 check("you cannot walk off the side of the corridor", not Layout.walkIsClear(midCorridor, offTheSide))
-local offTheOtherSide = { x = 0, z = -(corridorHalf + 20) }
+local offTheOtherSide = { x = midCorridor.x, z = -(corridorHalf + 20) }
 check("nor off the other side", not Layout.walkIsClear(midCorridor, offTheOtherSide))
 
 -- REGRESSION GUARD, and the reason this could have gone wrong: corridor walls
 -- that ran the full separation would seal both doorways shut and undo R22.
-for name, roomCentre in { board = Layout.boardCentre(), archive = Layout.archiveCentre() } do
-	check(`the corridor walls do not seal the {name} doorway`, Layout.routeIsClear(Layout.routeToStation(roomCentre)))
+for _, name in placeIds do
+	local route = Layout.routeToStationId(name)
+	check(`the corridor walls do not seal the way to {name}`, route ~= nil and Layout.routeIsClear(route))
 end
 check(
 	`the corridor walls stop at the rooms ({Layout.corridorHalfLength()})`,
@@ -316,11 +330,8 @@ print("standing at a station is a place, not a memory")
 local Config = rt.require(rt.shared.Config)
 
 -- The real station positions, from the same arithmetic World builds with.
-local boardStation = { x = Layout.boardCentre().x, z = Layout.boardCentre().z - 18 }
-local breakerStation = {
-	x = Layout.archiveCentre().x + Layout.breakerOffset().x,
-	z = Layout.archiveCentre().z + Layout.breakerOffset().z,
-}
+local boardStation = Layout.stationPoint("board") :: Layout.Point
+local breakerStation = Layout.stationPoint("breaker") :: Layout.Point
 
 local stationGap = math.sqrt((boardStation.x - breakerStation.x) ^ 2 + (boardStation.z - breakerStation.z) ^ 2)
 check(`(guard) the two act-stations really are far apart ({math.floor(stationGap)} studs)`, stationGap > 50)
@@ -471,7 +482,7 @@ print("every room hears it for the same length of time")
 
 local audible: { [string]: number } = {}
 local postAt = Layout.operatorPost()
-for name, centre in { board = Layout.boardCentre(), archive = Layout.archiveCentre() } do
+for name, centre in Layout.rooms() do
 	local distance = math.sqrt((postAt.x - centre.x) ^ 2 + (postAt.z - centre.z) ^ 2)
 	-- It goes quiet inside SilenceRadius, so the audible leg ends there.
 	local travel = (distance - Config.ArriveRadius) / Config.PursuitSpeed
@@ -507,16 +518,15 @@ check(
 
 -- The mechanism, stated so a future move of the post has to keep it: the post is
 -- equidistant from every room.
-local distances: { number } = {}
-for _, centre in { Layout.boardCentre(), Layout.archiveCentre() } do
-	table.insert(distances, math.sqrt((postAt.x - centre.x) ^ 2 + (postAt.z - centre.z) ^ 2))
+local nearest, furthest = math.huge, 0
+for _, centre in Layout.rooms() do
+	local d = math.sqrt((postAt.x - centre.x) ^ 2 + (postAt.z - centre.z) ^ 2)
+	nearest = math.min(nearest, d)
+	furthest = math.max(furthest, d)
 end
 check(
-	`the post is equidistant from both rooms ({string.format("%.1f", distances[1])} vs {string.format(
-		"%.1f",
-		distances[2]
-	)})`,
-	math.abs(distances[1] - distances[2]) < 1
+	`the post is equidistant from every room ({string.format("%.1f", nearest)} to {string.format("%.1f", furthest)})`,
+	furthest - nearest < 1
 )
 
 -- It must still be somewhere a player can be, or the post is inside a wall.
@@ -673,9 +683,10 @@ print("routeIsClear checks every leg, not only the first")
 -- it. Built directly on the corridor's own south wall rather than a room's
 -- doorway, so the crossing is unambiguous.
 local corridorHalfZ = Layout.corridorClear() / 2
-local clearA = { x = 0, z = 0 }
-local clearB = { x = 0, z = corridorHalfZ - 1 }
-local acrossTheWall = { x = 0, z = corridorHalfZ + 5 }
+-- Off the midpoint (R137): the passage to the lobby leaves there.
+local clearA = { x = 18, z = 0 }
+local clearB = { x = 18, z = corridorHalfZ - 1 }
+local acrossTheWall = { x = 18, z = corridorHalfZ + 5 }
 check("(guard) the first leg alone is clear", Layout.walkIsClear(clearA, clearB))
 check("(guard) the second leg really does cross the corridor wall", not Layout.walkIsClear(clearB, acrossTheWall))
 check(
@@ -707,10 +718,7 @@ print("the Operator's own path is geometry-aware, not geometry-blind")
 -- rather than needing this test rewritten to notice it exists.
 local waypoints = { { name = "post", at = Layout.operatorPost() } }
 for _, room in Config.Rooms do
-	local centre = if room == "board"
-		then Layout.boardCentre()
-		elseif room == "archive" then Layout.archiveCentre()
-		else nil
+	local centre = Layout.rooms()[room]
 	check(`(guard) '{room}' has a known centre`, centre ~= nil)
 	if centre then
 		table.insert(waypoints, { name = room, at = centre })
@@ -724,14 +732,20 @@ for _, from in waypoints do
 	for _, to in waypoints do
 		if from.name ~= to.name then
 			checked += 1
-			if not Layout.walkIsClear(from.at, to.at) then
+			-- R137: the route it actually walks, with its turn at the junction.
+			local legs = { from.at }
+			for _, turn in Layout.route(from.at, to.at) do
+				table.insert(legs, turn)
+			end
+			table.insert(legs, to.at)
+			if not Layout.routeIsClear(legs) then
 				table.insert(blocked, `{from.name} -> {to.name}`)
 			end
 		end
 	end
 end
 check(`(guard) every ordered pair was checked ({checked})`, checked == #waypoints * (#waypoints - 1))
-check(`every straight line the Operator can walk is clear ({#blocked} blocked)`, #blocked == 0)
+check(`every route the Operator can walk is clear ({#blocked} blocked)`, #blocked == 0)
 if #blocked > 0 then
 	print(`        blocked: {table.concat(blocked, ", ")}`)
 end
@@ -747,7 +761,7 @@ check(
 print("")
 print("the rooms the world builds are the rooms Config declares (R104)")
 
-local builtRooms = { board = Layout.boardCentre(), archive = Layout.archiveCentre() }
+local builtRooms = Layout.rooms()
 local real = Layout.roomMismatch(builtRooms, Config.Rooms)
 check(`the shipped Config.Rooms matches the built rooms ({real or "ok"})`, real == nil)
 local missing = Layout.roomMismatch({ board = Layout.boardCentre() }, { "board", "archive" })
@@ -769,14 +783,7 @@ print("World builds the rooms where Layout says they are (R105)")
 -- World.build cannot run headlessly, so every capture, walk and room test
 -- here uses Layout's centres. They are only the world's centres if World
 -- takes them FROM Layout rather than computing its own copy.
-check(
-	"World takes the board room's origin from Layout.boardCentre",
-	string.find(worldCode, "Layout.boardCentre()", 1, true) ~= nil
-)
-check(
-	"World takes the records room's origin from Layout.archiveCentre",
-	string.find(worldCode, "Layout.archiveCentre()", 1, true) ~= nil
-)
+check("World takes every room's origin from Layout.rooms()", string.find(worldCode, "Layout.rooms()", 1, true) ~= nil)
 check(
 	"World computes no room origin of its own from the separation",
 	string.find(worldCode, "SEPARATION / 2", 1, true) == nil
@@ -785,18 +792,19 @@ check(
 print("")
 print("every station is placed from Layout, and the breaker can be walked to (R106)")
 
-check("World places stations by Layout.stationOffset", string.find(worldCode, "Layout.stationOffset()", 1, true) ~= nil)
 check(
-	"World places the breaker by Layout.breakerOffset",
-	string.find(worldCode, "Layout.breakerOffset()", 1, true) ~= nil
+	"World places every station by Layout.stationPoint",
+	string.find(worldCode, "Layout.stationPoint(", 1, true) ~= nil
 )
+-- Raw source: the stripped code has its string bodies removed.
+check("World places the reader from Layout too", string.find(worldSource, 'placeAt("reader")', 1, true) ~= nil)
 check(
 	"World carries no literal station offset of its own",
 	string.find(worldCode, "Vector3.new(0, 4, -18)", 1, true) == nil
 		and string.find(worldCode, "Vector3.new(18, 4, 0)", 1, true) == nil
 )
 local archive = Layout.archiveCentre()
-local breakerPoint = { x = archive.x + Layout.breakerOffset().x, z = archive.z + Layout.breakerOffset().z }
+local breakerPoint = Layout.stationPoint("breaker") :: Layout.Point
 check("the breaker stands inside the records room", Layout.inRoom(archive, breakerPoint))
 check(
 	"you can walk from spawn through the door to the breaker",
@@ -804,6 +812,165 @@ check(
 )
 
 check("World spawns players at Layout.spawn (R107)", string.find(worldCode, "Layout.spawn()", 1, true) ~= nil)
+
+print("")
+print("the lobby: a third room, off the corridor (R137)")
+
+-- R137. The third line (the night latch) is in a room that hangs off the
+-- corridor's midpoint through a passage, so it is a third direction, not a
+-- third point on the one line. Everything that makes the other rooms playable
+-- has to hold for it too.
+local lobby = Layout.lobbyCentre()
+check("(guard) the lobby is a built room", Layout.rooms().lobby ~= nil)
+for name, centre in Layout.rooms() do
+	if name ~= "lobby" then
+		local overlaps = math.abs(centre.x - lobby.x) < Layout.Room and math.abs(centre.z - lobby.z) < Layout.Room
+		check(`the lobby does not overlap the {name} room`, not overlaps)
+	end
+end
+
+-- (Every station, the latch included, is walked to from spawn in the
+-- "you can actually walk to the stations" section above.)
+
+-- The lobby's walls are walls everywhere except its doorway: straight in from
+-- the south, east and west, and at both solid pieces of the door wall.
+local doorWall = lobby.z - half
+local blockedWays = {
+	south = { x = lobby.x, z = lobby.z + half + 6 },
+	east = { x = lobby.x + half + 6, z = lobby.z },
+	west = { x = lobby.x - half - 6, z = lobby.z },
+	["door wall, west of the door"] = { x = lobby.x - 16, z = doorWall - 6 },
+	["door wall, east of the door"] = { x = lobby.x + 16, z = doorWall - 6 },
+}
+for side, point in blockedWays do
+	local inside = { x = lobby.x, z = lobby.z }
+	if string.find(side, "door wall", 1, true) then
+		inside = { x = point.x, z = doorWall + 6 }
+	end
+	check(`you cannot walk into the lobby through its {side}`, not Layout.walkIsClear(point, inside))
+end
+check(
+	"(control) ...but you can through its doorway",
+	Layout.walkIsClear({ x = lobby.x, z = doorWall - 6 }, { x = lobby.x, z = doorWall + 6 })
+)
+
+-- The passage floor: as wide as the corridor floor, from the corridor floor's
+-- edge to the lobby's door wall with no gap (R28's rule, for the new door).
+local passageFloor = Layout.passageFloor()
+check(
+	`the passage floor is as wide as the door it serves ({passageFloor.maxX - passageFloor.minX} >= {Layout.Door})`,
+	passageFloor.maxX - passageFloor.minX >= Layout.Door
+)
+check(
+	`it starts where the corridor floor ends ({passageFloor.minZ} = {Layout.corridorWidth() / 2})`,
+	math.abs(passageFloor.minZ - Layout.corridorWidth() / 2) < 0.001
+)
+check(
+	`...and runs all the way to the lobby's door wall ({passageFloor.maxZ} = {doorWall})`,
+	math.abs(passageFloor.maxZ - doorWall) < 0.001
+)
+check(
+	"World floors the passage from Layout.passageFloor",
+	string.find(worldCode, "Layout.passageFloor()", 1, true) ~= nil
+)
+
+-- The passage walls sit at the corridor's WALKABLE edge (R52), not the floor's,
+-- so a character walking the passage always fits the lobby door.
+local passageWallX = 0
+for _, wall in Layout.passageWalls() do
+	passageWallX = math.max(passageWallX, math.abs(wall.minX))
+end
+check(
+	`the passage walls sit at the walkable edge ({passageWallX} = {Layout.corridorClear() / 2})`,
+	math.abs(passageWallX - Layout.corridorClear() / 2) < 0.001
+)
+
+-- The corridor's cut north wall still stops you on BOTH sides of the passage.
+for _, x in { -18, 18 } do
+	check(
+		`you cannot walk off the corridor's north side at x = {x}`,
+		not Layout.walkIsClear({ x = x, z = 0 }, { x = x, z = Layout.corridorWidth() / 2 + 20 })
+	)
+end
+
+-- THE RULE THE OPERATOR NEEDS. It walks in straight lines, and the straight
+-- line from the lobby to a corridor-end room goes through walls. Walked here
+-- through the real Pursuit with `Layout.route` (tests/wiring.luau checks the
+-- server passes the same function), checking every step it takes rather than
+-- the plan.
+check(
+	"(control) the straight line from the board to the lobby is walled",
+	not Layout.walkIsClear(Layout.boardCentre(), lobby)
+)
+local function walkOf(fromName: string, toName: string): (boolean, number)
+	local walker = Pursuit.new(Layout.rooms(), Layout.rooms()[fromName], Layout.route)
+	walker:sendTo(toName)
+	local last = { x = walker.position.x, z = walker.position.z }
+	local throughWall = 0
+	for _ = 1, 400 do
+		walker:step(0.25)
+		local now = { x = walker.position.x, z = walker.position.z }
+		if not Layout.walkIsClear(last, now) then
+			throughWall += 1
+		end
+		last = now
+		if walker.state == "arrived" then
+			break
+		end
+	end
+	return walker.state == "arrived", throughWall
+end
+for _, pair in { { "board", "lobby" }, { "lobby", "archive" }, { "archive", "lobby" } } do
+	local arrived, through = walkOf(pair[1], pair[2])
+	check(`(guard) the Operator gets from the {pair[1]} to the {pair[2]}`, arrived)
+	check(`...and never walks through a wall on the way ({through} steps did)`, through == 0)
+end
+
+-- Every room has a model name in World, or World.build errors on load in
+-- Studio, where no test runs. Read from World's own table.
+local modelNames = string.match(worldSource, "local ROOM_MODELS: {.-} = {(.-)\n}") or ""
+local named: { [string]: boolean } = {}
+for name in string.gmatch(modelNames, "\n\t([%a][%w_]*) = ") do
+	named[name] = true
+end
+check("(guard) World's room model names were found", next(named) ~= nil)
+for name in Layout.rooms() do
+	check(`World names a model for the '{name}' room`, named[name] == true)
+end
+
+-- A room BELOW the corridor faces it across its +z wall. No such room exists
+-- yet; the branch is checked on a made-up centre so it is right when one does.
+local below = { x = 0, z = -57 }
+check("a room below the corridor opens on its south side", Layout.corridorSide(below) == "south")
+local belowDoor = Layout.doorPoint(below)
+check(
+	`...its door is on the wall facing the corridor ({belowDoor.x}, {belowDoor.z})`,
+	belowDoor.x == 0 and belowDoor.z == below.z + half
+)
+local belowWalls = Layout.walls(below, "south")
+local throughDoor, throughWall = false, false
+for _, wall in belowWalls do
+	if Layout.crosses(wall, { x = 0, z = below.z + half - 6 }, { x = 0, z = below.z + half + 6 }) then
+		throughDoor = true
+	end
+	if Layout.crosses(wall, { x = 16, z = below.z + half - 6 }, { x = 16, z = below.z + half + 6 }) then
+		throughWall = true
+	end
+end
+check("...there is a gap in that wall at the door", not throughDoor)
+check("...and wall either side of it", throughWall)
+
+-- A silent player in the lobby can be called: the Supervisor's dispatch finds
+-- the room they stand in and sends the Operator there.
+local Supervisor = rt.require(rt.systems.Supervisor)
+local quiet = Supervisor.new()
+quiet:watch(1, 0)
+local lobbyCaller = Pursuit.new(Layout.rooms(), Layout.operatorPost(), Layout.route)
+local called = quiet:putThrough(lobbyCaller, Layout.rooms(), Config.Rooms, { [1] = lobby }, Config.SpeakEvery + 1)
+check(
+	`a silent player in the lobby is called there ({tostring(lobbyCaller.targetName)})`,
+	called and lobbyCaller.targetName == "lobby"
+)
 
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then

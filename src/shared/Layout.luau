@@ -28,8 +28,9 @@ local Layout = {}
 -- Room footprint, studs. Square.
 Layout.Room = 48
 
--- Distance between the two work rooms' centres. The read point and the patch
--- point must never be reachable in one glance: distance IS the mechanic.
+-- Distance between the two corridor-end rooms' centres. The read point and
+-- the patch point must never be reachable in one glance: distance IS the
+-- mechanic.
 Layout.Separation = 120
 
 Layout.Floor = 0
@@ -80,23 +81,69 @@ function Layout.archiveCentre(): Point
 	return { x = -Layout.Separation / 2, z = 0 }
 end
 
--- Where players start: the corridor, between the two rooms.
+-- R137: the third room, the front hall with the street door. It hangs off the
+-- corridor's midpoint through a short passage, so it is a third direction
+-- rather than a third point on one line. Its distance from the Operator's post
+-- is DERIVED to equal the board room's, so every room hears the same length of
+-- approach (R50's rule, asserted in tests/layout.luau).
+function Layout.lobbyCentre(): Point
+	local post = Layout.operatorPost()
+	local board = Layout.boardCentre()
+	local reach = math.sqrt((board.x - post.x) ^ 2 + (board.z - post.z) ^ 2)
+	return { x = 0, z = post.z + reach }
+end
+
+-- Every room the world builds, by the name `Config.Rooms` and secret payloads
+-- use. World builds from it, walls are derived from it, and the walk tests
+-- sweep it. A new room is NOT only an entry here: it needs a door side
+-- (`corridorSide`), a way in from the corridor (the lobby has `passageWalls`,
+-- `passageFloor` and a cut in `corridorWalls`), and a model name in World.
+-- What tests/layout.luau catches: a room the Operator cannot walk to from the
+-- post or another room, a place whose route is walled, and a room with no
+-- model name in World. Passage walls and floor are checked for the lobby only.
+function Layout.rooms(): { [string]: Point }
+	return {
+		board = Layout.boardCentre(),
+		archive = Layout.archiveCentre(),
+		lobby = Layout.lobbyCentre(),
+	}
+end
+
+-- Where players start: the corridor's midpoint, at the foot of the passage.
 function Layout.spawn(): Point
 	return { x = 0, z = 0 }
 end
 
--- Where a station stands inside its room, relative to the room centre. Kept
--- here so a test walks to the same point the world actually builds.
-function Layout.stationOffset(): Point
-	return { x = 0, z = -18 }
+-- Where each thing a player walks up to stands: the room it is in, and its
+-- offset from that room's centre. Keyed by `Round.STATIONS[].id`, plus the
+-- reader. Kept here so a test walks to the same point the world actually
+-- builds (R106: World wrote these as literals and the layout test copied them
+-- by hand, so they agreed only by coincidence).
+--   board    against the room's -z wall
+--   breaker  toward the records room's doorway wall
+--   latch    on the lobby's far wall: the street door itself (R137)
+--   reader   the card index, against the records room's -z wall
+local PLACES: { [string]: { room: string, offset: Point } } = {
+	board = { room = "board", offset = { x = 0, z = -18 } },
+	breaker = { room = "archive", offset = { x = 18, z = 0 } },
+	latch = { room = "lobby", offset = { x = 0, z = 18 } },
+	reader = { room = "archive", offset = { x = 0, z = -18 } },
+}
+
+-- The room a place is in, or nil for an id with no place.
+function Layout.stationRoom(id: string): string?
+	local place = PLACES[id]
+	return if place then place.room else nil
 end
 
--- Where the breaker panel stands, relative to the RECORDS room centre: toward
--- the doorway wall. R106: World wrote this as a literal and the layout test
--- copied the same literal by hand, so the two agreed only by coincidence and
--- no walk test reached the breaker at all.
-function Layout.breakerOffset(): Point
-	return { x = 18, z = 0 }
+-- Where a place stands in the world, or nil for an id with no place.
+function Layout.stationPoint(id: string): Point?
+	local place = PLACES[id]
+	local centre = place and Layout.rooms()[place.room]
+	if not (place and centre) then
+		return nil
+	end
+	return { x = centre.x + place.offset.x, z = centre.z + place.offset.z }
 end
 
 -- Is a point inside the room centred on `centre`?
@@ -105,13 +152,20 @@ function Layout.inRoom(centre: Point, point: Point): boolean
 	return math.abs(point.x - centre.x) <= half and math.abs(point.z - centre.z) <= half
 end
 
--- Which side of a room faces the corridor. "west" is the -x wall, "east" the +x.
+-- Which side of a room faces the corridor. "west" is the -x wall, "east" the
+-- +x. A room off the corridor's line (|x| under half a room) faces it across
+-- z: "north" is the -z wall, for a room above the corridor like the lobby, and
+-- "south" the +z wall, for one below it.
 function Layout.corridorSide(centre: Point): string
+	if math.abs(centre.x) < Layout.halfRoom() then
+		return if centre.z > 0 then "north" else "south"
+	end
 	return if centre.x > 0 then "west" else "east"
 end
 
 -- The wall segments of one room, in world space. The side named by `openOn` is
--- built as TWO segments with the doorway between them.
+-- built as TWO segments with the doorway between them. Order is north, south,
+-- west, east, so World's Wall1..WallN names are stable for the two old rooms.
 function Layout.walls(centre: Point, openOn: string): { Rect }
 	local half = Layout.halfRoom()
 	local doorHalf = Layout.Door / 2
@@ -121,9 +175,15 @@ function Layout.walls(centre: Point, openOn: string): { Rect }
 		table.insert(out, { minX = minX, minZ = minZ, maxX = maxX, maxZ = maxZ })
 	end
 
-	-- North and south walls always run the full span.
-	add(centre.x - half, centre.z - half, centre.x + half, centre.z - half)
-	add(centre.x - half, centre.z + half, centre.x + half, centre.z + half)
+	for _, side in { "north", "south" } do
+		local z = if side == "north" then centre.z - half else centre.z + half
+		if side == openOn then
+			add(centre.x - half, z, centre.x - doorHalf, z)
+			add(centre.x + doorHalf, z, centre.x + half, z)
+		else
+			add(centre.x - half, z, centre.x + half, z)
+		end
+	end
 
 	for _, side in { "west", "east" } do
 		local x = if side == "west" then centre.x - half else centre.x + half
@@ -141,7 +201,7 @@ end
 -- THE CORRIDOR ---------------------------------------------------------------
 --
 -- Until R28 it was 8 studs wide against a 12-stud doorway, with nothing at its
--- edges, and it is the ONLY floor for the 72 studs between the two rooms. Two
+-- edges, and it is the ONLY floor for the 72 studs between its end rooms. Two
 -- studs of every doorway approach had no floor under it, and a player anywhere
 -- along that span who stepped past z = +/-4 fell out of the world — worst
 -- exactly when it matters most, since escaping means running out of a room in
@@ -175,13 +235,47 @@ function Layout.corridorClear(): number
 	return Layout.Door - Config.PlayerWidth
 end
 
+-- Three segments: the south wall runs the whole length; the north wall is cut
+-- at the midpoint where the passage to the lobby leaves (R137).
 function Layout.corridorWalls(): { Rect }
 	local halfW = Layout.corridorClear() / 2
 	local endX = Layout.corridorHalfLength()
 	return {
 		{ minX = -endX, minZ = -halfW, maxX = endX, maxZ = -halfW },
-		{ minX = -endX, minZ = halfW, maxX = endX, maxZ = halfW },
+		{ minX = -endX, minZ = halfW, maxX = -halfW, maxZ = halfW },
+		{ minX = halfW, minZ = halfW, maxX = endX, maxZ = halfW },
 	}
+end
+
+-- Where the passage meets the lobby's doorway wall.
+function Layout.passageEnd(): number
+	return Layout.lobbyCentre().z - Layout.halfRoom()
+end
+
+-- The passage's floor: as wide as the corridor floor (so the lobby door's
+-- approach is floored, R28's rule), from the corridor floor's edge to the
+-- lobby's door wall with no gap.
+function Layout.passageFloor(): Rect
+	local halfFloor = Layout.corridorWidth() / 2
+	return { minX = -halfFloor, minZ = halfFloor, maxX = halfFloor, maxZ = Layout.passageEnd() }
+end
+
+-- The passage from the corridor's midpoint up to the lobby door. Same walkable
+-- width as the corridor, for the same reason (R52: a character must fit the
+-- door the walls lead to).
+function Layout.passageWalls(): { Rect }
+	local halfW = Layout.corridorClear() / 2
+	local top = Layout.passageEnd()
+	return {
+		{ minX = -halfW, minZ = halfW, maxX = -halfW, maxZ = top },
+		{ minX = halfW, minZ = halfW, maxX = halfW, maxZ = top },
+	}
+end
+
+-- Where the passage leaves the corridor. The Operator walks in straight lines,
+-- so any trip between the lobby and the corridor's end rooms turns here.
+function Layout.junction(): Point
+	return { x = 0, z = 0 }
 end
 
 -- Is `point` within `radius` of `centre`? Used to answer "are you standing at
@@ -204,12 +298,15 @@ end
 -- Every wall in the building.
 function Layout.allWalls(): { Rect }
 	local out: { Rect } = {}
-	for _, centre in { Layout.boardCentre(), Layout.archiveCentre() } do
+	for _, centre in Layout.rooms() do
 		for _, wall in Layout.walls(centre, Layout.corridorSide(centre)) do
 			table.insert(out, wall)
 		end
 	end
 	for _, wall in Layout.corridorWalls() do
+		table.insert(out, wall)
+	end
+	for _, wall in Layout.passageWalls() do
 		table.insert(out, wall)
 	end
 	return out
@@ -257,25 +354,41 @@ end
 function Layout.doorPoint(centre: Point): Point
 	local half = Layout.halfRoom()
 	local side = Layout.corridorSide(centre)
+	if side == "north" or side == "south" then
+		return { x = centre.x, z = if side == "north" then centre.z - half else centre.z + half }
+	end
 	return {
 		x = if side == "west" then centre.x - half else centre.x + half,
 		z = centre.z,
 	}
 end
 
--- The route a player actually takes, as legs. NOT a straight line: the door is
--- 12 studs wide and the station sits 18 studs off the room's centre line, so
--- the direct line from the corridor clips the wall at z=-10.8 even with the
--- doorway open. A reachability test that demanded a clear straight line would
--- report the building unplayable and push someone to widen the door to 22
--- studs to satisfy it — fixing the test's model rather than the game.
-function Layout.routeToStation(centre: Point): { Point }
-	local offset = Layout.stationOffset()
-	return {
-		Layout.spawn(),
-		Layout.doorPoint(centre),
-		{ x = centre.x + offset.x, z = centre.z + offset.z },
-	}
+-- The turns the Operator takes between two points, not counting either end.
+-- None when the straight line is clear; otherwise one, through the junction.
+-- Every pair of rooms and the post is covered by those two cases, which
+-- tests/layout.luau checks leg by leg rather than trusting this comment.
+function Layout.route(from: Point, to: Point): { Point }
+	if Layout.walkIsClear(from, to) then
+		return {}
+	end
+	return { Layout.junction() }
+end
+
+-- The walk from spawn to a named place, as legs: through its room's door, then
+-- to the spot it stands on. nil for an id with no place. NOT a straight line:
+-- the door is 12 studs wide and the board station sits 18 studs off the room's
+-- centre line, so the direct line from the corridor clips the wall even with
+-- the doorway open. A reachability test that demanded a clear straight line
+-- would report the building unplayable and push someone to widen the door --
+-- fixing the test's model rather than the game.
+function Layout.routeToStationId(id: string): { Point }?
+	local room = Layout.stationRoom(id)
+	local centre = room and Layout.rooms()[room]
+	local at = Layout.stationPoint(id)
+	if not (centre and at) then
+		return nil
+	end
+	return { Layout.spawn(), Layout.doorPoint(centre), at }
 end
 
 -- Every leg of a route is walkable.
@@ -326,7 +439,8 @@ function Layout.roomMismatch(built: { [string]: Point }, declared: { string }): 
 end
 
 function Layout.operatorPost(): Point
-	-- EQUIDISTANT from both rooms, so both get the same warning.
+	-- EQUIDISTANT from both corridor-end rooms, so both get the same warning
+	-- (and `lobbyCentre` is placed to match, so the lobby does too).
 	--
 	-- R27 put this at `-Separation / 6` to sit well inside the band and away
 	-- from the player spawn, and never checked it for symmetry: forty studs from

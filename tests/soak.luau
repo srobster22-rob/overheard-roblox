@@ -125,8 +125,8 @@ local SEEDS = { 1, 7, 19, 42, 101, 2024, 31337 }
 
 local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, seed: number): Report
 	math.randomseed(seed)
-	local rooms = { board = Layout.boardCentre(), archive = Layout.archiveCentre() }
-	local secrets = Round.dealSecrets(3)
+	local rooms = Layout.rooms()
+	local secrets = Round.dealSecrets(Round.secretsPerRound())
 
 	local board = Objectives.new()
 	for _, station in Round.STATIONS do
@@ -135,7 +135,7 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 	local line = Connected.new()
 	local round = Lifecycle.new()
 	local operator = Operator.new(secrets)
-	local pursuit = Pursuit.new(rooms, Layout.operatorPost())
+	local pursuit = Pursuit.new(rooms, Layout.operatorPost(), Layout.route)
 	operator.onUnderstood = function(_concept: string, payload: string)
 		pursuit:sendTo(payload)
 	end
@@ -478,16 +478,16 @@ end
 -- seed governs, which is the shuffle.
 local function firstSecrets(seed: number): string
 	math.randomseed(seed)
-	local dealt = Round.dealSecrets(3)
+	local dealt = Round.dealSecrets(Round.secretsPerRound())
 	local names: { string } = {}
 	for _, secret in dealt do
 		table.insert(names, `{secret.concept}:{secret.payload}`)
 	end
 	return table.concat(names, "|")
 end
--- Swept, not asked of one pair. `dealSecrets(3)` fixes the first two secrets
--- from the stations and shuffles only the THIRD out of five candidates, so any
--- two seeds coincide about one time in five -- and the first version of this
+-- Swept, not asked of one pair. The deal fixes every station's secret and
+-- shuffles only ONE ambient secret out of the rest (R137: two candidates), so
+-- any two seeds coincide about one time in two -- and the first version of this
 -- control drew such a pair (4242 and 99) and failed while the seeding was
 -- perfectly correct.
 local dealtA = firstSecrets(4242)
@@ -576,8 +576,8 @@ print("a group that never says a word in-game")
 -- was in what they left out.
 local function silentGroup(ticks: number, seed: number): (number, number, boolean)
 	math.randomseed(seed)
-	local rooms = { board = Layout.boardCentre(), archive = Layout.archiveCentre() }
-	local secrets = Round.dealSecrets(3)
+	local rooms = Layout.rooms()
+	local secrets = Round.dealSecrets(Round.secretsPerRound())
 	local board = Objectives.new()
 	for _, station in Round.STATIONS do
 		board:add(station.id, station.concept, station.prompt)
@@ -585,7 +585,7 @@ local function silentGroup(ticks: number, seed: number): (number, number, boolea
 	local line = Connected.new()
 	local round = Lifecycle.new()
 	local operator = Operator.new(secrets)
-	local pursuit = Pursuit.new(rooms, Layout.operatorPost())
+	local pursuit = Pursuit.new(rooms, Layout.operatorPost(), Layout.route)
 	local supervisor = Supervisor.new()
 	operator.onUnderstood = function(_concept: string, payload: string)
 		pursuit:sendTo(payload)
@@ -819,8 +819,8 @@ print("a caught player is no longer chased for silence")
 -- alternation), but roughly HALF of every dispatch, and every audible "putting
 -- you through", spent on someone who could not possibly benefit from it.
 local function chaseScenario(forgetOnCapture: boolean): (number, number)
-	local rooms = { board = Layout.boardCentre(), archive = Layout.archiveCentre() }
-	local pursuit = Pursuit.new(rooms, Layout.operatorPost())
+	local rooms = Layout.rooms()
+	local pursuit = Pursuit.new(rooms, Layout.operatorPost(), Layout.route)
 	local supervisor = Supervisor.new()
 	local line = Connected.new()
 	local standing = { [1] = rooms.board, [2] = rooms.archive }

@@ -38,7 +38,10 @@ export type Panel = {
 export type Rect = { left: number, top: number, right: number, bottom: number }
 
 -- Top row heights drive everything below them, so they are named once.
-local LINE_H = 120
+-- R137: tall enough for two held lines (about 103 px of rows, plus the 40 the
+-- title takes); the list scrolls past that, since 200 px collides with the
+-- centre panels at the smallest supported screen (tests/hud.luau).
+local LINE_H = 160
 local LEX_H = 140
 local TOP_BOTTOM = Hud.Margin + math.max(LINE_H, LEX_H)
 

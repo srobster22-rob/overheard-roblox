@@ -573,6 +573,116 @@ end
 check(`(guard) the contract was swept ({swept} calls)`, swept >= 50)
 check(`'on its way' always means the target really moved there ({wrong} wrong)`, wrong == 0)
 
+print("")
+print("it takes the turns its route gives it (R137)")
+
+-- A stub route function, so these hold whatever the building looks like: every
+-- trip turns at a point chosen here, and every call is recorded.
+local calls: { { from: { x: number, z: number }, to: { x: number, z: number } } } = {}
+local turnAt = { x = 30, z = 40 }
+local function viaTurn(from, to)
+	table.insert(calls, { from = { x = from.x, z = from.z }, to = { x = to.x, z = to.z } })
+	return { turnAt }
+end
+
+local walker = Pursuit.new(ROOMS, { x = 0, z = 0 }, viaTurn)
+walker:sendTo("board")
+local closestToTurn = math.huge
+for _ = 1, 200 do
+	walker:step(0.25)
+	local dx, dz = walker.position.x - turnAt.x, walker.position.z - turnAt.z
+	closestToTurn = math.min(closestToTurn, math.sqrt(dx * dx + dz * dz))
+	if walker.state == "arrived" then
+		break
+	end
+end
+check(`it walks through the turn, not past it ({string.format("%.2f", closestToTurn)} studs)`, closestToTurn < 0.001)
+check("...and still arrives at the room", walker.state == "arrived")
+check("...on the room's centre", walker.position.x == ROOMS.board.x and walker.position.z == ROOMS.board.z)
+check("...with no turn left over", #walker.route == 0)
+
+-- A turn inside the arrive radius of the room must not count as arriving:
+-- arriving snaps to the room and starts capturing, and a turn is not the room.
+local nearTurn = { x = ROOMS.board.x - 2, z = 1 }
+local close = Pursuit.new(ROOMS, { x = 0, z = 0 }, function()
+	return { nearTurn }
+end)
+close:sendTo("board")
+local arrivedEarly = false
+for _ = 1, 200 do
+	close:step(0.25)
+	if close.state == "arrived" and #close.route > 0 then
+		arrivedEarly = true
+	end
+	if close.state == "arrived" then
+		break
+	end
+end
+check("it is never 'arrived' with a turn still to take", not arrivedEarly)
+check(
+	"...and arrives on the centre once the turn is taken",
+	close.state == "arrived" and close.position.x == ROOMS.board.x and close.position.z == ROOMS.board.z
+)
+
+-- Every new destination is re-planned from where it stands now.
+table.clear(calls)
+local replan = Pursuit.new(ROOMS, { x = 0, z = 0 }, viaTurn)
+replan:sendTo("board")
+replan:step(1)
+local midway = { x = replan.position.x, z = replan.position.z }
+replan:sendTo("board")
+check(
+	"re-sending it plans again from where it stands",
+	#calls == 2 and calls[2].from.x == midway.x and calls[2].from.z == midway.z
+)
+replan:withdrawTo({ x = 0, z = 0 })
+check("withdrawing plans a route too", #calls == 3 and #replan.route == 1)
+replan:stop()
+check("stopping forgets the route", #replan.route == 0)
+replan:sendTo("archive")
+replan:sendHome({ x = 0, z = 0 })
+check("going home between rounds forgets the route", #replan.route == 0)
+
+-- A retreat that has to turn is still a retreat: audible, never capturing,
+-- and it ends idle at the post (R25), not `arrived` there.
+local out = Pursuit.new(ROOMS, ROOMS.board, function()
+	return { { x = 30, z = 40 } }
+end)
+out:withdrawTo({ x = 0, z = 0 })
+local stayedLeaving = true
+for _ = 1, 400 do
+	out:step(0.25)
+	if out.state ~= "leaving" and out.state ~= "idle" then
+		stayedLeaving = false
+	end
+	if out.state == "idle" then
+		break
+	end
+end
+check("a retreat with a turn stays 'leaving' and ends idle", stayedLeaving and out.state == "idle")
+
+-- On a turn that lies inside the silence radius it is already silent: the
+-- turn branch classifies against the room, like the straight walk does.
+local near = Pursuit.new(ROOMS, { x = 0, z = 0 }, function()
+	return { { x = 50, z = 10 } }
+end)
+near:sendTo("board")
+local audibleOnTurn: boolean? = nil
+for _ = 1, 400 do
+	near:step(0.25)
+	if near.position.x == 50 and near.position.z == 10 then
+		audibleOnTurn = near:isAudible()
+		break
+	end
+end
+check("on a turn inside the silence radius it is silent", audibleOnTurn == false)
+
+-- (control) with no route function it walks straight, as it always did.
+local straight = tracker()
+straight:sendTo("board")
+straight:step(0.25)
+check("(control) no route function means no turns", #straight.route == 0 and straight.position.z == 0)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

@@ -35,17 +35,33 @@ local seed = tonumber(process.args[3]) or 11
 math.randomseed(seed)
 
 local NAMES = { [1] = "Ana", [2] = "Bo", [3] = "Cy", [4] = "Dee" }
-local CODEWORDS = { "blue kettle", "tin whistle", "green ladder", "old saddle", "paper moon", "brass owl" }
-local PLAIN = { jack_number = "jack", breaker = "breaker" }
-local STATION_ROOM = { board = "board", breaker = "archive" }
+local CODEWORDS = {
+	"blue kettle",
+	"tin whistle",
+	"red anchor",
+	"green ladder",
+	"old saddle",
+	"grey heron",
+	"paper moon",
+	"brass owl",
+	"cold toast",
+}
+-- Each line starts on its own codeword and steps by the number of lines, so two
+-- lines never share one.
+local FIRST_CODEWORD: { [string]: number } = {}
+for index, station in Round.STATIONS do
+	FIRST_CODEWORD[station.concept] = index
+end
+local CODEWORD_STRIDE = #Round.STATIONS
+local PLAIN = { jack_number = "jack", breaker = "breaker", exit = "exit" }
 
 local now = 0
 local function trace(text: string)
 	print(string.format("[%6.1fs] %s", now, text))
 end
 
-local rooms = { board = Layout.boardCentre(), archive = Layout.archiveCentre() }
-local secrets = Round.dealSecrets(3)
+local rooms = Layout.rooms()
+local secrets = Round.dealSecrets(Round.secretsPerRound())
 local board = Objectives.new()
 for _, station in Round.STATIONS do
 	board:add(station.id, station.concept, station.prompt)
@@ -53,7 +69,7 @@ end
 local line = Connected.new()
 local round = Lifecycle.new()
 local operator = Operator.new(secrets)
-local pursuit = Pursuit.new(rooms, Layout.operatorPost())
+local pursuit = Pursuit.new(rooms, Layout.operatorPost(), Layout.route)
 local supervisor = Supervisor.new()
 
 local present = { 1, 2, 3, 4 }
@@ -70,7 +86,7 @@ local stats = { won = 0, lost = 0, captures = 0, understood = 0, calls = 0, red 
 local codeIndex: { [string]: number } = {}
 local redSeen: { [string]: boolean } = {}
 local function codewordFor(concept: string): string
-	local i = codeIndex[concept] or (if concept == "breaker" then 2 else 1)
+	local i = codeIndex[concept] or FIRST_CODEWORD[concept] or 1
 	codeIndex[concept] = i
 	return CODEWORDS[(i - 1) % #CODEWORDS + 1]
 end
@@ -159,7 +175,7 @@ local function tick(seconds: number)
 end
 
 local function freeActor(objective): number?
-	local room = STATION_ROOM[objective.id]
+	local room = Layout.stationRoom(objective.id)
 	local fallback: number? = nil
 	for _, id in present do
 		if id ~= objective.holder and not objective.seenBy[id] and not line:isConnected(id) then
@@ -200,7 +216,7 @@ while played < wantRounds do
 		else
 			if redSeen[concept] then
 				redSeen[concept] = false
-				codeIndex[concept] = (codeIndex[concept] or 1) + 2
+				codeIndex[concept] = (codeIndex[concept] or FIRST_CODEWORD[concept] or 1) + CODEWORD_STRIDE
 				stats.swaps += 1
 				trace(
 					`   (the group drops its old word for the {objective.id} line and coins "{codewordFor(concept)}")`
@@ -211,9 +227,9 @@ while played < wantRounds do
 		if line:isConnected(holder) then
 			trace(`   ({NAMES[holder]} is on the line but can still talk)`)
 		end
-		if roomOf[actor] ~= STATION_ROOM[objective.id] then
-			trace(`   {NAMES[actor]} runs to the {STATION_ROOM[objective.id]} room`)
-			roomOf[actor] = STATION_ROOM[objective.id]
+		if roomOf[actor] ~= Layout.stationRoom(objective.id) then
+			trace(`   {NAMES[actor]} runs to the {Layout.stationRoom(objective.id)} room`)
+			roomOf[actor] = Layout.stationRoom(objective.id)
 			place()
 			tick(8)
 		end

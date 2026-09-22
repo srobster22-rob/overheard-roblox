@@ -13,6 +13,7 @@ local Workspace = game:GetService("Workspace")
 local Config = require(ReplicatedStorage.Shared.Config)
 
 local Layout = require(game:GetService("ReplicatedStorage").Shared.Layout)
+local Round = require(script.Parent.Round)
 
 local World = {}
 
@@ -23,6 +24,21 @@ local World = {}
 local FLOOR_Y = Layout.Floor
 local ROOM = Layout.Room
 local SEPARATION = Layout.Separation
+local WALL_H = 14
+
+local ROOM_FLOOR = Color3.fromRGB(48, 44, 40)
+local ROOM_WALL = Color3.fromRGB(62, 56, 48)
+local CEILING = Color3.fromRGB(30, 28, 26)
+local HALL_FLOOR = Color3.fromRGB(44, 40, 36)
+local HALL_WALL = Color3.fromRGB(52, 47, 41)
+
+-- What each room is called in the Explorer. Keys are `Layout.rooms()` names;
+-- `World.build` refuses to run if a room has no entry here.
+local ROOM_MODELS: { [string]: string } = {
+	board = "BoardRoom",
+	archive = "RecordsRoom",
+	lobby = "Lobby",
+}
 
 local function part(name: string, size: Vector3, cf: CFrame, color: Color3, parent: Instance): Part
 	local p = Instance.new("Part")
@@ -38,47 +54,49 @@ local function part(name: string, size: Vector3, cf: CFrame, color: Color3, pare
 	return p
 end
 
+-- One wall from a Layout rect: rects are one stud thick, so the degenerate span
+-- is built a stud wide.
+local function wallPart(name: string, wall: Layout.Rect, color: Color3, parent: Instance): Part
+	return part(
+		name,
+		Vector3.new(math.max(wall.maxX - wall.minX, 1), WALL_H, math.max(wall.maxZ - wall.minZ, 1)),
+		CFrame.new((wall.minX + wall.maxX) / 2, FLOOR_Y + WALL_H / 2, (wall.minZ + wall.maxZ) / 2),
+		color,
+		parent
+	)
+end
+
+-- A floor slab under a Layout rect.
+local function floorPart(name: string, area: Layout.Rect, color: Color3, parent: Instance): Part
+	return part(
+		name,
+		Vector3.new(area.maxX - area.minX, 1, area.maxZ - area.minZ),
+		CFrame.new((area.minX + area.maxX) / 2, FLOOR_Y, (area.minZ + area.maxZ) / 2),
+		color,
+		parent
+	)
+end
+
 local function room(name: string, origin: Vector3, openOn: string, parent: Instance): Model
 	local model = Instance.new("Model")
 	model.Name = name
 	model.Parent = parent
 
-	local wallH = 14
-	local floorColor = Color3.fromRGB(48, 44, 40)
-	local wallColor = Color3.fromRGB(62, 56, 48)
-
-	part("Floor", Vector3.new(ROOM, 1, ROOM), CFrame.new(origin + Vector3.new(0, FLOOR_Y, 0)), floorColor, model)
-	part(
-		"Ceiling",
-		Vector3.new(ROOM, 1, ROOM),
-		CFrame.new(origin + Vector3.new(0, wallH, 0)),
-		Color3.fromRGB(30, 28, 26),
-		model
-	)
+	part("Floor", Vector3.new(ROOM, 1, ROOM), CFrame.new(origin + Vector3.new(0, FLOOR_Y, 0)), ROOM_FLOOR, model)
+	part("Ceiling", Vector3.new(ROOM, 1, ROOM), CFrame.new(origin + Vector3.new(0, WALL_H, 0)), CEILING, model)
 
 	-- Built from Layout.walls so the geometry a player walks through is the same
 	-- geometry tests/layout.luau sweeps. Until R22 this was four full-span walls
 	-- with no gap, and both work rooms were sealed boxes nobody could enter.
-	local centre = { x = origin.X, z = origin.Z }
-	for i, wall in Layout.walls(centre, openOn) do
-		local spanX = math.max(wall.maxX - wall.minX, 1)
-		local spanZ = math.max(wall.maxZ - wall.minZ, 1)
-		local midX = (wall.minX + wall.maxX) / 2
-		local midZ = (wall.minZ + wall.maxZ) / 2
-		part(
-			`Wall{i}`,
-			Vector3.new(spanX, wallH, spanZ),
-			CFrame.new(midX, origin.Y + wallH / 2, midZ),
-			wallColor,
-			model
-		)
+	for i, wall in Layout.walls({ x = origin.X, z = origin.Z }, openOn) do
+		wallPart(`Wall{i}`, wall, ROOM_WALL, model)
 	end
 
 	-- One weak light per room. Never enough; that is the point.
 	local lampPart = part(
 		"Lamp",
 		Vector3.new(2, 0.4, 2),
-		CFrame.new(origin + Vector3.new(0, wallH - 1, 0)),
+		CFrame.new(origin + Vector3.new(0, WALL_H - 1, 0)),
 		Color3.fromRGB(120, 108, 84),
 		model
 	)
@@ -112,11 +130,21 @@ local function station(name: string, label: string, position: Vector3, parent: I
 	return prompt
 end
 
+-- Where a named place stands, at station height. Errors on a name Layout does
+-- not place: a station with no position can never be solved.
+local function placeAt(id: string): (Vector3, { x: number, z: number })
+	local at = Layout.stationPoint(id)
+	if not at then
+		error(`'{id}' has no place in Layout, so World cannot build it`)
+	end
+	return Vector3.new(at.x, 4, at.z), at
+end
+
 export type Built = {
 	readerPrompt: ProximityPrompt,
 	-- One prompt per Round.STATIONS entry, keyed by station id. Every station
 	-- MUST appear here or its objective can never be solved; tests/round.luau
-	-- reads this file and fails if one is missing.
+	-- checks every station has a place and that this file builds them all.
 	stations: { [string]: ProximityPrompt },
 	-- Where each station stands, so the server can check that a player is
 	-- actually at one when they submit rather than trusting a remembered
@@ -139,19 +167,22 @@ function World.build(): Built
 	folder.Name = "Exchange"
 	folder.Parent = Workspace
 
-	-- Two rooms, far apart. You cannot see one from the other.
+	-- The rooms, far apart. You cannot see one from another.
 	-- R105: from Layout, the same centres every headless capture and walk test
 	-- uses. This file computed them itself, so a drift here would have passed
-	-- the whole suite -- nothing in it runs outside Studio.
-	local archiveCentre, boardCentre = Layout.archiveCentre(), Layout.boardCentre()
-	local recordsOrigin = Vector3.new(archiveCentre.x, 0, archiveCentre.z)
-	local boardOrigin = Vector3.new(boardCentre.x, 0, boardCentre.z)
+	-- the whole suite -- nothing in it runs outside Studio. R137: from the one
+	-- registry, `Layout.rooms()`.
+	local layoutRooms = Layout.rooms()
+	for name, centre in layoutRooms do
+		local modelName = ROOM_MODELS[name]
+		if not modelName then
+			error(`Layout.rooms() has room '{name}', which World gives no model name`)
+		end
+		room(modelName, Vector3.new(centre.x, 0, centre.z), Layout.corridorSide(centre), folder)
+	end
 
-	room("RecordsRoom", recordsOrigin, Layout.corridorSide({ x = recordsOrigin.X, z = recordsOrigin.Z }), folder)
-	room("BoardRoom", boardOrigin, Layout.corridorSide({ x = boardOrigin.X, z = boardOrigin.Z }), folder)
-
-	-- A corridor so the two rooms are connected but the walk is long enough to
-	-- make shouting the answer feel like the wrong idea.
+	-- A corridor so the corridor-end rooms are connected but the walk is long
+	-- enough to make shouting the answer feel like the wrong idea.
 	-- Width DERIVED from the doorway: a corridor narrower than the door it
 	-- serves leaves part of every approach unfloored. It was 8 against a 12-stud
 	-- door until R28, and it is the only floor for the span between the rooms.
@@ -159,37 +190,42 @@ function World.build(): Built
 		"Corridor",
 		Vector3.new(SEPARATION, 1, Layout.corridorWidth()),
 		CFrame.new(Vector3.new(0, FLOOR_Y, 0)),
-		Color3.fromRGB(44, 40, 36),
+		HALL_FLOOR,
 		folder
 	)
 
 	-- Edges, so fleeing in the dark does not drop you out of the world. Built
 	-- from Layout.corridorWalls, which stops them at the room walls and leaves
-	-- the doorways open.
-	local wallH = 14
+	-- the doorways and the passage mouth open.
 	for i, wall in Layout.corridorWalls() do
-		part(
-			`CorridorWall{i}`,
-			Vector3.new(math.max(wall.maxX - wall.minX, 1), wallH, math.max(wall.maxZ - wall.minZ, 1)),
-			CFrame.new((wall.minX + wall.maxX) / 2, FLOOR_Y + wallH / 2, (wall.minZ + wall.maxZ) / 2),
-			Color3.fromRGB(52, 47, 41),
-			folder
-		)
+		wallPart(`CorridorWall{i}`, wall, HALL_WALL, folder)
 	end
 
-	-- R106: every offset from Layout, where the walk tests read them.
-	local stationOffset, breakerOffset = Layout.stationOffset(), Layout.breakerOffset()
-	local readerAt = recordsOrigin + Vector3.new(stationOffset.x, 4, stationOffset.z)
-	local boardAt = boardOrigin + Vector3.new(stationOffset.x, 4, stationOffset.z)
-	-- Labels are shown over each station, so none may name a secret (R126: the
-	-- owner ruled "Directory", "Switchboard" and "Breaker" gave theirs away).
+	-- R137: the passage from the corridor's midpoint up to the lobby door. Floor
+	-- and walls both from Layout, where tests/layout.luau checks them.
+	floorPart("Passage", Layout.passageFloor(), HALL_FLOOR, folder)
+	for i, wall in Layout.passageWalls() do
+		wallPart(`PassageWall{i}`, wall, HALL_WALL, folder)
+	end
+
+	-- The reader is not an objective station, so it keeps its literal label
+	-- (tests/wiring reads it). Labels are shown over each station, so none may
+	-- name a secret (R126: the owner ruled "Directory", "Switchboard" and
+	-- "Breaker" gave theirs away).
+	local readerAt = placeAt("reader")
 	local readerPrompt = station("Card Index", "Read", readerAt, folder)
-	local boardPrompt = station("Exchange Desk", "Patch", boardAt, folder)
-	-- The breaker sits in the RECORDS room, deliberately opposite the board.
-	-- With both act-stations in one room the whole group just camps there and
-	-- the corridor stops being a cost; one at each end forces the walk.
-	local breakerAt = recordsOrigin + Vector3.new(breakerOffset.x, 4, breakerOffset.z)
-	local breakerPrompt = station("Cutoff", "Throw", breakerAt, folder)
+
+	-- Every objective station, from Round.STATIONS (the label and verb) and
+	-- Layout.stationPoint (where it stands). R106: no literal offsets here. The
+	-- breaker sits in the records room, opposite the board, so the group cannot
+	-- camp one room; R137's latch is in the lobby, a third direction.
+	local stationPrompts: { [string]: ProximityPrompt } = {}
+	local stationAt: { [string]: { x: number, z: number } } = {}
+	for _, s in Round.STATIONS do
+		local position, at = placeAt(s.id)
+		stationPrompts[s.id] = station(s.label, s.actionText, position, folder)
+		stationAt[s.id] = at
+	end
 
 	-- The exchange is dark. Players get just enough to move.
 	Lighting.Ambient = Color3.fromRGB(18, 16, 14)
@@ -209,10 +245,7 @@ function World.build(): Built
 	-- (R6 had to write "the config" in these messages instead of naming the
 	-- dial, because the guard could not tell a string from a read and the
 	-- message would have certified it. R7's scanner can, so they say it.)
-	local rooms: { [string]: { x: number, z: number } } = {
-		board = { x = boardOrigin.X, z = boardOrigin.Z },
-		archive = { x = recordsOrigin.X, z = recordsOrigin.Z },
-	}
+	local rooms: { [string]: { x: number, z: number } } = layoutRooms
 
 	-- R104: the comparison lives in Layout so the headless suite can run it;
 	-- nothing in this file can run outside Studio.
@@ -223,18 +256,12 @@ function World.build(): Built
 
 	return {
 		readerPrompt = readerPrompt,
-		stations = {
-			board = boardPrompt,
-			breaker = breakerPrompt,
-		},
-		stationAt = {
-			board = { x = boardAt.X, z = boardAt.Z },
-			breaker = { x = breakerAt.X, z = breakerAt.Z },
-		},
+		stations = stationPrompts,
+		stationAt = stationAt,
 		-- R107: Layout.spawn, where every route test starts walking from.
 		spawn = Vector3.new(Layout.spawn().x, FLOOR_Y + 4, Layout.spawn().z),
 		rooms = rooms,
-		-- Out in the corridor, far enough from BOTH rooms that every approach
+		-- Out in the corridor, far enough from every room that each approach
 		-- begins outside the silence radius. Standing 20 studs from the board
 		-- room's centre meant it reached that room silently every time.
 		operatorStart = Layout.operatorPost(),

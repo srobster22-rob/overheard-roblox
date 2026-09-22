@@ -1686,9 +1686,11 @@ end
 -- secret ("Directory", "Switchboard" -> jack, "Breaker") and filed it; the owner
 -- ruled a label must not give its secret away, so R126 renamed them and there
 -- are NO exemptions: no name and no verb a prompt shows may convey anything.
+-- R137: objective stations take their name and verb from Round.STATIONS; the
+-- reader keeps a literal in World. Both are read.
 local worldRaw = fs.readFile("src/server/systems/World.luau")
 local promptCount, promptLeaks = 0, {}
-for name, verb in string.gmatch(worldRaw, 'station%("([^"]+)", "([^"]+)"') do
+local function scanPrompt(name: string, verb: string)
 	promptCount += 1
 	if #saidAloud(name) > 0 then
 		table.insert(promptLeaks, name)
@@ -1697,7 +1699,24 @@ for name, verb in string.gmatch(worldRaw, 'station%("([^"]+)", "([^"]+)"') do
 		table.insert(promptLeaks, verb)
 	end
 end
-check(`(guard) found the station prompts ({promptCount})`, promptCount >= 3)
+for name, verb in string.gmatch(worldRaw, 'station%("([^"]+)", "([^"]+)"') do
+	scanPrompt(name, verb)
+end
+for _, s in Round.STATIONS do
+	scanPrompt(s.label, s.actionText)
+end
+-- R137: the live Operator must be given the route. `routeFor` is optional
+-- (nil walks straight), so dropping it would keep every other test green while
+-- the Operator walked through the board room's wall to reach the lobby.
+check(
+	"the server gives the Operator its route through the building",
+	string.find(serverCode, "Pursuit.new(built.rooms, built.operatorStart, Layout.route)", 1, true) ~= nil
+)
+check(
+	"(guard) World labels objective stations from Round.STATIONS",
+	string.find(worldRaw, "station(s.label, s.actionText", 1, true) ~= nil
+)
+check(`(guard) found the station prompts ({promptCount})`, promptCount >= 4)
 check(`no station prompt gives a concept away ({table.concat(promptLeaks, " | ")})`, #promptLeaks == 0)
 
 check(

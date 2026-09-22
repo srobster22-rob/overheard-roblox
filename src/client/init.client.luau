@@ -99,24 +99,31 @@ local function label(parent: Instance, text: string, size: number, color: Color3
 	return l
 end
 
+-- A list of rows under a panel's title that scrolls once it outgrows the
+-- panel, so a long list is never cut off. The Lexicon grows without limit;
+-- Your Line did not until three stations (R137) let one player hold three.
+local function scrollingList(parent: Instance, padding: number): ScrollingFrame
+	local list = Instance.new("ScrollingFrame")
+	list.Position = UDim2.fromOffset(8, 32)
+	list.Size = UDim2.new(1, -16, 1, -40)
+	list.BackgroundTransparency = 1
+	list.BorderSizePixel = 0
+	list.ScrollBarThickness = 2
+	list.CanvasSize = UDim2.new()
+	list.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	list.Parent = parent
+
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, padding)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = list
+	return list
+end
+
 -- LEXICON ------------------------------------------------------------------
 
 local lexPanel = panel("Lexicon")
-
-local lexList = Instance.new("ScrollingFrame")
-lexList.Position = UDim2.fromOffset(8, 32)
-lexList.Size = UDim2.new(1, -16, 1, -40)
-lexList.BackgroundTransparency = 1
-lexList.BorderSizePixel = 0
-lexList.ScrollBarThickness = 2
-lexList.CanvasSize = UDim2.new()
-lexList.AutomaticCanvasSize = Enum.AutomaticSize.Y
-lexList.Parent = lexPanel
-
-local lexLayout = Instance.new("UIListLayout")
-lexLayout.Padding = UDim.new(0, 2)
-lexLayout.SortOrder = Enum.SortOrder.LayoutOrder
-lexLayout.Parent = lexList
+local lexList = scrollingList(lexPanel, 2)
 
 -- The breakpoint is DERIVED from the threshold the Operator actually uses, not
 -- restated here. It used to be a hard-coded 0.5 reaching red at 1.0, so a
@@ -240,17 +247,7 @@ end)
 -- YOUR LINE ----------------------------------------------------------------
 
 local linePanel = panel("Your line")
-
-local lineList = Instance.new("Frame")
-lineList.Position = UDim2.fromOffset(8, 32)
-lineList.Size = UDim2.new(1, -16, 1, -40)
-lineList.BackgroundTransparency = 1
-lineList.Parent = linePanel
-
-local lineLayout = Instance.new("UIListLayout")
-lineLayout.Padding = UDim.new(0, 4)
-lineLayout.SortOrder = Enum.SortOrder.LayoutOrder
-lineLayout.Parent = lineList
+local lineList = scrollingList(linePanel, 4)
 
 local ROW_STYLE: { [string]: { size: number, color: Color3 } } = {
 	line = { size = 13, color = INK },
@@ -302,8 +299,8 @@ local status = label(boardPanel, "", 11, Color3.fromRGB(206, 62, 52))
 status.Position = UDim2.fromOffset(8, 96)
 status.Size = UDim2.new(1, -16, 0, 16)
 
--- Which station this keypad is currently standing in for. There is more than
--- one now (switchboard, breaker), and submitting a breaker code against the
+-- Which station this keypad is currently standing in for. There are several
+-- (board, breaker, latch), and submitting a breaker code against the
 -- switchboard fails silently as a wrong answer, which reads as a bug.
 local openStation: string? = nil
 

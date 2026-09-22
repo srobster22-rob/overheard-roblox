@@ -13,6 +13,7 @@ local Harness = require("./harness")
 local rt = Harness.build()
 local Round = rt.require(rt.systems.Round)
 local Config = rt.require(rt.shared.Config)
+local Layout = rt.require(rt.shared.Layout)
 
 local failures = 0
 local checks = 0
@@ -94,7 +95,6 @@ check("there is at least one station", #Round.STATIONS > 0)
 
 local seenIds: { [string]: boolean } = {}
 local worldSource = fs.readFile("src/server/systems/World.luau")
-local stationsMap = string.match(worldSource, "stations = {(.-)\n\t\t}") or ""
 
 for _, station in Round.STATIONS do
 	check(`station '{station.id}' has a unique id`, seenIds[station.id] == nil)
@@ -112,12 +112,19 @@ for _, station in Round.STATIONS do
 	check(`station '{station.id}' prompt survives the real render call, string.format`, formatted)
 	check(`station '{station.id}' has an action verb`, #station.actionText > 0)
 	-- No physical prompt means the objective can never be solved, so
-	-- `allSolved` can never be reached and the round cannot end.
-	check(
-		`World builds a prompt for station '{station.id}'`,
-		string.find(stationsMap, `\n\t\t\t{station.id} = `, 1, true) ~= nil
-	)
+	-- `allSolved` can never be reached and the round cannot end. R137: World
+	-- builds one prompt per Round.STATIONS entry at Layout.stationPoint, so a
+	-- station with no place is the defect (World would error on load).
+	check(`station '{station.id}' has a place in the world`, Layout.stationPoint(station.id) ~= nil)
+	check(`station '{station.id}' has a label`, #station.label > 0)
 end
+check(
+	"World builds a prompt for every Round.STATIONS entry, at Layout.stationPoint",
+	string.find(worldSource, "for _, s in Round.STATIONS do", 1, true) ~= nil
+		and string.find(worldSource, "placeAt(s.id)", 1, true) ~= nil
+		and string.find(worldSource, "Layout.stationPoint(id)", 1, true) ~= nil
+		and string.find(worldSource, "stations = stationPrompts", 1, true) ~= nil
+)
 
 -- The load-bearing one: a station's concept must be dealt EVERY time, at any
 -- count, including a count smaller than the number of stations.
@@ -144,15 +151,20 @@ check("dealSecrets fills up to the requested count", #Round.dealSecrets(#all) ==
 -- above still pass because they only ask whether a payload is in Config. A
 -- room built but not declared is the mirror — this file would reject a payload
 -- that would have worked. Both directions, every name, read out of World's
--- source rather than a hand-kept list.
+-- source rather than a hand-kept list. (R137: World builds exactly
+-- `Layout.rooms()`, so that is read now.)
 print("")
 print("rooms")
-local roomsMap = string.match(worldSource, "\n\tlocal rooms: {.-} = {(.-)\n\t}") or ""
+-- R137: World builds exactly `Layout.rooms()`, so that is the list to compare.
 local builtRooms: { [string]: boolean } = {}
-for name in string.gmatch(roomsMap, "\n\t\t([%a][%w_]*) = ") do
+for name in Layout.rooms() do
 	builtRooms[name] = true
 end
-check("World's rooms table was found in source", next(builtRooms) ~= nil)
+check(
+	"World builds its rooms from Layout.rooms() and returns that table",
+	string.find(worldSource, "local layoutRooms = Layout.rooms()", 1, true) ~= nil
+		and string.find(worldSource, "= layoutRooms", 1, true) ~= nil
+)
 check("Config declares at least one room", #Config.Rooms > 0)
 for _, name in Config.Rooms do
 	check(`Config declares room '{name}' and World builds it`, builtRooms[name] == true)
@@ -166,8 +178,9 @@ print("a station's prompt gives no concept away, not even its own")
 
 -- R41. The prompts are free text and nothing checked them against the words the
 -- Operator listens for. `board` read *"Line is out. Patch it to jack 47."* and
--- `out` is plain language for `exit`, whose payload is the ARCHIVE — so a holder
--- reading their own board instruction aloud sent the Operator to the other room.
+-- `out` is plain language for `exit`, whose payload was the ARCHIVE (the lobby
+-- since R137) — so a holder reading their own board instruction aloud sent
+-- the Operator to the other room.
 -- That is not a rule anyone can learn: the punishment names a room the prompt
 -- was never about, and it lands on a teammate working there.
 --
@@ -254,9 +267,9 @@ print("the ambient-secret shuffle actually mixes the whole pool")
 --
 -- Swept across many seeds: the ambient secret(s) chosen must vary, or every
 -- server would teach the same "safe" vocabulary regardless of the shuffle.
--- Not merely "more than one": a shuffle narrowed to swap only the last TWO
--- positions of a five-candidate pool would still produce 2 distinct outcomes
--- across enough seeds, which is > 1 and would slip past a weaker check.
+-- Every ambient secret must be reachable, not merely "more than one". (Until
+-- R137 this also caught a narrowed shuffle; with two candidates it cannot, so
+-- the shuffle is proven on its own below.)
 --
 -- The REQUIRED set (one secret per station) is deterministic and does not
 -- depend on the shuffle at all, so it is computed once, unseeded, outside the
@@ -267,7 +280,38 @@ for _, secret in Round.dealSecrets(0) do
 	requiredConcepts[secret.concept] = true
 end
 local ambientPoolSize = #Round.dealSecrets(99) - #Round.dealSecrets(0)
-check(`(guard) there is an ambient pool worth shuffling ({ambientPoolSize})`, ambientPoolSize >= 3)
+-- R137: three stations of five concepts leave two ambient ones. At two, a
+-- narrowed shuffle loop (R69's mutant) cannot be told from the real one here,
+-- so the shuffle itself is proven on a longer list just below.
+check(`(guard) there is an ambient pool to draw from ({ambientPoolSize})`, ambientPoolSize >= 2)
+
+-- The shuffle, on five items across many seeds: every item must reach every
+-- position. Narrowing the loop (stopping it early) strands some item.
+local SHUFFLE_ITEMS = 5
+local reachedAt: { [string]: boolean } = {}
+for seed = 1, 400 do
+	math.randomseed(seed * 131)
+	local list = {}
+	for i = 1, SHUFFLE_ITEMS do
+		list[i] = i
+	end
+	Round.shuffle(list)
+	for position, item in list do
+		reachedAt[`{item}@{position}`] = true
+	end
+end
+local pairsReached = 0
+for _ in reachedAt do
+	pairsReached += 1
+end
+check(
+	`the shuffle can put any item anywhere ({pairsReached} of {SHUFFLE_ITEMS * SHUFFLE_ITEMS} item/position pairs)`,
+	pairsReached == SHUFFLE_ITEMS * SHUFFLE_ITEMS
+)
+check(
+	"dealSecrets uses that shuffle",
+	string.find(fs.readFile("src/server/systems/Round.luau"), "Round.shuffle(rest)", 1, true) ~= nil
+)
 
 local askFor = #Round.dealSecrets(0) + 1
 local seenAmbient: { [string]: boolean } = {}

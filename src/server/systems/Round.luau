@@ -16,8 +16,8 @@ local Round = {}
 -- The seed pool. `plain` is everything the Operator already understands for
 -- that concept; players must get the idea across without any of it.
 -- `payload` MUST name a room that World.build actually returns, or Pursuit
--- refuses the move and understanding has no visible effect. Only `board` and
--- `archive` exist today; add rooms before adding payloads.
+-- refuses the move and understanding has no visible effect. The rooms are
+-- `Layout.rooms()` (board, archive, lobby); add a room there before a payload.
 --
 -- R130, the owner's answer to R85 (the middle net). The words and whole
 -- compounds players reached for when the plain ones were forbidden are plain
@@ -55,7 +55,8 @@ local SECRET_POOL: { Secret } = {
 			"stairwell",
 			"backdoor",
 		},
-		payload = "archive",
+		-- R137: the street door is in the lobby, so that is where it goes.
+		payload = "lobby",
 	},
 	{
 		concept = "directory",
@@ -98,6 +99,9 @@ export type Station = {
 	prompt: string,
 	-- The ProximityPrompt verb at the physical station.
 	actionText: string,
+	-- The ProximityPrompt name over it. Shown to everyone near it, so it may
+	-- give no concept away (R126; tests/wiring.luau checks every one).
+	label: string,
 }
 
 local STATIONS: { Station } = {
@@ -105,15 +109,17 @@ local STATIONS: { Station } = {
 		id = "board",
 		concept = "jack_number",
 		-- No word here may give away any concept, this station's own included.
-		-- "Line is OUT" did: `out` is plain language for `exit`, whose payload is
-		-- the ARCHIVE, so a holder reading their board instruction aloud sent the
-		-- Operator to the other room. That is not a rule anyone can learn -- the
-		-- punishment names a room the prompt was never about. `tests/round.luau`
+		-- "Line is OUT" did: `out` is plain language for `exit`, whose payload was
+		-- the ARCHIVE (the lobby since R137), so a holder reading their board
+		-- instruction aloud sent the Operator to the other room. That is not a
+		-- rule anyone can learn -- the punishment names a room the prompt was
+		-- never about. `tests/round.luau`
 		-- asserts it against the live pool rather than trusting this comment.
 		-- R128: nor may it name this station's own concept -- "Patch it to jack
 		-- %s" handed the Operator the jack when the holder read it out.
 		prompt = "A caller is waiting. Patch them through to %s.",
 		actionText = "Patch",
+		label = "Exchange Desk",
 	},
 	{
 		id = "breaker",
@@ -123,10 +129,43 @@ local STATIONS: { Station } = {
 		-- word; it matches the station label "Cutoff" (R126) instead.
 		prompt = "Cutoff %s dropped. Someone has to throw it back.",
 		actionText = "Throw",
+		label = "Cutoff",
+	},
+	{
+		-- R137: the third line, in the third room. The street door's night latch,
+		-- on the lobby's far wall, off the passage from the corridor's midpoint.
+		-- Every word here was checked against the live pool: nothing conveys.
+		id = "latch",
+		concept = "exit",
+		prompt = "The night latch wants %s. Someone has to turn it.",
+		actionText = "Turn",
+		label = "Night Latch",
 	},
 }
 
 Round.STATIONS = STATIONS
+
+-- Secrets dealt beyond the stations' own: things the Operator understands that
+-- no objective needs, so the safe vocabulary is never simply "everything except
+-- the station words". One since R137, when the third station left two concepts
+-- over.
+local AMBIENT_SECRETS = 1
+
+-- How many secrets a round deals: every station's, plus the ambient ones. The
+-- server, the soak and the playtest bots all deal this, so they play one game.
+function Round.secretsPerRound(): number
+	return #STATIONS + AMBIENT_SECRETS
+end
+
+-- Fisher-Yates, in place. Exported so tests can prove every element reaches
+-- every position on a list longer than today's ambient pool (R137 left that
+-- pool at two, where a narrowed loop would be indistinguishable).
+function Round.shuffle<T>(list: { T })
+	for i = #list, 2, -1 do
+		local j = math.random(i)
+		list[i], list[j] = list[j], list[i]
+	end
+end
 
 -- What the Operator is listening for this round. Every station's concept is
 -- guaranteed in; `count` is a FLOOR that ambient extras are shuffled up to, not
@@ -149,17 +188,14 @@ function Round.dealSecrets(count: number): { Secret }
 	end
 
 	-- Then ambient secrets: things it understands that no objective needs, so
-	-- the safe vocabulary is not simply "everything except two words".
+	-- the safe vocabulary is not simply "everything except the station words".
 	local rest: { Secret } = {}
 	for _, secret in SECRET_POOL do
 		if not taken[secret.concept] then
 			table.insert(rest, secret)
 		end
 	end
-	for i = #rest, 2, -1 do
-		local j = math.random(i)
-		rest[i], rest[j] = rest[j], rest[i]
-	end
+	Round.shuffle(rest)
 	for _, secret in rest do
 		if #out >= count then
 			break

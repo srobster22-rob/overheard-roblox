@@ -10,7 +10,7 @@
 --
 -- That matters beyond exploiting. `Round.luau`'s design rule is that the holder
 -- and the actor "are never in the same room -- that is what makes players
--- audible", and the two stations are 120 studs apart precisely so somebody has
+-- audible", and the stations stand in different rooms precisely so somebody has
 -- to cross the corridor. With the station id unchecked, a player who never
 -- leaves the switchboard can clear the breaker, and the second room costs
 -- nothing.

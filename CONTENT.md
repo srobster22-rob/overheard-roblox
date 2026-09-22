@@ -5,12 +5,12 @@ Targets come from VISION.md.
 
 | axis | now | target | derived from |
 |---|---|---|---|
-| stations (objectives a round deals) | 2 | 5 | Round.STATIONS |
-| concepts with a station | 2 | 5 | Round.STATIONS[].concept |
+| stations (objectives a round deals) | 3 | 5 | Round.STATIONS |
+| concepts with a station | 3 | 5 | Round.STATIONS[].concept |
 | secret concepts the Operator listens for | 5 | 8 | Round.dealSecrets pool |
 | plain giveaway terms | 46 | 80 | sum of secret.plain |
-| rooms | 2 | 5 | Config.Rooms |
-| world interactables (prompts) | 3 | 8 | station(...) calls in World |
+| rooms | 3 | 5 | Config.Rooms |
+| world interactables (prompts) | 4 | 8 | Round.STATIONS + literal station(...) calls in World |
 | entities built (Operator, Supervisor) | 2 | 4 | GAME.md roster vs src/server/systems |
 | Operator lines | 10 | 16 | Round.LINES |
 | round outcomes | 2 | 3 | Lifecycle Outcome type |

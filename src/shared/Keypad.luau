@@ -23,8 +23,8 @@
 --   `Rejected` - why YOUR submit at THAT station failed. FireClient only.
 --
 -- Being private is not sufficient on its own, which is the second half of this:
--- a rejection is addressed to a player but not to a keypad, and there are two
--- stations. Submit at the breaker, walk away, open the switchboard, and the
+-- a rejection is addressed to a player but not to a keypad, and there are
+-- several stations. Submit at the breaker, walk away, open the switchboard, and the
 -- breaker's refusal paints the switchboard's status line. So a rejection also
 -- has to name its station and be dropped if the player is no longer looking at
 -- that one.
@@ -64,7 +64,7 @@ function Keypad.validSubmission(id: any, value: any): boolean
 end
 
 -- Does this push of the board close the keypad in front of the player? Only if
--- THAT station was just solved -- with two stations, solving the other one must
+-- THAT station was just solved -- with several stations, solving another must
 -- not shut the keypad somebody is typing into. R120 moved this out of
 -- init.client, where no test could run it.
 function Keypad.closesOn(openStation: string?, entries: { any }): boolean

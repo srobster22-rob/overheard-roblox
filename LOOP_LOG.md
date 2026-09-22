@@ -8712,3 +8712,17 @@ Market: us 23.3/100; DOORS 87.3, Phasmophobia 82.7, Pressure 79.3, The Mimic 72.
 Content: unchanged.
 Decisions: none.
 Next: R137 (k=2) EXPAND: the third station with its own concept and room, on the content row (gap 12). It also lengthens rounds past the Supervisor's 45 s (PT2 #2).
+
+
+## R137 · EXPAND · a third room and a third line: the night latch in the lobby
+Pick: a lobby off the corridor's midpoint with a third station (the night latch, concept `exit`, payload `lobby`) — gap value 12 (content volume), also variety (6) and PT2 #2 · impact planned 2/3/0
+
+Player notices: a third line to get across, at the night latch in a new lobby off the corridor's midpoint; rounds run longer, so the Supervisor now calls out a quiet player.
+Impact: planned 2/3/0 → shipped 2/3/+1 (station and room placement became data; the Operator can route around corners)
+Built: Layout: `rooms()` registry, the lobby (`lobbyCentre`, derived to sit as far from the Operator's post as the board room), a passage (`passageWalls`, `passageFloor`, a cut in `corridorWalls`), a place table behind `stationPoint`/`stationRoom`/`routeToStationId`, and `route` (one turn at the corridor junction). Pursuit: optional `routeFor` with `advance()` and `setCourse()`; never `arrived` with a turn left. World rebuilt from the registries with `wallPart`/`floorPart`. Round: the `latch` station (concept `exit`, label "Night Latch", verb "Turn"), `exit` payload → lobby, `secretsPerRound()`, exported `shuffle`. Server deals #stations + 1 and passes `Layout.route`. Client line list scrolls (shared `scrollingList`); Hud "Your line" 120 → 160 px. Deleted: `Layout.stationOffset`, `breakerOffset`, `routeToStation`.
+Quality: independent review REJECTED twice. Round 1 (17 findings): two blocker tests that could not fail, an overclaiming arrival comment, unchecked server wiring, duplicated wall/move code, stale comments. Round 2: said fixing 3 items (retreat/silence mutants M6/M7, one overclaiming comment, one stale comment) would flip it to APPROVE. All three fixed, with the checks it proposed catching M6/M7, plus nits 4-9. No third pass was run. Biggest touched: World.build ~110 lines (shrank); init.client 499.
+Verified: 20 suites green (pursuit 104→117, round 82→91, wiring 389→391, layout 127→180). Plants, all failing by name and restored by sha256: straight route (layout "every route the Operator can walk is clear"), latch unplaced, passage sealed, turn may arrive, server walks straight (wiring), passage floor short, narrowed shuffle (7 of 25 pairs), M6, M7, lobby model name missing. rojo build carries "Night Latch", `Layout.route`, Passage. Trace `tools/playtest firsttimer 14 11`: lost 0 → 3, captures 6 → 22, Supervisor calls 0 → 14; quiet group: Supervisor calls 0 → 18. Identical after the refactor.
+Market: variety 1 → 2 (trace evidence); content stays 1 (3 stations and 3 rooms against comparables in the hundreds); market score 23.3 → 24.7.
+Content: stations 2 → 3, concepts with a station 2 → 3, rooms 2 → 3, interactables 3 → 4.
+Decisions: D4 (the latch is `exit`, so its words always summon it), D5 (placement as data; the Operator routes).
+Next: R138 (k=3; only one building round since R136's setup, so no playtest yet): EXPAND the missing round phase. Restoring the last line opens the escape, and everyone still free must reach the lobby before the Operator does.

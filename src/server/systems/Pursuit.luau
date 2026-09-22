@@ -38,6 +38,12 @@ export type Tracker = typeof(setmetatable(
 		silenceRadius: number,
 		arriveRadius: number,
 		rooms: { [string]: Point },
+		-- The turns still to take before `target`, nearest first (R137).
+		route: { Point },
+		-- How to get from a point to a target: the turns between them. nil walks
+		-- straight, which is right for any building whose rooms all sit on one
+		-- line; the server passes `Layout.route` once a room is off the corridor.
+		routeFor: ((from: Point, to: Point) -> { Point })?,
 		onStateChanged: ((state: State, targetName: string?) -> ())?,
 	},
 	Pursuit
@@ -51,7 +57,11 @@ end
 
 Pursuit.distance = distance
 
-function Pursuit.new(rooms: { [string]: Point }, start: Point): Tracker
+function Pursuit.new(
+	rooms: { [string]: Point },
+	start: Point,
+	routeFor: ((from: Point, to: Point) -> { Point })?
+): Tracker
 	return setmetatable({
 		position = { x = start.x, z = start.z },
 		target = nil,
@@ -63,8 +73,33 @@ function Pursuit.new(rooms: { [string]: Point }, start: Point): Tracker
 		silenceRadius = Config.SilenceRadius,
 		arriveRadius = Config.ArriveRadius,
 		rooms = rooms,
+		route = {},
+		routeFor = routeFor,
 		onStateChanged = nil,
 	}, Pursuit)
+end
+
+-- Move straight toward `point` by at most one step's travel, landing on it
+-- exactly when in reach. Returns whether it got there.
+local function advance(self: Tracker, point: Point, dt: number): boolean
+	local leg = distance(self.position, point)
+	local travel = math.min(self.speed * dt, leg)
+	if travel >= leg then
+		self.position = { x = point.x, z = point.z }
+		return true
+	end
+	self.position = {
+		x = self.position.x + (point.x - self.position.x) / leg * travel,
+		z = self.position.z + (point.z - self.position.z) / leg * travel,
+	}
+	return false
+end
+
+-- Head for `target`, planning the turns on the way. The one place a new
+-- destination is set, so the route can never belong to an old target.
+local function setCourse(self: Tracker, target: Point)
+	self.target = target
+	self.route = if self.routeFor then table.clone(self.routeFor(self.position, target)) else {}
 end
 
 function Pursuit.setState(self: Tracker, state: State)
@@ -144,7 +179,7 @@ function Pursuit.sendTo(self: Tracker, payload: string): (boolean, boolean)
 		return true, false
 	end
 	local target = { x = room.x, z = room.z }
-	self.target = target
+	setCourse(self, target)
 	self.targetName = payload
 	-- Derived, never asserted. Re-sending it somewhere it is already close to
 	-- must not make it loud again, and re-sending it where it already stands
@@ -155,6 +190,7 @@ end
 
 function Pursuit.stop(self: Tracker)
 	self.target = nil
+	self.route = {}
 	self.targetName = nil
 	self.pending = nil
 	self:setState("idle")
@@ -179,6 +215,22 @@ function Pursuit.step(self: Tracker, dt: number)
 		return
 	end
 
+	-- A turn still to take: walk to it first. It is never `arrived` while a
+	-- turn is left: arriving snaps it to the room and starts capturing, and a
+	-- turn is not the room, however close to it the turn lies. The step after
+	-- the last turn is taken judges arrival at the target itself.
+	local turn = self.route[1]
+	if turn then
+		if advance(self, turn, dt) then
+			table.remove(self.route, 1)
+		end
+		if self.state ~= "leaving" then
+			local state = self:classify(distance(self.position, target))
+			self:setState(if state == "arrived" then "closing" else state)
+		end
+		return
+	end
+
 	local remaining = distance(self.position, target)
 
 	if remaining <= self.arriveRadius then
@@ -192,13 +244,7 @@ function Pursuit.step(self: Tracker, dt: number)
 		return
 	end
 
-	local travel = math.min(self.speed * dt, remaining)
-	local dx = (target.x - self.position.x) / remaining
-	local dz = (target.z - self.position.z) / remaining
-	self.position = {
-		x = self.position.x + dx * travel,
-		z = self.position.z + dz * travel,
-	}
+	advance(self, target, dt)
 
 	if self.state == "leaving" then
 		-- Still on its way out; classify() describes hunting, not retreating.
@@ -223,7 +269,7 @@ end
 -- audible the whole way, capturing nothing, and it ends `idle` rather than
 -- `arrived` so the room it just left cannot start taking people again.
 function Pursuit.withdrawTo(self: Tracker, point: Point)
-	self.target = { x = point.x, z = point.z }
+	setCourse(self, { x = point.x, z = point.z })
 	self.targetName = nil
 	self:setState("leaving")
 end
@@ -239,6 +285,7 @@ end
 function Pursuit.sendHome(self: Tracker, point: Point)
 	self.position = { x = point.x, z = point.z }
 	self.target = nil
+	self.route = {}
 	self.targetName = nil
 	self.pending = nil
 	self.dwell = 0

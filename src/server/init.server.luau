@@ -49,7 +49,7 @@ local phaseRemote = Remotes.get("Phase")
 -- Stations are the source of truth: the board and the Operator's secrets are
 -- both derived from `Round.STATIONS`, so an objective can never exist for a
 -- concept the Operator was not dealt (it used to, on 39.6% of servers).
-local secrets = Round.dealSecrets(3)
+local secrets = Round.dealSecrets(Round.secretsPerRound())
 local operator = Operator.new(secrets)
 local board = Objectives.new()
 -- Which keypad each player has actually walked up to. This used to be a local
@@ -77,7 +77,7 @@ local built = World.build()
 
 -- `built.spawn` was computed by World and read by nobody for twenty-one
 -- rounds, so players landed wherever Roblox decided rather than in the
--- corridor between the two rooms. Placed here rather than in World because it
+-- corridor between the rooms. Placed here rather than in World because it
 -- is a game-flow decision, not geometry.
 local spawnPad = Instance.new("SpawnLocation")
 spawnPad.Name = "Exchange"
@@ -88,7 +88,8 @@ spawnPad.Size = Vector3.new(12, 1, 8)
 spawnPad.Position = built.spawn
 spawnPad.Parent = workspace
 
-local pursuit = Pursuit.new(built.rooms, built.operatorStart)
+-- R137: with a room off the corridor, the Operator turns at the junction.
+local pursuit = Pursuit.new(built.rooms, built.operatorStart, Layout.route)
 local body = Presence.spawn(pursuit)
 
 local function pushObjectives(player: Player?)
