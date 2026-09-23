@@ -8924,3 +8924,63 @@ Next: R146 RETRO, moved here because a retro needs a playtest newer than R141's,
 - lessons.
 The next BIG SWING is R151. PT4 #1 (the Operator learns what carries a code, or the deal changes) is its first candidate.
 PT4's #5 (an unwinnable round runs on) and #4 (a visible clock for the way out) are FIX-sized.
+
+
+## R146 · RETRO · R142-R145: the code had to be said, the wall got readable, the panel stopped walking you into it, and a protocol still beats it by round 2
+Pick: RETRO, moved from R145's slot. A retro needs a playtest newer than the last retro's (R141's): PT4 ran in R145. This is the k=1 slot of the R146-R150 cycle, which is not a BIG SWING cycle; the next swing is R151. Sync: AGENT_LOOP v3.3 unchanged; OWNER.md `## Next` empty, no VETO; no new COACH notes. Studio MCP checked 23 Sep: the roblox-studio server lists its instructions but exposes no tools (OWNER.md question 1). The session limit paused every session from 04:05 to 10:45; a peer session's message resumed this one, and no round was lost.
+
+Player notices: nothing (RETRO).
+Impact: n/a (RETRO).
+Built: scorecard R142-R145:
+- R142 BIG SWING (Y, 3/3/0 → 3/3/0).
+- R143 BIG SWING (Y, 2/3/+1 → 2/3/+1; REJECT at review cycle 1, APPROVE at cycle 2).
+- R144 FIX (Y, 2/3/0 → 2/3/0).
+- R145 PLAYTEST (N).
+Content grew by one axis: Operator lines 11 → 12 (R142); every other count unchanged; CONTENT.md history row R146.
+Health:
+- Largest file tests/wiring.luau 1,957 → 2,044 lines.
+- Largest function soak() 290, unchanged; in src, World.build 110.
+- Shipped test code: src/server/systems/TestOperator.luau, 8,350 bytes, still shipping (backlog).
+- Suite 5.0 s → 6 s, 1,813 → 2,003 counted checks; lint 0.
+Rounds lost: 0. R143 took two review cycles, and the session limit paused the loop from 04:05 to 10:45.
+Backlog taken:
+- PT3 #1, the code has to be said (R142).
+- PT3's "the wall reads like a debug dump" (R143).
+- PT3 broken #4, every refusal says "patch" (R144).
+- PT3's "the hum reads silence while it holds your room", with R143 blind #1-3 (R144).
+- COACH S1, partly (R142).
+Targets:
+- At least 4 of 5 rounds player-visible: MISSED, 3 of the 4 since R141; the fourth was the playtest.
+- Content grew: MET, barely (one axis, R142).
+- Headline metrics moved the right way: NO.
+  - Bots 5/6/6 → 5/6/6 (6/7/6 at R142).
+  - Unscripted rounds won rose (PT3's veteran 7/10 → PT4's 11/13) and players taken fell (1.9 → 0.8 a round). For a horror game that is the wrong way: it got easier.
+- Market score rose: NO. 18.7 → 20.7 (R142) → 18.7 (PT4) → 18.7 after the blind re-score.
+- The last playtest's #1 acted on: MET (PT3 #1 in R142).
+- Every COACH note has a disposition: MET.
+- 0 rounds lost: MET.
+- At most 1 weak round: MET (none: 6, 6 and 5).
+`## Never` audit: its one line is a process rule, and none of its commands ran; no violation.
+PLAYBOOK, three changes:
+- R141's TRY becomes a KEEP. It failed its own test (PT4 lists 9 confusing items against PT3's 8), but R144's blind session found that fix's own gap before the commit.
+- New STOP: taking a bot headline as the proof of a change the bots cannot perceive.
+- New TRY: every EXPAND names the scheme a blind group would use to beat it and has its blind session try that scheme. Judged at the next PLAYTEST: it passes if no unscripted group wins more than half its rounds with the Operator never moving.
+Lessons (LOOP_LESSONS.md): a test that claims an order must make it happen (R143); check a UI fix at the moment the player decides (R144); a learner that cancels on disagreement starves the signal (R143); players beat a listening monster with schemes, not words (PT4); a blind re-scorer that may run the suite sees our total (R146). One proposal for AGENT_LOOP §3: a FIX that changes what players are told runs its blind session before the commit.
+Verified: test.cmd exit 0 in 6 s; `lune run tools/market check`; `lune run tools/inventory row R146`.
+Headline: unchanged this round (RETRO).
+- Bots: 5/6/6 won; 1.9 taken and 1.6 Supervisor calls per round; 4 codewords replaced; 30/160 blind chat; 21/21 rounds end.
+- Unscripted (PT4): veteran 11/13, struggling players 5/6, critic 11/12; critic 4/10.
+Market: re-scored every row myself: 28/150, unchanged from PT4's re-score. A blind subagent then re-scored without our scores and came to 43/150 = 28.7 (hook 2, core loop 2, progression 1, social 2, release 1, differentiator 3, the rest 1). It was higher or equal on every row, so the lower (ours) stands on every row: 18.7, unchanged. Its blindness leaked: test.cmd's last stage prints MARKET.md's total, which it saw before scoring (lesson). Its own unscripted session (seed 42) lost round 1 to the word "number" and won round 2 in 16 s with the Operator never moving; its 10-round bot runs won 7, 8 and 8. MARKET.md history row R146.
+Content: unchanged (RETRO); history row R146 added to CONTENT.md.
+Coach: none new.
+Decisions: none.
+Vision and market check: ten rounds (R137-R146) did not move the market score up (24.7 at R137 → 18.7), the headline moved the wrong way (easier), and the north star ("a polite thing at the switchboard slowly learns it") is still not delivered. PT4 shows the learner learns station nicknames nobody needs to say, while groups beat the game with number schemes it never learns. What changes:
+- The next picks go at what players actually repeat: the Operator learns the clue words and schemes that carried a code, or the deal changes each round.
+- R151's BIG SWING takes PT4 #1, and its panel must answer "what scheme beats this?".
+- Until then, the cycle's EXPAND slots take the core-loop rows that do not need the swing: capture with a cost and a way back (PT4 #2), and a visible clock for the way out (PT4 #4).
+- FIX takes PT4 broken (1), the unwinnable round that runs on.
+Next:
+- R147 EXPAND (k=2), picked at Sync from PT4's backlog by gap value.
+- R148's PLAYTEST is postponed to EXPAND: only one building round will have passed since PT4.
+- R149 FIX, since PT4 found broken items.
+- R150's RETRO needs a playtest newer than R146's, so PT5 runs in R150 and the RETRO in R151. The swing then takes R152 and R154, as it did in R141's cycle.
