@@ -143,7 +143,7 @@ local function filterForEveryone(text: string, authorId: number): string?
 	return result
 end
 local broadcastLexicon = Censor.new(filterForEveryone):sender(function()
-	return Round.withLeads(operator:snapshot())
+	return Round.wallRows(operator:snapshot(), operator:countingRows())
 end, function(visible)
 	lexiconRemote:FireAllClients(visible)
 end, task.spawn)
@@ -340,6 +340,14 @@ operator.onUnderstood = function(concept: string, payload: string, confidence: n
 	pursuit:sendTo(payload)
 end
 
+-- R147: a word the group uses as a number is understood. Said to everyone,
+-- and the wall shows the word under "counts as a number".
+operator.onCounted = function(key: string, value: number)
+	print(`[operator] counts '{key}' as {value}`)
+	heardRemote:FireAllClients(Round.LINES.counted, "", 1)
+	broadcastLexicon()
+end
+
 -- A code said aloud is spent: its holder gets a new one on their panel.
 operator.onCodeHeard = function(concept: string)
 	if board:reroll(concept) then
@@ -358,6 +366,8 @@ end
 board.onSolved = function(objective, _actor: number)
 	print(`[objective] {objective.id} restored`)
 	operator:credit(objective.concept, os.clock())
+	-- R147: and whatever was said that works out as the code just entered.
+	operator:creditCode(objective.answer, os.clock())
 	pushObjectives(nil)
 	broadcastLexicon()
 	-- R138: the last line opens the way out rather than winning. The outside

@@ -258,6 +258,10 @@ Round.LINES = {
 	-- A wrong code that rang through: said to everyone, because the Operator is
 	-- now walking to that station's room.
 	wrongParty = "The party you have dialled is not in service.",
+	-- R147: the Operator has worked out a word the group uses as a number. It
+	-- names no word (the owner's R93 answer): the wall shows which. No "from now
+	-- on": an unused word cools like any other (R147's blind session).
+	counted = "Thank you, caller. I will count it that way.",
 }
 
 -- Where a concept brings the Operator, as the wall names it: the station's own
@@ -301,6 +305,23 @@ function Round.holding(state: string, room: string?, wayOutRoom: string): Types.
 		return nil
 	end
 	return { label = label, wayOut = wayOut }
+end
+
+-- R147: the wall's header for the words the group uses as numbers. Such a word
+-- brings the Operator to whichever station's code it is used to say.
+Round.COUNTING_LEADS = "counts as a number"
+
+-- Everything the wall shows: the station words, each told where it leads, and
+-- the words the group uses as numbers (Operator.countingRows), under their own
+-- header. The server and tools/sim both send this.
+function Round.wallRows(stationWords: { Types.Coinage }, counting: { Types.Coinage }): { Types.Coinage }
+	local rows = Round.withLeads(stationWords)
+	for _, row in counting do
+		local labelled = table.clone(row)
+		labelled.leadsTo = Round.COUNTING_LEADS
+		table.insert(rows, labelled)
+	end
+	return rows
 end
 
 -- The wall's rows, each told where it leads. Copies, so the Operator's own

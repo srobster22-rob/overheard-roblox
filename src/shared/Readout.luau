@@ -141,18 +141,26 @@ local function hotterFirst(a: any, b: any): boolean
 end
 
 function Readout.lexiconRows(entries: { any }): { { text: string, heat: number?, kind: string } }
+	-- A word the group uses as a number (R147) is its own row, apart from the
+	-- same word's station meaning.
 	local strongest: { [string]: any } = {}
 	for _, entry in entries do
-		local held = strongest[entry.phrase]
+		local key = if entry.value then `{entry.phrase} = {entry.value}` else entry.phrase
+		local held = strongest[key]
 		if held == nil or entry.heat > held.heat then
-			strongest[entry.phrase] = entry
+			strongest[key] = entry
 		end
 	end
 	local words = {}
-	for phrase, entry in strongest do
+	for _, entry in strongest do
 		local covered = false
-		for shorter, other in strongest do
-			if other.concept == entry.concept and other.heat >= entry.heat and holds(phrase, shorter) then
+		for _, other in strongest do
+			if
+				other.concept == entry.concept
+				and other.heat >= entry.heat
+				and other.value == entry.value
+				and holds(entry.phrase, other.phrase)
+			then
 				covered = true
 				break
 			end
@@ -188,8 +196,9 @@ function Readout.lexiconRows(entries: { any }): { { text: string, heat: number?,
 		for _, entry in groups[key] do
 			table.insert(rows, {
 				text = string.format(
-					'"%s"  %d%%%s',
+					'"%s"%s  %d%%%s',
 					entry.phrase,
+					if entry.value then ` = {entry.value}` else "",
 					math.floor(entry.heat * 100 + 0.5),
 					if Heat.isUnderstood(entry.heat) then "  understood" else ""
 				),

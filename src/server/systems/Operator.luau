@@ -12,6 +12,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Lexicon = require(ReplicatedStorage.Shared.Lexicon)
+local Numerals = require(ReplicatedStorage.Shared.Numerals)
 local Heuristic = require(script.Parent.Heuristic)
 
 type Secret = Types.Secret
@@ -23,6 +24,15 @@ type Observation = {
 	terms: { string },
 	at: number,
 	speaker: Player,
+}
+
+-- R147: a word the group uses as a number. Each value it has been worked out
+-- to have carries its own heat; the strongest is the one on the wall.
+type Counting = {
+	values: { [number]: number },
+	-- The word as it was first typed, and who typed it (the wall's filter).
+	said: string,
+	coinedBy: number,
 }
 
 local Operator = {}
@@ -38,6 +48,11 @@ export type Operator = typeof(setmetatable(
 		-- Every credit each meaning of a phrase has had, by phrase then concept;
 		-- see `contrast`. Unlike heat it does not cool.
 		evidence: { [string]: { [string]: number } },
+		-- R147: every line said since the round began, as said, for
+		-- `creditCode`; and the words the group uses as numbers.
+		said: { { text: string, at: number, speaker: number } },
+		counting: { [string]: Counting },
+		countedSinceBoundary: { [string]: boolean },
 		backend: Types.ComprehensionBackend,
 		-- Each concept's live code right now, asked for at the moment something
 		-- is said, so a code re-dealt or re-rolled is never heard stale.
@@ -47,6 +62,8 @@ export type Operator = typeof(setmetatable(
 		onBurned: (coinage: Coinage) -> ()?,
 		-- The live code for `concept` was said aloud.
 		onCodeHeard: (concept: string) -> ()?,
+		-- R147: a word the group uses as a number has just been understood.
+		onCounted: (key: string, value: number) -> ()?,
 	},
 	Operator
 ))
@@ -58,11 +75,15 @@ function Operator.new(secrets: { Secret }): Operator
 		observations = {},
 		creditedSinceBoundary = {},
 		evidence = {},
+		said = {},
+		counting = {},
+		countedSinceBoundary = {},
 		backend = Heuristic :: any,
 		liveCodes = nil,
 		onUnderstood = nil,
 		onBurned = nil,
 		onCodeHeard = nil,
+		onCounted = nil,
 	}, Operator)
 end
 
@@ -73,7 +94,7 @@ function Operator.hear(self: Operator, utterance: Utterance)
 	-- left `breaker` free, because both words are plain language and only one
 	-- could be reported. Either alone was understood; the combination hid one.
 	local codes = if self.liveCodes then self.liveCodes() else nil
-	local conveyed = (self.backend :: any).conveyed(utterance, self.secrets, self.lexicon, codes)
+	local conveyed = (self.backend :: any).conveyed(utterance, self.secrets, self.lexicon, codes, self:knownValues())
 
 	for _, understanding in conveyed do
 		if understanding.concept == nil or understanding.confidence < Config.ActThreshold then
@@ -108,6 +129,137 @@ function Operator.hear(self: Operator, utterance: Utterance)
 			speaker = utterance.speaker,
 		})
 	end
+
+	-- Every line, as said, for `creditCode`. Only the last CreditWindow of it is
+	-- ever read, so a long round keeps the newest lines.
+	table.insert(self.said, { text = utterance.text, at = utterance.at, speaker = utterance.speaker.UserId })
+	if #self.said > Operator.SAID_KEPT then
+		table.remove(self.said, 1)
+	end
+end
+
+Operator.SAID_KEPT = 200
+
+-- The value a counting word stands for and its heat: the strongest.
+local function strongestValue(c: Counting): (number?, number)
+	local best, bestHeat = nil, 0
+	for value, heat in c.values do
+		if heat > bestHeat or (heat == bestHeat and best ~= nil and value < best) then
+			best, bestHeat = value, heat
+		end
+	end
+	return best, bestHeat
+end
+
+-- IT LEARNS TO COUNT (R147). Called with the code a player just entered. Every
+-- line said in the credit window that works out as that code with one word the
+-- Operator does not know ("five dozen minus two" before 58: dozen = 12,
+-- Numerals.explain) credits that value, at the rates station words learn by:
+-- `HeatPerCredit`, weighted for recency, cooled by `coolRound`. A word worked
+-- out to two values loses on the other, so a nickname that meets a new code
+-- every time ("toaster" before 58, then before 37) never settles, and a line
+-- that uses a learned word to say the code exactly keeps it warm.
+--
+-- PT4's three blind groups beat the listener by round 2 with schemes like
+-- these; the station learner could never see them, because a word said before
+-- every station's restore cancels out there (R143).
+function Operator.creditCode(self: Operator, code: string, now: number)
+	local target = tonumber(code)
+	if target == nil then
+		return
+	end
+	local known = self:knownValues()
+	-- A line that explained this code is spent, as station observations are:
+	-- read again at the next restore it would count twice. A line that did not
+	-- explain it stays, for the other codes said in the same breath.
+	for i = #self.said, 1, -1 do
+		local line = self.said[i]
+		local age = now - line.at
+		if age < 0 or age > Config.CreditWindow then
+			continue
+		end
+		local explained = Numerals.explain(line.text, target, known)
+		if explained == nil then
+			continue
+		end
+		table.remove(self.said, i)
+		local credit = Config.HeatPerCredit * (1 - age / Config.CreditWindow)
+		local counting = self.counting[explained.key]
+		if counting == nil then
+			counting = { values = {}, said = explained.said, coinedBy = line.speaker }
+			self.counting[explained.key] = counting
+		end
+		local c = counting :: Counting
+		c.values[explained.value] = math.clamp((c.values[explained.value] or 0) + credit, 0, 1)
+		for value, heat in c.values do
+			if value ~= explained.value then
+				c.values[value] = if heat - credit > 0 then heat - credit else nil
+			end
+		end
+		self.countedSinceBoundary[explained.key] = true
+		-- Said once, as it crosses: the moment a group's trick stops working.
+		local value, heat = strongestValue(c)
+		if known[explained.key] == nil and value ~= nil and heat >= Config.ActThreshold then
+			known[explained.key] = value
+			if self.onCounted then
+				(self.onCounted :: any)(explained.key, value)
+			end
+		end
+	end
+end
+
+-- The words it understands as numbers, and what each stands for: those whose
+-- strongest value has crossed the act threshold, the line every learned word
+-- is judged by.
+function Operator.knownValues(self: Operator): { [string]: number }
+	local out: { [string]: number } = {}
+	for key, c in self.counting do
+		local value, heat = strongestValue(c)
+		if value ~= nil and heat >= Config.ActThreshold then
+			out[key] = value
+		end
+	end
+	return out
+end
+
+-- The wall's rows for the words it is learning as numbers (Readout).
+function Operator.countingRows(self: Operator): { Coinage }
+	local out: { Coinage } = {}
+	for _, c in self.counting do
+		local value, heat = strongestValue(c)
+		if value ~= nil and heat > 0 then
+			table.insert(out, {
+				phrase = c.said,
+				concept = "counting",
+				heat = heat,
+				sightings = 0,
+				coinedBy = c.coinedBy,
+				value = value,
+			})
+		end
+	end
+	return out
+end
+
+-- Counting words cool like station words: `amount` a round, except one that is
+-- understood and was used again since the last boundary (R134's rule).
+local function coolCounting(self: Operator, amount: number, keepUsed: boolean): boolean
+	local changed = false
+	for key, c in self.counting do
+		local _, heat = strongestValue(c)
+		if keepUsed and self.countedSinceBoundary[key] and heat >= Config.ActThreshold then
+			continue
+		end
+		for value, h in c.values do
+			local cooled = h - amount
+			c.values[value] = if cooled > 0 then cooled else nil
+			changed = true
+		end
+		if next(c.values) == nil then
+			self.counting[key] = nil
+		end
+	end
+	return changed
 end
 
 -- An exact match wins; otherwise an existing coinage that is the SAME PHRASE
@@ -278,6 +430,7 @@ end
 -- burned terms carry over on purpose, and that is the retention mechanic.
 function Operator.forgetObservations(self: Operator)
 	self.observations = {}
+	self.said = {}
 end
 
 -- Terms cool off. It forgets, a little, which is what keeps a long-running
@@ -334,6 +487,7 @@ function Operator.cool(self: Operator, amount: number): boolean
 		end
 	end
 	forgetLostWords(self)
+	changed = coolCounting(self, amount, false) or changed
 	return changed
 end
 
@@ -352,6 +506,7 @@ end
 function Operator.coolRound(self: Operator, amount: number): boolean
 	if amount <= 0 then
 		self.creditedSinceBoundary = {}
+		self.countedSinceBoundary = {}
 		return false
 	end
 	local changed = false
@@ -372,6 +527,8 @@ function Operator.coolRound(self: Operator, amount: number): boolean
 	end
 	self.creditedSinceBoundary = {}
 	forgetLostWords(self)
+	changed = coolCounting(self, amount, true) or changed
+	self.countedSinceBoundary = {}
 	return changed
 end
 

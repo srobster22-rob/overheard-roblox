@@ -8,6 +8,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Lexicon = require(ReplicatedStorage.Shared.Lexicon)
+local Numerals = require(ReplicatedStorage.Shared.Numerals)
 local Types = require(ReplicatedStorage.Shared.Types)
 
 type Secret = Types.Secret
@@ -143,12 +144,15 @@ end
 -- dangerous word inside a sentence giving away something already lost.
 --
 -- `codes` is each concept's live code, if the round has dealt one: saying it in
--- any form `Lexicon.numbersIn` reads is plain language for that concept.
+-- any form `Lexicon.numbersIn` reads is plain language for that concept. So is
+-- saying it with a word the group uses as a number, once `known` holds it
+-- (R147: Operator.knownValues, Numerals.read).
 function Heuristic.conveyed(
 	utterance: Utterance,
 	secrets: { Secret },
 	lexicon: { Coinage },
-	codes: { [string]: string }?
+	codes: { [string]: string }?,
+	known: { [string]: number }?
 ): { Understanding }
 	local words = Lexicon.tokenize(utterance.text)
 	local stems = Lexicon.stemAll(words)
@@ -188,6 +192,11 @@ function Heuristic.conveyed(
 
 	local found: { Understanding } = {}
 	local numbers = if codes then Lexicon.numbersIn(utterance.text) else {}
+	if codes and known then
+		for number in Numerals.read(utterance.text, known) do
+			numbers[number] = true
+		end
+	end
 
 	for _, secret in secrets do
 		local confidence = 0

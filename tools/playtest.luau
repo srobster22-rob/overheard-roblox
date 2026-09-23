@@ -22,8 +22,8 @@
 -- the Operator heard has been replaced, and the actor only knows what was said.
 -- Hidden codes use the group's shared context, a number nobody else knows
 -- (`USUAL`): "blue kettle is 60 take away the usual". The group changes how it
--- says that whenever it drops a codeword, because a phrase said before every
--- restore is learned for every line at once.
+-- says that whenever it drops a codeword, and whenever a hidden code is read
+-- back: since R147 the Operator works out what a word like "the usual" is worth.
 
 local process = require("@lune/process")
 
@@ -172,6 +172,11 @@ while played < wantRounds do
 				if not hiding then
 					hiding = true
 					sim:trace("   (the group heard its code read back, and starts hiding the numbers)")
+				else
+					-- R147: a HIDDEN code read back means the Operator has
+					-- learned the trick, so the group changes it.
+					hideIndex = hideIndex % #HIDES + 1
+					sim:trace("   (the group heard its trick read back, and changes how it hides the numbers)")
 				end
 				told = objective.answer
 				sim:say(holder, `{NAMES[actor]} new one, the {word} {codeText(told)}`)

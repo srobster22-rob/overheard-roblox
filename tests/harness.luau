@@ -77,6 +77,7 @@ function Harness.build()
 			"Layout",
 			"Silence",
 			"LexiconSave",
+			"Numerals",
 		}
 	do
 		adopt(shared, handle(name, `src/shared/{name}.luau`))

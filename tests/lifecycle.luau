@@ -422,17 +422,23 @@ print("the learning loop, measured (R46, closed in R131)")
 local serverSource = fs.readFile("src/server/init.server.luau")
 local serverCode = LuauCode.stripNonCode(serverSource)
 
-local creditSites = 0
-local from = 1
-while true do
-	local first, last = string.find(serverCode, "operator:credit", from, true)
-	if not first then
-		break
+local function sitesOf(call: string): number
+	local sites, from = 0, 1
+	while true do
+		local first, last = string.find(serverCode, call, from, true)
+		if not first then
+			break
+		end
+		from = last + 1
+		sites += 1
 	end
-	from = last + 1
-	creditSites += 1
+	return sites
 end
+local creditSites = sitesOf("operator:credit(")
 check(`(pinned) the Operator is credited from exactly one place ({creditSites})`, creditSites == 1)
+-- R147: the counting learner is taught from the same restore, and only there.
+local countSites = sitesOf("operator:creditCode(")
+check(`(pinned) ...and taught what a code was said as from exactly one place ({countSites})`, countSites == 1)
 
 local stations = 0
 for _ in RoundModule.STATIONS do

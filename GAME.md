@@ -77,6 +77,15 @@ silent and win.
 > wrong code in a round rings through to that station's room. What still works
 > is context the group shares and the Operator was never present for ("Bo's age
 > plus 34"), plus a word of the group's own for the station, which it learns.
+>
+> **As built (R147): it learns to count.** A group's word for a number is
+> worked out from the codes it carried: "five dozen minus two" said before 58
+> is entered means dozen = 12 (one unknown per phrase, whole values 1-99). The
+> value learns and cools at the station words' rates, and once it is understood
+> the Operator says "Thank you, caller. I will count it that way."
+> and hears a code said that way like one said in digits. The wall lists the
+> word and its value under "counts as a number". Still safe: a fact said once,
+> letters and NATO words (one word per digit), and anything with two unknowns.
 
 ## Round shape
 

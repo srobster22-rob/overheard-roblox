@@ -543,6 +543,8 @@ local function wholeNumber(word: string): number?
 	end
 	return nil
 end
+-- R147: Numerals reads a group's number words with the same whole numbers.
+Lexicon.wholeNumber = wholeNumber
 
 -- Every number one reading of a line holds, added to `found`.
 local function readNumbers(words: { string }, found: { [string]: boolean })

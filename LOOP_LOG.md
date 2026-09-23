@@ -8984,3 +8984,86 @@ Next:
 - R148's PLAYTEST is postponed to EXPAND: only one building round will have passed since PT4.
 - R149 FIX, since PT4 found broken items.
 - R150's RETRO needs a playtest newer than R146's, so PT5 runs in R150 and the RETRO in R151. The swing then takes R152 and R154, as it did in R141's cycle.
+
+
+## R147 · EXPAND · it learns to count: a word your group uses as a number is worked out, and then heard
+Pick: PT4 #1, a protocol beats the listener by round 2 — gap value 12 (core loop depth), also the differentiator · impact planned 3/2/0. A three-draft panel (market-gap-first, differentiator-first, player-delight-first) converged on the Operator learning how the group SAYS NUMBERS:
+- When a line said before a code is entered explains that code with exactly one unknown word ("five dozen minus two" before 58), the Operator solves for the word (dozen = 12) and credits that value with the existing rates (0.25 a credit, 0.32 a round).
+- Once a value is understood, a code said that way is heard like a code said in digits: read back, walked to, spent.
+- From the differentiator draft: its simulation showed letter and NATO schemes (one word per digit) cannot build heat under those rates, so slice 1 is value words ("dozen", "the usual", "quarter"), and letters go to slice 2.
+- From the delight draft: one unknown per line, and a COUNTING group on the wall.
+- From the market draft: a null gate on ordinary chat.
+- The read-back stays digits-only: quoting the group's words touches the owner's R93 answer.
+- The scheme that beats slice 1: letters or NATO words, a value word used only once a round, or context used once.
+- Not taken: a way back from the line (GAME.md: "You just can't be helped"); a fourth station (the Card Index is already the reader).
+Sync: AGENT_LOOP v3.3 unchanged; OWNER.md `## Next` empty, no VETO; no new COACH notes. Studio MCP checked 23 Sep: no tools. HEAD 6599a8f green.
+
+Player notices: A group that passes codes as sums of its own words ("five dozen minus two", "sixty take away the usual", "three quarters") gets away with it for a round or so. Then the Operator says "Thank you, caller. I will count it that way.", the wall shows `"dozen" = 12  understood` under "-> counts as a number", and the next code said that way is read back in digits ("Six six. I have that party for you."), walked to and spent. A scheme now wears out, and the group has to invent the next one.
+Impact: planned 3/2/0 → shipped 3/2/0 (biggest file tests/wiring.luau 2,044→2,060; biggest function touched `Numerals.sum`, 100 lines, new)
+Built:
+- `src/shared/Numerals.luau` (new):
+  - `explain(text, code, known)`: one unknown per phrase, a word or two side by side, standing with a number or a learned word; whole values 1-99; a line two phrases explain differently explains nothing.
+  - `read(text, known)`.
+  - `Numerals.key` (a stem, so "quarter" and "quarters" are one word).
+- `Lexicon.wholeNumber` is exported for it.
+- `Operator`:
+  - the round's raw lines (`said`, capped at 200 and cleared with the observations);
+  - `creditCode`: credits at `HeatPerCredit` × recency, takes the same off a word's other values, spends the line;
+  - `knownValues`, `countingRows`, `onCounted`;
+  - cooling at `CoolPerRound` with R134's exemption.
+- `Heuristic.conveyed` merges `Numerals.read` when given `known`, and `Operator.hear` passes it.
+- `Round.wallRows` puts counting rows under `Round.COUNTING_LEADS`; `Readout` shows each value and keeps a counting row apart from the same word's station row.
+- `Round.LINES.counted`. `Types.Coinage.value`.
+- Phrases end at sentence punctuation, and a trailing run of plain words after a sum is dropped when the sum does not read otherwise.
+- The server and tools/sim call `creditCode` in the restore handler and announce `counted`.
+- tools/playtest bots change their hiding phrase when a hidden code is read back.
+- Tests: tests/counting.luau (new, 45); wiring +3; lifecycle's credit pin tightened and a second pin added; harness lists Numerals.
+- Docs: DECISIONS D11, GAME.md as-built note, CONTENT.md.
+Quality: my review and the tests caught two build errors. A line was re-read at every restore and so credited twice: lines that explained a code are now spent. And the lifecycle pin counted `creditCode` as a second credit site. The bots never changed a trick the Operator read back (0/4/3 won), so they now change it, as a group would. Independent review APPROVED at cycle 1, with one finding at 2x2: chatter or a sentence after the sum hid it (4 of PT4's 20 dozen code lines unread; "...minus two pls" missed). Fixed before commit, with the review's lines as tests: phrases end at sentence punctuation, and a trailing run of plain words after the last number is dropped when the sum does not read. Below the bar, to the backlog:
+  - on the last restore, "Ringing your party now" replaces the announcement (1x2);
+  - a line said three times in one window can teach a wrong value ("2 min" → min = 29; 1x1);
+  - "and" can join two codes into one sum (1x1);
+  - "twenty five dozen" reads dozen = 2;
+  - "a dozen, a dozen" does not parse.
+Verified:
+- test.cmd exit 0, selene 0/0/0, rojo build OK, stylua clean.
+- 19 plants, each failing by name and restored by sha256 (r147/plants_out.txt). Two needed sharper cases before they failed: "a quarter, like the coin" was saved by the ambiguity rule, and "an hour minus a minute" cancels to a zero coefficient.
+- Null gate: the 160-line blind chat corpus, each line before a random code three times over, learns no number word. Read with PT4's scheme words learned, it decodes 0 live codes in 1,000 lines.
+- Bot trace (firsttimer, seed 11):
+  - round 2 "the blue kettle is 45 take away the usual" → "Three two. I have that party for you.", the board code spent;
+  - "(the group heard its trick read back, and changes how it hides the numbers)" → "103 less our lucky one".
+- PT4's critic session replayed with its chat fixed: round 2's "ana spaghetti. five dozen and six" → "Six six. I have that party for you." (before: never heard). Its fixed script cannot adapt to spent codes, so it won 1 of 6 (before: 7 of 7).
+- The veteran's letters and NATO words are unchanged (5 and 3 rounds won with it never moving), as slice 1 said they would be.
+Blind tools/play session (subagent, never saw the change, 5 rounds, seed 44; told only that the group's habit is dozens): lost the first round, then won 4.
+  - "Dozen" was worked out by 21.0 s (">> it counts "dozen" as 12 now. "Thank you, caller. I will count it that way from now on.""), and the group dropped the habit because it had been thanked.
+  - Round 2 used "a score", "the nintendo, the old console, the number in its name" and "speed limit".
+  - Round 3 was won on one-off references ("ambulance... only the first two", "record player speed, the small singles") with the Operator never moving. That is the scheme named above as beating slice 1.
+  - Best moment: "three five, backwards" read back as "Five three" ("a real it's-smarter-than-us chill").
+  10 confusing items. Caused here:
+  - "from now on" was false: the word cooled and was gone by round 4. Fixed: the line no longer says it.
+  - "next" = 45 at 24% from "next to you": a false credit, never understood.
+  Not caused here:
+  - "out" and "number" are station words.
+  - "the lock" reads as hiding.
+  - Bo's "everyone out" at 41.0 s called the Operator straight back after it gave the lobby up at 40.8 s, and took all four.
+  - A scheme word also filed as a station word sends the Operator to that station's room.
+  - The hum has no direction.
+  Session: r147/blind/s1.txt.
+Headline:
+- Rounds won, bots seed 11: 5/6/6 → 5/6/5.
+  - Without the bots' new reaction to a trick read back: 0/4/3.
+  - Seeds 11-15: firsttimer 5/4/6/5/6 (R144: 5 every seed), returning 6/5/5/6/6 (6/5/5/5/5), quiet 5/5/6/6/6 (6/5/6/4/6).
+- Taken per round: 1.9 (40 in 21) → 2.5 (52 in 21).
+- Supervisor calls per round: 1.6 (33) → 1.7 (35).
+- Codewords replaced: 4 → 7.
+- Natural chat naming a plain word: 30/160 → 30/160.
+- Rounds that end: 21/21 → 21/21.
+- Newly measured:
+  - codes heard in bot play, 1 → 4 (seed 11);
+  - PT4's unscripted rounds won with the Operator never moving, replayed with fixed chat, 13 of 31 → 11 of 31.
+- Unscripted, blind session (seed 44): won 4 of 5, taken 4 in 5 rounds (all in round 1). R144's session (seed 31): won 3 of 5, 10 taken.
+Market: no row moved. Core loop depth stays 1 until the next playtest: the blind group's dozens were worked out by 21 s and it switched to one-off references, which still win with the Operator never moving. The differentiator stays 2. 18.7 unchanged; MARKET.md history row R147.
+Content: Operator lines 12 → 13 (`counted`); CONTENT.md history row R147.
+Coach: none new.
+Decisions: D11.
+Next: R148's PLAYTEST is postponed to EXPAND, since only one building round has passed since PT4. Its pick, by gap value: counting's slice 2 (letters and NATO words, a whole-alphabet learner), or PT4 #4 (a visible clock for the way out). R149 FIX: PT4 broken (1), an unwinnable round runs on. PT5 in R150, RETRO R151.

@@ -88,6 +88,10 @@ function Sim.new(seed: number): any
 	self.operator.onBurned = function(coinage)
 		self:trace(`   >> BURNED: "{coinage.phrase}" now means {coinage.concept}. "{Round.LINES.connecting}"`)
 	end
+	-- R147: the server's `onCounted`, as the trace reads it.
+	self.operator.onCounted = function(key: string, value: number)
+		self:trace(`   >> it counts "{key}" as {value} now. "{Round.LINES.counted}"`)
+	end
 	self:place()
 	return self
 end
@@ -212,6 +216,7 @@ function Sim.submit(self: any, id: number, stationId: string, value: string): an
 	end
 	if result.ok then
 		self.operator:credit(objective.concept, self.now)
+		self.operator:creditCode(objective.answer, self.now)
 		self:trace(`   {Sim.NAMES[id]} restores the {stationId} line.`)
 		if self.board:allSolved() and self.escape:open(self.now) then
 			self:trace(`   every line is through. "{Round.LINES.ringing}"`)
@@ -357,7 +362,7 @@ end
 -- The Lexicon panel, which everyone sees.
 function Sim.lexicon(self: any): { string }
 	local out: { string } = {}
-	for _, row in Readout.lexiconRows(Round.withLeads(self.operator:snapshot())) do
+	for _, row in Readout.lexiconRows(Round.wallRows(self.operator:snapshot(), self.operator:countingRows())) do
 		table.insert(out, row.text)
 	end
 	return out

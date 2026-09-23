@@ -26,6 +26,9 @@ export type Coinage = {
 	-- station's label (Round.leadsTo). Set for the wall only (Round.withLeads);
 	-- never saved.
 	leadsTo: string?,
+	-- R147: for a word the group uses as a NUMBER, the value it stands for
+	-- (Operator.countingRows); nil for a station's word.
+	value: number?,
 }
 
 -- Where the Operator is (R144), for every client's Your Line panel: the label

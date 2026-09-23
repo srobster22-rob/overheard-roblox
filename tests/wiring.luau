@@ -2034,9 +2034,25 @@ print("")
 print("the wall says where each word leads, on the server and in the sim")
 check(
 	"the server's wall is labelled with where each word leads",
-	string.find(serverCode, "Round.withLeads(operator:snapshot())", 1, true) ~= nil
+	string.find(serverCode, "Round.wallRows(operator:snapshot(), operator:countingRows())", 1, true) ~= nil
 )
-check("...and so is the sim's", string.find(botCode, "Round.withLeads(self.operator:snapshot())", 1, true) ~= nil)
+check(
+	"...and so is the sim's",
+	string.find(botCode, "Round.wallRows(self.operator:snapshot(), self.operator:countingRows())", 1, true) ~= nil
+)
+
+print("")
+print("a restore teaches the counting learner, on the server and in the sim (R147)")
+local solvedBody = string.match(serverCode, "board.onSolved = function%(.-" .. NL .. "end") or ""
+check("(guard) found board.onSolved", #solvedBody > 0)
+check(
+	"the server credits the code just entered",
+	string.find(solvedBody, "operator:creditCode(objective.answer, os.clock())", 1, true) ~= nil
+)
+check(
+	"...and so does the sim",
+	string.find(botCode, "self.operator:creditCode(objective.answer, self.now)", 1, true) ~= nil
+)
 
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
