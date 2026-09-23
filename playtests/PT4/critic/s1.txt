@@ -1,0 +1,148 @@
+seed 31
+# Round 1 - first time, plain talk, learning the ropes
+Ana: ok so my screen says patch a caller through to 18, whats that
+Bo: mine says cutoff 40 dropped, someone has to throw it back. breaker thing?
+Dee: i got night latch wants 92
+Cy: i got nothing, says listen for somebody else's
+Bo: ana you do mine, 40 on the breaker. where is the breaker
+wait 2
+# the voice repeated our numbers back and the hum started. panic.
+Ana: wait it just read my number out loud and my code changed
+Bo: mine changed too. it hears us. run
+Ana and Bo go to lobby
+# it arrived at the Exchange Desk. new rule: no numbers, no station names
+Bo: ok new rule. no digits and no names for the stuff. it repeats whatever we say
+Bo: cy the flippy switch thing near you. five dozen
+Dee: ana, the front door thing where you are. an hour minus a minute
+Cy: on it
+Cy enters breaker 60
+Ana enters latch 59
+wait 1
+# the hum is back for everyone. Cy and Dee are where the flippy switch was
+Ana: nice two down!! cy dee get out of your room, go where me and bo started
+Cy and Dee go to board
+Ana: dee when you get there, mine is three dozen and one, on the big wall with the plugs
+Dee enters board 37
+wait 1
+# all three through. everyone has to meet at the front
+Dee: lets go lets go
+Cy and Dee go to lobby
+wait 3
+Ana: WE MADE IT
+Bo: ok that was easy. lets keep the dozen trick
+next round
+# Round 2. Dee sees Cutoff 77 and is standing in the archive where it is. Can she just do it herself?
+Dee enters breaker 77
+wait 1
+Dee: ugh it wont let me do my own
+Ana: ok code names before anyone says anything. the room me and bo start in is the kitchen. cy and dee start in the library. the last room is the porch
+Bo: and the gizmos: toaster is the flippy one in the library, spaghetti is the big wall in the kitchen, bouncer is on the porch
+Dee: toaster, six dozen and five. cy you're next to it
+Cy enters breaker 77
+wait 1
+# hum again. it is coming to Cy and Dee's room
+Cy: humming. dee move. bouncer is a dozen and seven, you take it
+Cy and Dee go to lobby
+Dee enters latch 19
+wait 1
+Bo: ana spaghetti. five dozen and six
+Ana enters board 66
+Ana: done. porch everyone
+Ana and Bo go to lobby
+wait 5
+Cy: 2 for 2. is it even trying
+next round
+# Round 3. Try a slower, quieter round: Cy keeps his mouth shut to see what the silence clock does
+Bo: toaster. a dozen even
+wait 4
+# nobody moves, Cy is AFK-quiet. what happens?
+wait 15
+wait 30
+wait 8
+# Ana and Bo got taken for being quiet. Cy and Dee are traced too
+Dee: ?? what happened to you two
+Ana: it came for us bc nobody was talking. we're stuck on the line, cant do anything
+Cy: doing the toaster now
+Cy enters breaker 12
+Ana: dee bouncer is seven dozen minus two
+Cy and Dee go to lobby
+Dee enters latch 82
+wait 1
+Dee: cy last one is the spaghetti where they are. three dozen and ten
+Ana: its quiet here now, come
+Cy goes to board
+Cy enters board 46
+Cy: got it, running back
+Cy goes to lobby
+wait 5
+Bo: ok lesson learned, everyone keep yapping
+Dee: yap yap yap
+next round
+# Round 4. same rooms again. go fast with the slang
+Cy: dee toaster. five dozen minus two
+Dee enters breaker 58
+Bo: ana spaghetti is double nickels
+Ana enters board 55
+Ana: bouncer four dozen minus one. whoever gets to the porch first
+Ana, Bo, Cy and Dee go to lobby
+Dee enters latch 47
+wait 1
+Bo: six seconds lol
+wait 12
+next round
+# Round 5. Dee mishears one on purpose (edge test: wrong code)
+Bo: toaster, toaster! two less than two dozen
+Dee enters breaker 23
+wait 1
+# it read "two less than two dozen" as two-two. whoops. new code for Bo
+Bo: NOOO it read that as two two. ok mine changed. its a dozen, a dozen, and a week
+Cy: dee we gotta move, its coming here. go to their room
+Cy and Dee go to board
+Ana: dee spaghetti is a dozen and a pair
+Dee enters board 14
+wait 1
+# it is parked on the toaster. plan: everyone to the porch, then bait it back to this room with a plain word
+Cy: bouncer is a dozen, a dozen, and a pair. everyone to the porch, then we bait it
+Ana, Bo, Cy and Dee go to lobby
+Ana enters latch 27
+Ana: oops fat fingered
+Ana enters latch 26
+Bo: ok bait time. hey operator, the plugs on the big wall need patching
+wait 2
+Dee: going for the toaster
+Dee goes to archive
+Dee enters breaker 31
+Dee: done, coming back
+Dee goes to lobby
+wait 3
+Ana: the bait works lmao
+wait 6
+Cy: one more?
+next round
+# Round 6. dozen math again
+Dee: cy toaster is five dozen and five
+Cy enters breaker 65
+Cy: bo spaghetti is four dozen and three
+wait 1
+Ana: CY that was my number. four three. it spent MY bouncer. its heading for the porch
+Bo: doing the spaghetti anyway
+Bo enters board 51
+Ana: new bouncer is seven dozen and five. bo and me go to the library, then someone bait it into our old room
+Ana and Bo go to archive
+Dee: bait: the plugs on the big wall, operator
+wait 2
+Dee goes to lobby
+Dee enters latch 89
+Ana, Bo and Cy go to lobby
+wait 8
+Bo: one more and then i gotta go
+next round
+# Round 7. same rooms, same three gadgets, seventh time
+Ana: toaster four dozen and eight
+Cy enters breaker 56
+Bo: spaghetti six dozen and five
+Ana enters board 77
+Dee: bouncer five dozen and four
+Ana, Bo, Cy and Dee go to lobby
+Ana enters latch 64
+wait 12

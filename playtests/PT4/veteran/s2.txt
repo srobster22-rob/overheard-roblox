@@ -1,0 +1,145 @@
+seed 23
+# session 2, next night. Same four. We know the map now: board room = caller desk, archive = cutoff, lobby = latch.
+look
+Ana: same as last night, letters. bo you walk front: bee see
+Cy: dee, here: eye oh
+Dee: bo is leaving so ana, by you: aitch bee
+# Dee fat-fingers on purpose? no - Cy fat-fingers the breaker, we want to know what a miss costs
+Dee enters breaker 91
+look
+# a miss costs nothing visible. but "leaving" sent it to the front. bo holds.
+Ana enters board 82
+Dee enters breaker 90
+Bo: its parked at the front now. i am not walking into that
+Cy: bait it. ill say the caller thing. PATCH THAT NUMBER THROUGH
+Ana and Bo go to lobby
+look
+Bo enters latch 23
+Bo: done. where even is it
+Cy and Dee go to lobby
+wait 5
+look
+# wiped. "leaving" counted as talk about the exit, and the bait only QUEUED. we walked all four into it.
+Cy: we literally walked into it. it said everyone to the lobby
+Dee: my bad, "leaving" set it off
+next round
+look
+# round 2: bee is on its list, so radio letters. and nobody says anything about going anywhere.
+Ana: radio letters. cy dee, yours: bravo foxtrot
+Bo: ana, ours: charlie hotel
+Dee: cy you are the walker: hotel charlie
+Cy: k
+Dee enters breaker 26
+Ana enters board 38
+Cy goes to lobby
+Cy enters latch 83
+look
+Cy: clear here, come
+Ana, Bo and Dee go to lobby
+wait 5
+next round
+look
+# round 3: radio letters again (a real group would not reinvent every round)
+Ana: cy dee, yours: golf delta
+Cy: ana bo, yours: golf echo
+Dee: bo walker: hotel echo
+Bo: moving
+look
+Dee enters breaker 74
+Ana enters board 75
+Bo goes to lobby
+Bo enters latch 85
+Bo: clear, come
+Ana, Cy and Dee go to lobby
+wait 5
+next round
+look
+# round 4: we are bored of winning in 16s. Test where its hearing ends: bare digits, no station word.
+Ana: cy dee: three nine
+look
+Cy: yep it hears digits. scatter. dee take the far one, echo india
+Dee: ok
+Bo: ana, by us: hotel delta
+Ana enters board 84
+Dee goes to lobby
+Cy goes to board
+look
+# harness note: two "goes to" lines to DIFFERENT rooms run one after the other, so Cy was still standing there when it arrived.
+Cy: got me. im on the line in the back
+Dee enters latch 59
+Ana: my new one is for the back room, where it is sitting. foxtrot oscar. oscar is zero. bo wait for it to leave
+Bo: waiting. talking so i dont get traced
+wait 10
+Bo: still waiting
+wait 10
+look
+# Dee should have run at "walking to the lobby room" - my batching, player error. "leave" = exit, again.
+Dee: it got me too. "leave" is an exit word guys
+Bo: going to the back now its gone
+Bo goes to archive
+look
+Bo enters breaker 60
+Bo: three of three. its at the front though
+Ana: we wait for it to walk off. keep talking
+look
+wait 8
+Bo: still in the back
+Ana: still here
+look
+Ana: it walked off, panel says go. go
+Ana and Bo go to lobby
+look
+Bo: ITS HERE
+Ana and Bo go to board
+look
+# lost with 3/3 restored: the panel said "everyone to the lobby" at 121, the ring at 123 called it back to the lobby, we arrived at 127 and it took us in 0.2s.
+Ana: the panel literally told us to go there
+Bo: rule: be AT the front before it rings, never after
+next round
+look
+# round 5: new house rule - every digit one higher than the real one. testing if a WRONG number spooks it.
+Cy: new rule, each digit one up. ana bo, by you: eight five
+look
+Dee: cy, here: five zero. nine wraps to zero
+Ana: bo, you walk: seven six
+Bo: heading out now
+look
+Ana enters board 74
+Cy enters breaker 49
+Bo: ugh. "out" is an exit word too. holding
+Ana: we wait for it to give up the front. everyone keep chatting, no place words
+wait 8
+look
+wait 10
+Cy: this is the boring bit huh
+Dee: yeah. watching a panel
+wait 9
+look
+Bo: going now
+Bo goes to lobby
+look
+Bo enters latch 65
+Ana: here. my panel is nagging me to talk
+Bo: done. all of you to me, now, before the ring
+Ana, Cy and Dee go to lobby
+look
+Cy: all here
+wait 5
+look
+# won, but 30 of those 43 seconds were us staring at a panel waiting for it to give up a room.
+next round
+look
+# round 6: one-up rule, and the banned list is now: out, leave, exit, digits.
+Ana: one up rule. bo you walk: zero six
+Cy: dee, here: five six
+Dee: ana bo: nine seven
+Bo: k walking
+look
+Dee enters breaker 45
+Ana enters board 86
+Bo goes to lobby
+Bo enters latch 95
+Bo: come
+Ana, Cy and Dee go to lobby
+wait 5
+look

@@ -1,0 +1,21 @@
+seed 23
+# repro: the Operator is walking to the lobby (exit understood) and the bait QUEUES the board room.
+Dee: bo is leaving so ana, by you: aitch bee
+Cy: PATCH THAT NUMBER THROUGH
+wait 3
+look
+wait 2.9
+look
+wait 0.4
+look
+wait 10
+look
+Ana: still here
+Bo: still here
+Cy: still here
+Dee: still here
+wait 20
+look
+look
+wait 12
+look

@@ -1,0 +1,95 @@
+seed 8
+# Session 2: a second, sloppier group of friends. Round 1: they have not read anything
+Bo: hey i got a cutoff thing that dropped, anyone see a breaker?
+Cy: i think theres a breaker box in here with me. whats the number
+Dee: hold on theres a hum
+Ana: what hum i dont hear anything
+wait 3
+Bo: cy its fifty nine
+Cy enters breaker 59
+Cy: it says that code was overheard and bo has a new one??
+Dee: the hum is getting louder, should we move
+Cy: nah lets figure this out first
+wait 5
+Dee: it got us. cy and me are "on the line". we can talk but cant do anything
+Cy: ana can you come here and do the breaker, bo whats the new one
+Bo: ninety nine. ana go
+Ana goes to archive
+wait 1
+Ana: walked right into it. bo its just you
+Bo: great. ok it repeats numbers so dont say them. do math
+Cy: bo mine is at the big desk in your room. three dozen plus two
+Bo enters board 38
+Dee: mine is at the front. eight dozen plus two. dont say the room name
+Bo goes to lobby
+Bo enters latch 98
+Bo: did both. my toaster one cant be done by me though and youre all stuck
+wait 1
+Cy: wait why did we lose, bo was still free
+Bo: it just says the call cannot be completed as dialled
+Dee: ok round two. rules: no numbers, no room names, dont say breaker or latch or number
+next round
+# Round 2. this group invents a letter code: A is one, B two... O is zero. and pet names for the gadgets
+Dee: new names. the piano is the big desk where ana and bo are. grandma is the flip box in our room. the cat is the thing by the way out
+Dee: and numbers are letters. A one B two up to I nine, O is zero
+Bo: grandma is D O
+Cy enters breaker 40
+Dee: piano is B C
+Ana enters board 23
+Cy: cat is B B
+wait 1
+Ana: explaining the code set it off. its humming. bo lets go to cy and dees room, it said it would do ours after
+Ana and Bo go to archive
+Cy: we wait for it to leave the way out, then dee does the cat
+wait 12
+Dee: cy you said the way out word again lol
+Bo: lets lure it. hey operator, somebody patch the jacks on the switchboard
+wait 3
+Dee goes to lobby
+Dee enters latch 22
+Ana, Bo and Cy go to lobby
+wait 10
+Ana: bait strat is goated
+next round
+# Round 3. same pet names as last round. lets see if it has learned grandma
+Cy: dee, grandma is E A
+Dee: grandma, got it, E A
+Dee enters breaker 51
+Dee: grandma done. piano is G A, ana or bo
+Bo enters board 71
+Ana: cat is E C. meet at the cat
+wait 1
+# the hum. it is walking to Cy and Dee's room after "grandma"
+Dee: IT LEARNED GRANDMA. its coming to us, run
+Dee goes to lobby
+Cy: wait really? it only heard it like twice
+wait 3
+Cy: ok ok going
+Cy goes to lobby
+Ana and Bo go to lobby
+Dee enters latch 53
+wait 10
+Cy: rip me
+Bo: grandma is burned. new name next round
+next round
+# Round 4. grandma is retired, the flip box is now auntie
+Ana: flip box is auntie now. auntie is A C
+Dee enters breaker 13
+Cy: piano is D O
+Bo enters board 40
+Dee: cat is G C. all meet there
+Ana, Bo, Cy and Dee go to lobby
+Ana enters latch 73
+wait 12
+Dee: too easy when nobody slips
+next round
+# Round 5. Bo tries to be clever and see if a half-spelled number sneaks through
+Bo: auntie is thurty sevvn
+wait 1
+Dee enters breaker 37
+Cy: lol it didnt catch that. cat is ate-tee sevvn
+Ana: piano is A B
+Bo enters board 12
+Ana, Bo, Cy and Dee go to lobby
+Dee enters latch 87
+wait 12

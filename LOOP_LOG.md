@@ -8888,3 +8888,39 @@ Next: R145 PLAYTEST PT4, postponed from R143 (three building rounds since PT3: R
   - No notice when your code is overheard and replaced.
   - No countdown after 3/3.
   - "Secrets it listens for: 4".
+
+
+## R145 · PLAYTEST · PT4: a genre veteran, struggling players and a critic, on the build that says where it waits
+Pick: PLAYTEST in the k=0 slot. A RETRO needs a playtest newer than the last RETRO (R141), and PT3 ran in R140, so PT4 runs here and the RETRO moves to R146. Three building rounds have passed since PT3 (R142, R143, R144), so the playtest that R143 postponed runs now. Personas: the genre veteran (DOORS, 99 Nights, Phasmophobia); struggling players, rotated after PT1's first-timers, PT2's returning group and PT3's min-maxer; and the critic, writing the store review. All three play unscripted, writing every chat line from the screen, through tools/play (the real server modules) on a stepped clock, text only, on build f679b1c. Sync: AGENT_LOOP v3.3 unchanged; OWNER.md `## Next` empty, no VETO; no new COACH notes. Studio MCP checked 23 Sep: the roblox-studio server lists its instructions but no tools, so there are no screenshots (OWNER.md question 1).
+
+Player notices: nothing (PLAYTEST).
+Impact: n/a (PLAYTEST).
+Built: PLAYTESTS.md PT4; playtests/PT4/ (the three personas' sessions, probes and reports, plus R144's blind session); MARKET.md re-scored.
+Verified: every persona played blind and unscripted through tools/play, the real server modules on a stepped clock, text only. Their headline numbers were recounted from their own traces. Two "broken" claims were replayed here:
+- The critic's loss that never comes reproduces (probe_loss.txt: unwinnable from 14.2 s, lost at 192.2 s).
+- The struggling players' "taken 0.2 s after finishing beside it" is a player walking into the room it had been waiting in since 99.2 s; the harness lets you act in the instant you arrive.
+Headline:
+- Rounds won, unscripted: veteran 11/13 (PT3 7/10), struggling players 5/6, critic 11/12 (PT3 4/6). Bots 5/6/6 → 5/6/6.
+- Taken per round: veteran 0.8 (PT3 1.9), struggling players 0.8, critic 0.5. Bots 1.9 → 1.9.
+- Supervisor calls per round: veteran 0.08 (PT3 0.3), 0.17, 0.17. Bots 1.6 → 1.6.
+- Group words that bit: 1 catch in 31 rounds (PT3: 1 in 5 for the critic, 2 burns in 10 for the veteran). Bots: codewords replaced 4 → 4.
+- Natural chat naming a plain word 30/160 → 30/160. Rounds that end: 21/21 → 21/21, and all 31 unscripted.
+- New: the veteran's rounds won with the Operator never moving, 8 of 13.
+Findings:
+- Solved by round 2: every group built a number scheme (letters, NATO, "dozens", private facts) and the Operator stopped moving.
+- Being taken is a dead end: you sit out the round.
+- The way out has a hidden clock: its 45 s door timer and the ring's call back to the lobby are never shown.
+- The best teacher is the echo: "Seven eight. I have that party for you." The struggling players asked for the same with plain words.
+- Critic 4/10 (PT3 4/10); only 4 store-shot moments, all text.
+- Best moment: `"IT LEARNED GRANDMA. its coming to us, run"` → the warning itself takes Cy.
+Market: core loop depth 2 → 1 (solved by round 2 in all three sessions); differentiator held at 2, at the edge (1 group-word catch in 31 rounds, but it still reacts to what players say). 20.7 → 18.7; MARKET.md history row R145. `lune run tools/market check` passes.
+Content: unchanged (PLAYTEST).
+Coach: none new.
+Decisions: none.
+Next: R146 RETRO, moved here because a retro needs a playtest newer than R141's, and PT4 now is. It covers:
+- the scorecard for R142-R145;
+- a blind market re-score (keep the lower score on each row);
+- PLAYBOOK: judge R141's TRY (a blind session after every building round) against PT3's and PT4's confusing items;
+- lessons.
+The next BIG SWING is R151. PT4 #1 (the Operator learns what carries a code, or the deal changes) is its first candidate.
+PT4's #5 (an unwinnable round runs on) and #4 (a visible clock for the way out) are FIX-sized.

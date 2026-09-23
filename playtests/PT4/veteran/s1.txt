@@ -1,0 +1,156 @@
+seed 11
+# round 1 - first time, nobody knows the rules. Blind start like a new DOORS lobby.
+Bo: yo i got a caller waiting, patch to some number. who has what
+Ana: mine says a cutoff dropped, someone throw it back
+Cy: latch thing here. dee?
+Dee: i got nothing, says listen for somebody elses
+wait 2
+look
+# the hum just started and it said it is walking to the board room. Ana + Bo bail.
+Ana: RUN its coming to board room
+Ana and Bo go to lobby
+look
+# it's parked in the board room. Where is anything? Dee pokes the archive keypads.
+Dee enters latch 11
+Dee enters breaker 11
+look
+Dee: ok the thing in here that isnt the gate one takes a real number, mine got told dead line
+Ana: dee thats mine. nine times nine plus four
+Cy: you two where you are now, eighty minus two
+wait 1
+Dee enters breaker 85
+Bo enters latch 78
+look
+# it's heading for the lobby. it DID the maths. Ana + Bo go to the board room it just left.
+Ana and Bo go to board
+Bo: ana when we get there, yours is the one straight after what dee just fixed
+look
+Ana enters board 86
+Ana: got it. cy whats the new one, dont say it straight
+look
+Dee: im going to the front room for it, cy tell me on the way
+Dee goes to lobby
+Cy: dee take the first number you ever typed tonight and knock seventy off it
+Bo: nice
+look
+Dee enters latch 15
+Ana: its coming to us again, moving
+Ana and Bo go to archive
+look
+Cy: everyone to the front, go go
+Ana, Bo and Cy go to lobby
+look
+Bo: wait its coming HERE?? out out
+Ana, Bo, Cy and Dee go to archive
+look
+# we... won? while running away from the lobby. ok. round 2.
+next round
+look
+# round 2. New rule for the group: digits as letters, a=1 b=2 ... and never name a place.
+Ana: letters game. a is one b is two. cy dee, yours: bee ay
+Cy: ana bo, the one right next to you: see bee
+Bo: dee head to the front. ay aitch
+Dee goes to lobby
+wait 1
+Cy enters breaker 21
+Ana enters board 32
+look
+Dee enters latch 18
+Dee: done. everyone come to me
+Ana, Bo and Cy go to lobby
+look
+Bo: now we wait for the ring i guess
+wait 10
+look
+# round 2 took 17 seconds and it never moved. same trick again, see if it learns.
+next round
+look
+Bo: ana, right where you stand: eye oh. oh is zero
+Cy: dee, ours: ay eye
+Dee: cy take the walk to the front, eff ee
+Ana enters board 90
+Dee enters breaker 19
+Cy goes to lobby
+Cy enters latch 65
+Cy: in. come on over
+Ana, Bo and Dee go to lobby
+wait 10
+look
+# 16 seconds, no threat. next.
+next round
+look
+# too easy so far. Round 4 we try the lurker play: nobody types, see what the game does about it.
+wait 15
+look
+wait 30
+look
+Ana: uh oh traced. which of us
+wait 3
+look
+Bo: talk everyone, it hunts quiet ones. cy dee yours: bee see
+Cy: here. ana walk to the front, see aitch
+Dee: here. bo, by you, and its on the lexicon so radio style: india alpha
+Ana goes to lobby
+Dee enters breaker 23
+Bo enters board 91
+look
+Ana enters latch 38
+Bo: it got me. im on the line, cant press anything. someone needs to do mine for me
+Ana: going back for it. dee say it again
+Dee: india alpha
+Ana goes to board
+look
+Ana enters board 91
+Ana: done, all three. bo can you walk?
+Ana, Cy and Dee go to lobby
+look
+Ana: nope it got me the second i turned around. go without us
+Cy: sorry guys. waiting at the front
+wait 12
+look
+# lesson: never walk into the room it is parked in, and never go quiet. round 5.
+next round
+look
+Ana: letters again. bo take the walk, dee dee. yes like dee
+Bo: lol. ana stay put, ay eye
+Cy: dee here: eff eff
+Dee: ok
+Ana enters board 19
+Dee enters breaker 66
+Bo goes to lobby
+Bo enters latch 44
+look
+Ana: to bo
+Ana, Cy and Dee go to lobby
+wait 5
+next round
+look
+# round 6: we give the stations nicknames to see if it learns OUR words. fridge = the cutoff one, piano = caller one, mailbox = latch.
+Ana: nicknames. fridge is the cutoff thing, piano the caller, mailbox the latch. fridge: eye see
+Cy: piano: gee eff
+Bo: mailbox: see see. dee you walk
+Dee: on it
+Dee enters breaker 93
+Ana enters board 76
+Dee goes to lobby
+Dee enters latch 33
+look
+Dee: mailbox done, come
+Ana, Bo and Cy go to lobby
+wait 5
+next round
+look
+# round 7: keep the nicknames on purpose, does it start catching them?
+Bo: fridge: bee oh
+Dee: piano: aitch gee
+Ana: mailbox: eff gee. cy walk it
+Cy: going
+look
+Dee enters breaker 20
+Ana enters board 87
+Cy goes to lobby
+Cy enters latch 67
+Cy: all in
+Ana, Bo and Dee go to lobby
+wait 5
+look

@@ -1,0 +1,41 @@
+seed 8
+# Session 2: a second, sloppier group of friends. Round 1: they have not read anything
+Bo: hey i got a cutoff thing that dropped, anyone see a breaker?
+Cy: i think theres a breaker box in here with me. whats the number
+Dee: hold on theres a hum
+Ana: what hum i dont hear anything
+wait 3
+Bo: cy its fifty nine
+Cy enters breaker 59
+Cy: it says that code was overheard and bo has a new one??
+Dee: the hum is getting louder, should we move
+Cy: nah lets figure this out first
+wait 5
+Dee: it got us. cy and me are "on the line". we can talk but cant do anything
+Cy: ana can you come here and do the breaker, bo whats the new one
+Bo: ninety nine. ana go
+Ana goes to archive
+wait 1
+Ana: walked right into it. bo its just you
+# probe: Bo is the only free player and holds the breaker code nobody else can enter. does the round end on its own, and when?
+Bo: ok
+wait 3
+Bo: still here
+wait 3
+Bo: hello?
+wait 30
+look
+Bo: talking so the supervisor leaves me alone
+wait 30
+Bo: still talking
+wait 30
+Bo: still talking
+wait 30
+Bo: still talking
+wait 25
+look
+wait 10
+look
+wait 8
+look
+wait 20

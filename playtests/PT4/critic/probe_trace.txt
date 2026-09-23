@@ -1,0 +1,13 @@
+seed 8
+# probe: everyone silent until the Supervisor traces. then the traced players talk and run. can they escape?
+wait 44
+look
+wait 1.5
+look
+Ana: talking now! run
+Bo: me too
+Ana and Bo go to lobby
+Cy: im talking too
+Dee: same
+Cy and Dee go to lobby
+wait 10
