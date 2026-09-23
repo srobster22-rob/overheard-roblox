@@ -259,6 +259,31 @@ Round.LINES = {
 	wrongParty = "The party you have dialled is not in service.",
 }
 
+-- Where a concept brings the Operator, as the wall names it: the station's own
+-- label, the name players see on its prompt. Only a station's concept is ever
+-- credited (a restore credits its objective's concept), so a concept with no
+-- station leads nowhere the wall could show.
+function Round.leadsTo(concept: string): string?
+	for _, station in STATIONS do
+		if station.concept == concept then
+			return station.label
+		end
+	end
+	return nil
+end
+
+-- The wall's rows, each told where it leads. Copies, so the Operator's own
+-- register is never written by the display.
+function Round.withLeads(rows: { Types.Coinage }): { Types.Coinage }
+	local out: { Types.Coinage } = {}
+	for _, row in rows do
+		local labelled = table.clone(row)
+		labelled.leadsTo = Round.leadsTo(row.concept)
+		table.insert(out, labelled)
+	end
+	return out
+end
+
 -- What the Operator says when it understood something. When a CODE moved it,
 -- it reads the code back first, digit by digit the way an operator reads a
 -- number ("Four seven. I have that party for you."), so a group learns that

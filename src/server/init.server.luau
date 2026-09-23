@@ -142,7 +142,7 @@ local function filterForEveryone(text: string, authorId: number): string?
 	return result
 end
 local broadcastLexicon = Censor.new(filterForEveryone):sender(function()
-	return operator:snapshot()
+	return Round.withLeads(operator:snapshot())
 end, function(visible)
 	lexiconRemote:FireAllClients(visible)
 end, task.spawn)

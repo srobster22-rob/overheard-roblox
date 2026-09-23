@@ -354,7 +354,7 @@ end
 -- The Lexicon panel, which everyone sees.
 function Sim.lexicon(self: any): { string }
 	local out: { string } = {}
-	for _, row in Readout.lexiconRows(self.operator:snapshot()) do
+	for _, row in Readout.lexiconRows(Round.withLeads(self.operator:snapshot())) do
 		table.insert(out, row.text)
 	end
 	return out

@@ -1989,6 +1989,14 @@ check("the sim asks the board for the live codes too", string.find(botCode, "boa
 check("...rerolls a heard code", string.find(botCode, "board:reroll(concept)", 1, true) ~= nil)
 check("...and rings a wrong code through", string.find(botCode, "result.ringsThrough", 1, true) ~= nil)
 
+print("")
+print("the wall says where each word leads, on the server and in the sim")
+check(
+	"the server's wall is labelled with where each word leads",
+	string.find(serverCode, "Round.withLeads(operator:snapshot())", 1, true) ~= nil
+)
+check("...and so is the sim's", string.find(botCode, "Round.withLeads(self.operator:snapshot())", 1, true) ~= nil)
+
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then
 	process.exit(1)

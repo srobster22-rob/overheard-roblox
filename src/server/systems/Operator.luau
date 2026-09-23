@@ -35,6 +35,9 @@ export type Operator = typeof(setmetatable(
 		observations: { Observation },
 		-- Coinages credited since the last round boundary; see `coolRound`.
 		creditedSinceBoundary: { [Coinage]: boolean },
+		-- Every credit each meaning of a phrase has had, by phrase then concept;
+		-- see `contrast`. Unlike heat it does not cool.
+		evidence: { [string]: { [string]: number } },
 		backend: Types.ComprehensionBackend,
 		-- Each concept's live code right now, asked for at the moment something
 		-- is said, so a code re-dealt or re-rolled is never heard stale.
@@ -54,6 +57,7 @@ function Operator.new(secrets: { Secret }): Operator
 		lexicon = {},
 		observations = {},
 		creditedSinceBoundary = {},
+		evidence = {},
 		backend = Heuristic :: any,
 		liveCodes = nil,
 		onUnderstood = nil,
@@ -127,6 +131,72 @@ local function findCoinage(self: Operator, phrase: string, concept: string): Coi
 	return nil
 end
 
+-- A WORD USED BEFORE EVERY RESTORE MEANS NOTHING IN PARTICULAR. Crediting a
+-- phrase toward one concept takes the same heat off that phrase's other
+-- meanings -- unless the Operator has more evidence for the other meaning.
+-- Evidence is every credit a meaning has ever had here, and it does not cool,
+-- so it says which station a word has been used for MOST.
+--   * Filler said as often before one station's restore as before another's
+--     ("say", "mine", "then") cancels itself out instead of being filed for
+--     whichever station was restored first.
+--   * A word said MORE before one station is that station's word, filler or
+--     not: three mentions before the first restore still file it at once (the
+--     rate the owner's R46 answer documents), and it moves to another station
+--     only once said at least as often before that one.
+--   * The cost: a group that recites ALL its codewords before every restore,
+--     equally often, teaches none of them. Each is filler by this rule.
+--   * A group's nickname keeps its heat when it is also mentioned before
+--     another station's restore ("piano done, now the tuba"). R143's first
+--     version debited it anyway: a nickname said twice before its own station
+--     and once before another never burned, and saying a codeword once near
+--     another restore was a free way to stop it being learned.
+-- A tie is a debit: filler said twice before every restore ties every time.
+-- No rate changes: `HeatPerCredit` and `CoolPerRound` are what the owner's R46
+-- answer was measured with.
+local function evidenceFor(self: Operator, c: Coinage): number
+	local byConcept = self.evidence[c.phrase]
+	-- A meaning with no record counts what it holds. Every credit records one,
+	-- so today only a coinage made some other way (LexiconSave, not yet wired)
+	-- could lack it.
+	return if byConcept and byConcept[c.concept] then byConcept[c.concept] else c.heat
+end
+
+local function contrast(self: Operator, credited: Coinage, amount: number)
+	local byConcept = self.evidence[credited.phrase] or {}
+	byConcept[credited.concept] = (byConcept[credited.concept] or 0) + amount
+	self.evidence[credited.phrase] = byConcept
+	local mine = byConcept[credited.concept]
+	for i = #self.lexicon, 1, -1 do
+		local other = self.lexicon[i]
+		if
+			other ~= credited
+			and other.concept ~= credited.concept
+			and Lexicon.samePhrase(other.phrase, credited.phrase)
+			and evidenceFor(self, other) <= mine
+		then
+			other.heat = math.max(0, other.heat - amount)
+			if other.heat <= 0 then
+				table.remove(self.lexicon, i)
+			end
+		end
+	end
+end
+
+-- A word cooled out of every meaning is forgotten whole, its evidence with it
+-- (R14: the Operator keeps no file on a word it no longer knows). A meaning
+-- debited to nothing keeps its evidence while the word has another meaning.
+local function forgetLostWords(self: Operator)
+	local known: { [string]: boolean } = {}
+	for _, c in self.lexicon do
+		known[c.phrase] = true
+	end
+	for phrase in self.evidence do
+		if not known[phrase] then
+			self.evidence[phrase] = nil
+		end
+	end
+end
+
 -- Called when players demonstrably ACTED on a concept (patched the right jack,
 -- opened the right door). Anything unfamiliar said shortly before that is now
 -- suspected of meaning it.
@@ -144,6 +214,8 @@ end
 -- window would otherwise burn every word said beforehand twice, into two
 -- different concepts, at double speed.
 function Operator.credit(self: Operator, concept: string, now: number)
+	local gained: { [Coinage]: number } = {}
+	local credited: { Coinage } = {}
 	for _, obs in self.observations do
 		local age = now - obs.at
 		if age > Config.CreditWindow then
@@ -169,14 +241,25 @@ function Operator.credit(self: Operator, concept: string, now: number)
 
 			local c = coinage :: Coinage
 			local wasBurned = c.heat >= 1
+			local credit = Config.HeatPerCredit * recency
 			self.creditedSinceBoundary[c] = true
 			c.sightings += 1
-			c.heat = math.clamp(c.heat + Config.HeatPerCredit * recency, 0, 1)
+			c.heat = math.clamp(c.heat + credit, 0, 1)
+			if gained[c] == nil then
+				table.insert(credited, c)
+			end
+			gained[c] = (gained[c] or 0) + credit
 
 			if not wasBurned and c.heat >= 1 and self.onBurned then
 				(self.onBurned :: any)(c)
 			end
 		end
+	end
+
+	-- Weighed once the whole window is counted, so a word said twice before
+	-- this restore has both sightings as evidence whichever came first.
+	for _, c in credited do
+		contrast(self, c, gained[c])
 	end
 
 	-- Everything in the window was just spent on `concept`; everything outside
@@ -250,6 +333,7 @@ function Operator.cool(self: Operator, amount: number): boolean
 			changed = true
 		end
 	end
+	forgetLostWords(self)
 	return changed
 end
 
@@ -287,6 +371,7 @@ function Operator.coolRound(self: Operator, amount: number): boolean
 		end
 	end
 	self.creditedSinceBoundary = {}
+	forgetLostWords(self)
 	return changed
 end
 

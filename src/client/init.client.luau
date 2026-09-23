@@ -100,8 +100,9 @@ local function label(parent: Instance, text: string, size: number, color: Color3
 end
 
 -- A list of rows under a panel's title that scrolls once it outgrows the
--- panel, so a long list is never cut off. The Lexicon grows without limit;
--- Your Line did not until three stations (R137) let one player hold three.
+-- panel, so a long list is never cut off. The Lexicon shows every understood
+-- word however many there are (R143); Your Line did not overflow until three
+-- stations (R137) let one player hold three.
 local function scrollingList(parent: Instance, padding: number): ScrollingFrame
 	local list = Instance.new("ScrollingFrame")
 	list.Position = UDim2.fromOffset(8, 32)
@@ -140,6 +141,13 @@ local function heatColor(heat: number): Color3
 	return INK:Lerp(AMBER, Heat.safeProgress(heat))
 end
 
+-- R143: the wall's two kinds of row. A word is coloured by its heat; a header,
+-- which names where the words under it lead, in brass.
+local LEX_ROW_STYLE: { [string]: { size: number, color: Color3? } } = {
+	header = { size = 11, color = BRASS },
+	word = { size = 12 },
+}
+
 local function renderLexicon(entries: { any })
 	for _, child in lexList:GetChildren() do
 		if child:IsA("TextLabel") then
@@ -152,8 +160,13 @@ local function renderLexicon(entries: { any })
 	end
 	-- R119: the rows (order, percent, "understood") are Readout.lexiconRows,
 	-- run by tests/readout; only the drawing is left here.
+	-- R143: a header row names where the words under it lead. A row too long
+	-- for the panel wraps onto a second line of its own instead of into the
+	-- next row.
 	for i, entry in Readout.lexiconRows(entries) do
-		local row = label(lexList, entry.text, 12, heatColor(entry.heat))
+		local style = LEX_ROW_STYLE[entry.kind] or LEX_ROW_STYLE.word
+		local row = label(lexList, entry.text, style.size, style.color or heatColor(entry.heat :: number))
+		row.AutomaticSize = Enum.AutomaticSize.Y
 		row.LayoutOrder = i
 	end
 end

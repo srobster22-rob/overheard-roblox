@@ -92,30 +92,97 @@ function Readout.lineRows(entries: { any }): { Row }
 	return rows
 end
 
--- The Lexicon panel's rows: hottest first, each as the phrase, its heat as a
--- whole percent, and the word "understood" once it has crossed the threshold --
--- said in words as well as colour, because that crossing is the single fact
--- the panel exists to convey. R119 moved this out of init.client, where no
--- test could run it. Sorts a COPY: the caller's list is left as it came.
-function Readout.lexiconRows(entries: { any }): { { text: string, heat: number } }
-	local sorted = table.clone(entries)
-	table.sort(sorted, function(a, b)
-		if a.heat ~= b.heat then
-			return a.heat > b.heat
+-- THE LEXICON PANEL, the wall everyone reads mid-round. Each word is shown as
+-- the phrase, its heat as a whole percent, and the word "understood" once it
+-- has crossed the threshold -- said in words as well as colour, because that
+-- crossing is the single fact the panel exists to convey. R119 moved this out
+-- of init.client, where no test could run it. Works on a COPY: the caller's
+-- list is left as it came.
+--
+-- Until R143 the wall listed every phrase the Operator had noticed, one row per
+-- meaning: 100-200 rows, the same word twice, nothing saying where any of it
+-- led. Now:
+--   * one row per word, its strongest meaning;
+--   * a phrase with a shorter one of the same meaning inside it, at least as
+--     hot, is left to the shorter row: any sentence with "the tin" has "tin" in
+--     it. A two-word codeword noticed as five phrases is one or two rows;
+--   * EVERY understood word is shown, however many; the rest are the ones it
+--     is closest to learning, up to `WALL_ROWS` words in all. The first R143
+--     wall cut at 12 rows and hid understood words below the cut;
+--   * words are grouped under where they lead ("-> Exchange Desk", a header
+--     row), so no row carries the station's name and each fits the panel's
+--     width (tests/meaning.luau measures it against Hud).
+Readout.WALL_ROWS = 12
+
+-- Whether `long` holds `short` as whole words: "the tin" holds "tin".
+local function holds(long: string, short: string): boolean
+	return long ~= short and string.find(` {long} `, ` {short} `, 1, true) ~= nil
+end
+
+local function hotterFirst(a: any, b: any): boolean
+	if a.heat ~= b.heat then
+		return a.heat > b.heat
+	end
+	return a.phrase < b.phrase
+end
+
+function Readout.lexiconRows(entries: { any }): { { text: string, heat: number?, kind: string } }
+	local strongest: { [string]: any } = {}
+	for _, entry in entries do
+		local held = strongest[entry.phrase]
+		if held == nil or entry.heat > held.heat then
+			strongest[entry.phrase] = entry
 		end
-		return a.phrase < b.phrase
-	end)
+	end
+	local words = {}
+	for phrase, entry in strongest do
+		local covered = false
+		for shorter, other in strongest do
+			if other.concept == entry.concept and other.heat >= entry.heat and holds(phrase, shorter) then
+				covered = true
+				break
+			end
+		end
+		if not covered then
+			table.insert(words, entry)
+		end
+	end
+	table.sort(words, hotterFirst)
+	-- Hottest first, so every understood word comes before the first that is not.
+	local shown = {}
+	for _, entry in words do
+		if Heat.isUnderstood(entry.heat) or #shown < Readout.WALL_ROWS then
+			table.insert(shown, entry)
+		end
+	end
+	-- Grouped by where they lead, the group with the hottest word first.
+	local order: { string } = {}
+	local groups: { [string]: { any } } = {}
+	for _, entry in shown do
+		local key = entry.leadsTo or ""
+		if groups[key] == nil then
+			groups[key] = {}
+			table.insert(order, key)
+		end
+		table.insert(groups[key], entry)
+	end
 	local rows = {}
-	for _, entry in sorted do
-		table.insert(rows, {
-			text = string.format(
-				'"%s"  %d%%%s',
-				entry.phrase,
-				math.floor(entry.heat * 100 + 0.5),
-				if Heat.isUnderstood(entry.heat) then "  understood" else ""
-			),
-			heat = entry.heat,
-		})
+	for _, key in order do
+		if key ~= "" then
+			table.insert(rows, { text = `-> {key}`, kind = "header" })
+		end
+		for _, entry in groups[key] do
+			table.insert(rows, {
+				text = string.format(
+					'"%s"  %d%%%s',
+					entry.phrase,
+					math.floor(entry.heat * 100 + 0.5),
+					if Heat.isUnderstood(entry.heat) then "  understood" else ""
+				),
+				heat = entry.heat,
+				kind = "word",
+			})
+		end
 	end
 	return rows
 end

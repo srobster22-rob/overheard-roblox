@@ -22,6 +22,10 @@ export type Coinage = {
 	-- How many times we have seen it used near this concept.
 	sightings: number,
 	coinedBy: number?,
+	-- Where this word would bring the Operator, as the wall names it: the
+	-- station's label (Round.leadsTo). Set for the wall only (Round.withLeads);
+	-- never saved.
+	leadsTo: string?,
 }
 
 export type Utterance = {

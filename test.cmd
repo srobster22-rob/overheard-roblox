@@ -4,7 +4,7 @@ cd /d "%~dp0"
 set ROKIT=%USERPROFILE%\.rokit\bin
 set FAILED=0
 REM tests/wiring.luau asserts this list covers every suite file in tests/.
-for %%T in (lexicon heuristic operator objectives pursuit round config wiring connected ordering heat layout lifecycle hud readout soak hum log silence lexiconsave escape chatfeed censor codes) do (
+for %%T in (lexicon heuristic operator objectives pursuit round config wiring connected ordering heat layout lifecycle hud readout soak hum log silence lexiconsave escape chatfeed censor codes meaning) do (
     echo(
     echo === %%T ===
     "%ROKIT%\lune.exe" run tests/%%T || set FAILED=1

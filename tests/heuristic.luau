@@ -615,6 +615,10 @@ check(
 -- secrets, "blue wire" credited to the first, "blue wires" to the second.
 local crossA, crossB = learnPool[1], learnPool[2]
 local crossOp = Operator.new({ crossA, crossB })
+-- Said twice for the first secret: a credit toward one meaning takes the same
+-- heat off the phrase's other meanings (Operator.credit), so equal evidence
+-- for both would cancel the first before this could look at it.
+crossOp:hear({ speaker = { UserId = 1 } :: any, text = "the blue wire", at = 1 })
 crossOp:hear({ speaker = { UserId = 1 } :: any, text = "the blue wire", at = 1 })
 crossOp:credit(crossA.concept, 1)
 crossOp:hear({ speaker = { UserId = 1 } :: any, text = "the blue wires", at = 2 })
