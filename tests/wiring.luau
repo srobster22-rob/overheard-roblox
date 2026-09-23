@@ -908,7 +908,12 @@ print("every line the Operator has is a line it can say")
 local roundSource = fs.readFile("src/server/systems/Round.luau")
 local inLines = false
 local named, unsaid = 0, {}
-local everything = serverCode .. LuauCode.stripNonCode(fs.readFile("src/client/init.client.luau"))
+-- And `Round.readBack`, which is what says `understood` now, with a heard code
+-- in front. Only that function, not the whole module: anything else in Round
+-- naming a line would be counted as saying it.
+local readBackBody = string.match(LuauCode.stripNonCode(roundSource), "function Round%.readBack%(.-\nend") or ""
+check("(guard) Round.readBack was found", #readBackBody > 0)
+local everything = serverCode .. LuauCode.stripNonCode(fs.readFile("src/client/init.client.luau")) .. readBackBody
 for line in string.gmatch(roundSource, "[^" .. NL .. "]+") do
 	if string.find(line, "Round.LINES = {", 1, true) then
 		inLines = true
@@ -1950,6 +1955,39 @@ check(
 	"(control) ...and not a mention in a comment",
 	not uses(LuauCode.stripNonCode("-- .OnIncomingMessage" .. NL), "OnIncomingMessage")
 )
+
+print("")
+print("the codes are secrets: the server asks for them, spends them, and rings wrong ones through")
+-- The server script cannot run headlessly, so its wiring is read from live
+-- code here; tests/codes.luau proves the behaviour on the sim, which must be
+-- wired the same way.
+local function handler(code: string, name: string): string
+	return string.match(code, `\n{name} = function%(.-\nend`) or ""
+end
+local asksCodes = handler(serverCode, "operator%.liveCodes")
+check("the Operator asks the board for the live codes", string.find(asksCodes, "board:liveCodes()", 1, true) ~= nil)
+local codeHeard = handler(serverCode, "operator%.onCodeHeard")
+check("a heard code is rerolled on the board", string.find(codeHeard, "board:reroll(concept)", 1, true) ~= nil)
+check("...and the holder's panel is pushed", string.find(codeHeard, "pushObjectives(", 1, true) ~= nil)
+check(
+	"what it says when it understood is the read-back",
+	string.find(handler(serverCode, "operator%.onUnderstood"), "Round.readBack(heard)", 1, true) ~= nil
+)
+local submitHandler = string.match(serverCode, "submitRemote%.OnServerEvent:Connect%(function.-\nend%)") or ""
+check("(guard) the submit handler was found", #submitHandler > 0)
+check(
+	"a wrong code that rings through is said to everyone",
+	string.find(submitHandler, "result.ringsThrough", 1, true) ~= nil
+		and string.find(submitHandler, "FireAllClients(Round.LINES.wrongParty", 1, true) ~= nil
+)
+check(
+	"...and sends the Operator to that station's room",
+	string.find(submitHandler, "Layout.stationRoom(", 1, true) ~= nil
+		and string.find(submitHandler, "pursuit:sendTo(room)", 1, true) ~= nil
+)
+check("the sim asks the board for the live codes too", string.find(botCode, "board:liveCodes()", 1, true) ~= nil)
+check("...rerolls a heard code", string.find(botCode, "board:reroll(concept)", 1, true) ~= nil)
+check("...and rings a wrong code through", string.find(botCode, "result.ringsThrough", 1, true) ~= nil)
 
 print(`\n{checks - failures}/{checks} passed`)
 if failures > 0 then

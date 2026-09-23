@@ -36,8 +36,14 @@ export type Operator = typeof(setmetatable(
 		-- Coinages credited since the last round boundary; see `coolRound`.
 		creditedSinceBoundary: { [Coinage]: boolean },
 		backend: Types.ComprehensionBackend,
-		onUnderstood: (concept: string, payload: string, confidence: number) -> ()?,
+		-- Each concept's live code right now, asked for at the moment something
+		-- is said, so a code re-dealt or re-rolled is never heard stale.
+		liveCodes: (() -> { [string]: string })?,
+		-- `heard` is what moved it, when that is the server's own text (Types).
+		onUnderstood: (concept: string, payload: string, confidence: number, heard: string?) -> ()?,
 		onBurned: (coinage: Coinage) -> ()?,
+		-- The live code for `concept` was said aloud.
+		onCodeHeard: (concept: string) -> ()?,
 	},
 	Operator
 ))
@@ -49,8 +55,10 @@ function Operator.new(secrets: { Secret }): Operator
 		observations = {},
 		creditedSinceBoundary = {},
 		backend = Heuristic :: any,
+		liveCodes = nil,
 		onUnderstood = nil,
 		onBurned = nil,
+		onCodeHeard = nil,
 	}, Operator)
 end
 
@@ -60,7 +68,8 @@ function Operator.hear(self: Operator, utterance: Utterance)
 	-- best one meant "the jack is right by the fuse" gave away `jack_number` and
 	-- left `breaker` free, because both words are plain language and only one
 	-- could be reported. Either alone was understood; the combination hid one.
-	local conveyed = (self.backend :: any).conveyed(utterance, self.secrets, self.lexicon)
+	local codes = if self.liveCodes then self.liveCodes() else nil
+	local conveyed = (self.backend :: any).conveyed(utterance, self.secrets, self.lexicon, codes)
 
 	for _, understanding in conveyed do
 		if understanding.concept == nil or understanding.confidence < Config.ActThreshold then
@@ -74,7 +83,10 @@ function Operator.hear(self: Operator, utterance: Utterance)
 			end
 		end
 		if self.onUnderstood then
-			(self.onUnderstood :: any)(understanding.concept, payload, understanding.confidence)
+			(self.onUnderstood :: any)(understanding.concept, payload, understanding.confidence, understanding.heard)
+		end
+		if understanding.byCode and self.onCodeHeard then
+			(self.onCodeHeard :: any)(understanding.concept)
 		end
 	end
 

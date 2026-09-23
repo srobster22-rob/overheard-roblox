@@ -77,6 +77,11 @@ local escape = Escape.new()
 for _, station in Round.STATIONS do
 	board:add(station.id, station.concept, station.prompt)
 end
+-- The codes are secrets too: the Operator asks the board for the live ones each
+-- time it hears something.
+operator.liveCodes = function()
+	return board:liveCodes()
+end
 
 local built = World.build()
 
@@ -311,12 +316,20 @@ end
 
 -- Rate limiting: Station.tryPace (R116).
 
-operator.onUnderstood = function(concept: string, payload: string, confidence: number)
+operator.onUnderstood = function(concept: string, payload: string, confidence: number, heard: string?)
 	print(`[operator] understood '{concept}' ({string.format("%.2f", confidence)}) -> {payload}`)
-	heardRemote:FireAllClients(Round.LINES.understood, concept, confidence)
+	-- A code that moved it is read back (Round.readBack).
+	heardRemote:FireAllClients(Round.readBack(heard), concept, confidence)
 	-- Understanding is what moves it. An unknown payload is refused inside
 	-- Pursuit rather than sending it somewhere arbitrary.
 	pursuit:sendTo(payload)
+end
+
+-- A code said aloud is spent: its holder gets a new one on their panel.
+operator.onCodeHeard = function(concept: string)
+	if board:reroll(concept) then
+		pushObjectives(nil)
+	end
 end
 
 operator.onBurned = function(coinage)
@@ -450,7 +463,15 @@ submitRemote.OnServerEvent:Connect(function(player: Player, id: unknown, value: 
 		-- tick apart, and only ever with two players. The station-tagged note
 		-- still goes, because "already restored" is information; the accusation
 		-- does not.
-		if result.fault then
+		if result.ringsThrough then
+			-- Past the free miss, a wrong code rings through: said to everyone,
+			-- and the Operator walks to that station's room.
+			heardRemote:FireAllClients(Round.LINES.wrongParty, "", 1)
+			local room = Layout.stationRoom(id :: string)
+			if room then
+				pursuit:sendTo(room)
+			end
+		elseif result.fault then
 			heardRemote:FireClient(player, Round.LINES.busy, "", 0)
 		end
 		rejectedRemote:FireClient(player, id :: string, result.reason)

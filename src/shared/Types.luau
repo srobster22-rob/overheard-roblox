@@ -40,6 +40,14 @@ export type Understanding = {
 	novelTerms: { string },
 	-- Which backend produced this, for logging and A/B.
 	source: string,
+	-- What moved it, when that is the server's own text: a word from the pool
+	-- or a live code. Nil for a group's codeword, which is a player's text and
+	-- would need the chat filter before anyone else saw it.
+	heard: string?,
+	-- The live code itself was said. A code said aloud is spent: the line gets
+	-- a new one, so saying it and typing it before the Operator arrives wins
+	-- nothing.
+	byCode: boolean?,
 }
 
 export type ComprehensionBackend = {

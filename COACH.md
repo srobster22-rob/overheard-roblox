@@ -85,6 +85,7 @@ Scope: R136 (market setup), R137 (committed) and R138 (staged but not committed;
   - First slice: the first time a coinage is credited, the Operator repeats it once, e.g. "'Blue kettle.' Thank you, caller." (a new `Round.LINES` entry, filtered per C2). The round-over screen gains `Readout.heardTonight`: which plain words brought it and who said them, plus the 3 coinages it is learning. It is all pure code and testable headlessly.
   - Est. gain: +2.0 (hook 1→2), plus +1.3 if the differentiator row also rises. This is not in the backlog.
   → R139: ranked (gap 12, hook), with the differentiator; a candidate for the R142 BIG SWING panel.
+  → R142: partly taken. A heard CODE is read back ("Four seven. I have that party for you."); a plain word never is, by the owner's R93 answer; a group's own word waits on the swing's next slice, read from Censor's filtered phrase.
 - S2 **Give the Operator a voice and give every event a sound.** Rows: Audio (W3), Hook.
   - Why: C3, and GAME.md:140 says "The sound design is the game." The audio gap is tied for top, and it was parked on a false premise.
   - First slice: a pure `Voice.luau` (line key → TTS text, voice and speed, plus a telephone band-pass) spoken through `AudioTextToSpeech` at the Operator's body. Add a `Cues` table with a built-in sound plus an effect for burn, arrival, capture, ring, win, loss and each silence band, and a test that every `Round.LINES` key and every event has a cue.

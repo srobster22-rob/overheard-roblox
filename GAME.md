@@ -69,6 +69,15 @@ silent and win.
 - **The Route.** One player has the floor plan. Nobody else can see the exit.
 - **The Four Doors.** Three are safe. The person who knows can't reach them.
 
+> **As built (R142).** A line's code is a secret too. The Operator hears it in
+> the forms people type two digits in without shared context (digits, digits
+> apart or glued to a word, number words, simple sums, turned round; the list is
+> pinned in tests/codes.luau) and it is spent: the holder gets a new one. The deal is shuffled, so
+> who says a code does not say which station it is for, and a player's second
+> wrong code in a round rings through to that station's room. What still works
+> is context the group shares and the Operator was never present for ("Bo's age
+> plus 34"), plus a word of the group's own for the station, which it learns.
+
 ## Round shape
 
 Four players, roughly ten minutes, one exchange building.

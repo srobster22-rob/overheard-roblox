@@ -56,23 +56,33 @@ function Sim.new(seed: number): any
 		present = { 1, 2, 3, 4 },
 		standing = {},
 		roomOf = table.clone(Sim.START),
-		stats = { won = 0, lost = 0, captures = 0, understood = 0, calls = 0 },
+		stats = { won = 0, lost = 0, captures = 0, understood = 0, calls = 0, codesHeard = 0, rangThrough = 0 },
 		-- A driver's own reaction to being understood (the bots notice red).
 		onUnderstood = nil :: ((concept: string, confidence: number) -> ())?,
 	}, Sim)
 	for _, station in Round.STATIONS do
 		self.board:add(station.id, station.concept, station.prompt)
 	end
-	self.operator.onUnderstood = function(concept: string, payload: string, confidence: number)
+	self.operator.liveCodes = function()
+		return self.board:liveCodes()
+	end
+	self.operator.onUnderstood = function(concept: string, payload: string, confidence: number, heard: string?)
 		self.stats.understood += 1
 		local _, onItsWay = self.pursuit:sendTo(payload)
 		self:trace(
 			`   >> THE OPERATOR UNDERSTOOD '{concept}' ({math.floor(confidence * 100)}%) and {if onItsWay
 				then "is walking to"
-				else "queues"} the {payload} room`
+				else "queues"} the {payload} room. "{Round.readBack(heard)}"`
 		)
 		if self.onUnderstood then
 			self.onUnderstood(concept, confidence)
+		end
+	end
+	self.operator.onCodeHeard = function(concept: string)
+		local line = self.board:reroll(concept)
+		if line then
+			self.stats.codesHeard += 1
+			self:trace(`   >> the {line.id} code was heard, so it is spent: its holder has a new one.`)
 		end
 	end
 	self.operator.onBurned = function(coinage)
@@ -191,6 +201,15 @@ function Sim.submit(self: any, id: number, stationId: string, value: string): an
 	end
 	local objective = self.board:get(stationId)
 	local result = self.board:submit(stationId, id, value, self.now)
+	if result.ringsThrough then
+		self.stats.rangThrough += 1
+		local _, onItsWay = self.pursuit:sendTo(Layout.stationRoom(stationId))
+		self:trace(
+			`   >> a wrong code rang through. "{Round.LINES.wrongParty}" It {if onItsWay
+				then "is walking to"
+				else "queues"} the {Layout.stationRoom(stationId)} room.`
+		)
+	end
 	if result.ok then
 		self.operator:credit(objective.concept, self.now)
 		self:trace(`   {Sim.NAMES[id]} restores the {stationId} line.`)

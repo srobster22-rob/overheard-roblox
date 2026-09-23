@@ -86,13 +86,16 @@ end
 -- arrived as tokens that each matched nothing. Consulted for SINGLE-word terms
 -- only; multi-word phrases still need their words in order on word boundaries
 -- (R15), and gluing must never be able to satisfy that.
+--
+-- Returns the candidate that matched, so the Operator can say which word moved
+-- it, or nil.
 local function matchesAny(
 	stems: { string },
 	joined: string,
 	candidates: { string },
 	alreadyStemmed: boolean?,
 	glued: { string }?
-): boolean
+): string?
 	for _, candidate in candidates do
 		local candidateStems = if alreadyStemmed
 			then Lexicon.tokenize(candidate)
@@ -105,10 +108,10 @@ local function matchesAny(
 			-- utterance (the caller passes the utterance side already widened).
 			for _, reading in Lexicon.readings(candidateStems[1]) do
 				if Lexicon.contains(stems, reading) then
-					return true
+					return candidate
 				end
 				if glued and Lexicon.contains(glued, reading) then
-					return true
+					return candidate
 				end
 			end
 		else
@@ -116,18 +119,18 @@ local function matchesAny(
 			-- boundaries. Single-word terms go through `Lexicon.contains`,
 			-- which compares whole stems and was never affected.
 			if containsWords(joined, table.concat(candidateStems, " ")) then
-				return true
+				return candidate
 			end
 			-- R86: the same rule -- whole words, adjacent, in order -- but each
 			-- word may meet its counterpart on any shared reading, so a burned
 			-- "blue wire" still hears "the blue wires". The exact check above
 			-- stays first and unchanged; this only adds matches.
 			if sequenceMeets(string.split(joined, " "), candidateStems) then
-				return true
+				return candidate
 			end
 		end
 	end
-	return false
+	return nil
 end
 
 -- EVERY concept the utterance conveys, strongest first.
@@ -138,7 +141,15 @@ end
 -- `jack_number` and nothing else. Either word alone is understood, so it was
 -- the COMBINATION that hid one -- a group that noticed could bury every
 -- dangerous word inside a sentence giving away something already lost.
-function Heuristic.conveyed(utterance: Utterance, secrets: { Secret }, lexicon: { Coinage }): { Understanding }
+--
+-- `codes` is each concept's live code, if the round has dealt one: saying it in
+-- any form `Lexicon.numbersIn` reads is plain language for that concept.
+function Heuristic.conveyed(
+	utterance: Utterance,
+	secrets: { Secret },
+	lexicon: { Coinage },
+	codes: { [string]: string }?
+): { Understanding }
 	local words = Lexicon.tokenize(utterance.text)
 	local stems = Lexicon.stemAll(words)
 	local joined = table.concat(stems, " ")
@@ -168,15 +179,34 @@ function Heuristic.conveyed(utterance: Utterance, secrets: { Secret }, lexicon: 
 	end
 	local wideStems = widen(stems)
 	local wideGlued = widen(glued)
+	-- A code glued to a word ("door48") is read a second way, split in two,
+	-- so the word in it is heard too. Single words only: phrases and the
+	-- gluing above stay on the line as typed, where "ex17" is still "exit".
+	for _, reading in widen(Lexicon.stemAll(Lexicon.tokenize(utterance.text, true))) do
+		table.insert(wideStems, reading)
+	end
 
 	local found: { Understanding } = {}
+	local numbers = if codes then Lexicon.numbersIn(utterance.text) else {}
 
 	for _, secret in secrets do
 		local confidence = 0
+		local heard: string? = nil
+		local byCode = false
 
 		-- Plain language is always understood.
-		if matchesAny(wideStems, joined, secret.plain, false, wideGlued) then
+		local plainWord = matchesAny(wideStems, joined, secret.plain, false, wideGlued)
+		if plainWord then
 			confidence = 1
+			heard = plainWord
+		end
+
+		-- And so is the code, however it is written.
+		local code = if codes then codes[secret.concept] else nil
+		if code and numbers[code] then
+			confidence = 1
+			heard = code
+			byCode = true
 		end
 
 		-- A coinage is understood in proportion to how well it has been learned.
@@ -197,6 +227,8 @@ function Heuristic.conveyed(utterance: Utterance, secrets: { Secret }, lexicon: 
 				confidence = confidence,
 				novelTerms = {},
 				source = Heuristic.name,
+				heard = heard,
+				byCode = byCode,
 			})
 		end
 	end

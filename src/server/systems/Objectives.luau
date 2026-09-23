@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Types = require(ReplicatedStorage.Shared.Types)
+local Round = require(script.Parent.Round)
 
 type ConceptId = Types.ConceptId
 
@@ -42,6 +43,9 @@ export type SubmitResult = {
 	-- Why it failed, for the client to display. Never leaks the answer.
 	reason: string?,
 	solved: boolean,
+	-- A wrong code past the free one (`Config.FreeWrongDials`): the Operator
+	-- walks to this station's room.
+	ringsThrough: boolean?,
 	-- Did the ACTOR do something wrong? Not the same as `not ok`, and that is
 	-- the whole point of the field. Two players at one keypad both enter the
 	-- number they were told; the first solves the line and the second arrives
@@ -60,28 +64,67 @@ export type Board = typeof(setmetatable(
 	{} :: {
 		list: { Objective },
 		onSolved: ((objective: Objective, actor: number) -> ())?,
+		-- Wrong codes each player has entered this round, at any station.
+		wrongDials: { [number]: number },
+		-- Codes the Operator heard this round. Never dealt again before the
+		-- round ends, so its read-back of one can never name a live line.
+		spent: { [string]: boolean },
 	},
 	Objectives
 ))
+
+-- The keypad's note for a code that was said aloud and has been replaced.
+Objectives.OVERHEARD = "that code was overheard - its holder has a new one"
 
 function Objectives.new(): Board
 	return setmetatable({
 		list = {},
 		onSolved = nil,
+		wrongDials = {},
+		spent = {},
 	}, Objectives)
 end
 
-local function randomJack(): string
-	-- Two digits, spoken aloud as two words. "Forty seven" is easy to
-	-- circumlocute; a long code would just be tedious.
-	return string.format("%02d", math.random(10, 99))
+-- Codes are two digits: said aloud as two words, and a long code would just
+-- be tedious.
+local FIRST_CODE, LAST_CODE = 10, 99
+
+-- A code no line holds right now, none the Operator heard this round, and never
+-- the one being replaced. Two lines on one code would let a single slip give
+-- both away, and a code said aloud must not come back.
+--
+-- Picked from the codes still open, never by drawing until one is free: a
+-- holder who says their own code over and over spends one code each time, and
+-- a draw-until-free loop hangs the server once all ninety are spent. Past that
+-- point any code no line holds will do.
+local function freshAnswer(self: Board, replacing: string?): string
+	local live: { [string]: boolean } = {}
+	for _, o in self.list do
+		live[o.answer] = true
+	end
+	if replacing then
+		live[replacing] = true
+	end
+	local open: { string } = {}
+	local unspent: { string } = {}
+	for n = FIRST_CODE, LAST_CODE do
+		local code = tostring(n)
+		if not live[code] then
+			table.insert(open, code)
+			if not self.spent[code] then
+				table.insert(unspent, code)
+			end
+		end
+	end
+	local pool = if #unspent > 0 then unspent else open
+	return pool[math.random(#pool)]
 end
 
 function Objectives.add(self: Board, id: string, concept: ConceptId, prompt: string): Objective
 	local objective: Objective = {
 		id = id,
 		concept = concept,
-		answer = randomJack(),
+		answer = freshAnswer(self),
 		holder = nil,
 		solved = false,
 		prompt = prompt,
@@ -104,14 +147,22 @@ end
 
 -- Deal each unsolved objective to a holder. Spread across players so no single
 -- player holds everything, which would collapse the transfer problem.
+--
+-- IN A SHUFFLED ORDER, NOT A ROTATION. Dealing consecutive seats from a random
+-- start gave four players only four deals, and the station order never
+-- changed, so a group could read which station a code was for from who said
+-- it, and pass codes with nothing the Operator could hear. Shuffled, the holder
+-- has to say which station, and that is what the Operator listens for.
 function Objectives.deal(self: Board, userIds: { number })
 	if #userIds == 0 then
 		return
 	end
-	local i = math.random(#userIds)
+	local order = table.clone(userIds)
+	Round.shuffle(order)
+	local i = 1
 	for _, o in self.list do
 		if not o.solved then
-			local to = userIds[((i - 1) % #userIds) + 1]
+			local to = order[((i - 1) % #order) + 1]
 
 			-- PREFER SOMEBODY WHO HAS ALREADY SEEN IT. Showing a line again to a
 			-- player who has already read it costs nothing, and it stops the seen
@@ -181,6 +232,33 @@ function Objectives.redealOrphans(self: Board, userIds: { number }): number
 	return moved
 end
 
+-- A code said aloud is spent: the Operator heard it. The holder keeps the line
+-- and gets a new code. Misses and jams stay, because they belong to the actor
+-- who earned them, not to the code. Returns the line, or nil if `concept` has
+-- no unsolved line.
+function Objectives.reroll(self: Board, concept: ConceptId): Objective?
+	for _, o in self.list do
+		if o.concept == concept and not o.solved then
+			self.spent[o.answer] = true
+			o.answer = freshAnswer(self, o.answer)
+			return o
+		end
+	end
+	return nil
+end
+
+-- Each unsolved line's code, by concept: what the Operator listens for. A
+-- restored line's code opens nothing, so it is not a secret any more.
+function Objectives.liveCodes(self: Board): { [ConceptId]: string }
+	local codes: { [ConceptId]: string } = {}
+	for _, o in self.list do
+		if not o.solved then
+			codes[o.concept] = o.answer
+		end
+	end
+	return codes
+end
+
 -- What a given player is allowed to know. The answer is included ONLY for the
 -- holder; everyone else gets the same shape with the answer withheld.
 function Objectives.viewFor(self: Board, userId: number): { any }
@@ -247,18 +325,34 @@ function Objectives.submit(self: Board, id: string, actorUserId: number, value: 
 	end
 
 	local cleaned = string.gsub(value, "%D", "")
+	-- A code the Operator heard this round is not a guess: it was said aloud and
+	-- its holder already has a new one. A blind group read "that line is dead"
+	-- for it and for a typo alike and could not tell which had happened, so it
+	-- says so and charges nothing: no miss, no wrong dial, no voice.
+	if cleaned ~= objective.answer and self.spent[cleaned] then
+		return { ok = false, reason = Objectives.OVERHEARD, solved = false, fault = false }
+	end
 	if cleaned ~= objective.answer then
 		local misses = (objective.misses[actorUserId] or 0) + 1
 		objective.misses[actorUserId] = misses
+		local dials = (self.wrongDials[actorUserId] or 0) + 1
+		self.wrongDials[actorUserId] = dials
+		local ringsThrough = dials > Config.FreeWrongDials
 		-- Misses are never reset by serving a jam, so the n-th jam is n times
 		-- as long as the first. That is what makes guessing hopeless rather
 		-- than merely slow.
 		if misses % Config.GuessesBeforeLockout == 0 then
 			local seconds = Config.LockoutSeconds * (misses // Config.GuessesBeforeLockout)
 			objective.jammedUntil[actorUserId] = now + seconds
-			return { ok = false, reason = `that line is jammed - wait {seconds}s`, solved = false, fault = true }
+			return {
+				ok = false,
+				reason = `that line is jammed - wait {seconds}s`,
+				solved = false,
+				fault = true,
+				ringsThrough = ringsThrough,
+			}
 		end
-		return { ok = false, reason = "that line is dead", solved = false, fault = true }
+		return { ok = false, reason = "that line is dead", solved = false, fault = true, ringsThrough = ringsThrough }
 	end
 
 	-- Right answer: this player was told the number, so forgive the fumbling.
@@ -284,10 +378,12 @@ end
 -- holders. New answers matter — reusing them would let a group that finished a
 -- round simply retype last round's numbers.
 function Objectives.reset(self: Board)
+	self.wrongDials = {}
+	self.spent = {}
 	for _, objective in self.list do
 		objective.solved = false
 		objective.holder = nil
-		objective.answer = randomJack()
+		objective.answer = freshAnswer(self, objective.answer)
 		-- The jam ledger is per-ROUND. Leaving it meant a player who jammed a
 		-- line in one round was refused the CORRECT answer in the next -- and
 		-- since the answers are re-rolled here, the jam punished them for

@@ -150,7 +150,13 @@ end
 --
 -- Normalised HERE, in the one function every reader goes through, so plain
 -- matching, coinages and novel terms all see the same word.
-function Lexicon.tokenize(text: string): { string }
+--
+-- `splitCodes` gives a SECOND reading, in which a code glued to a word is two
+-- tokens ("door48", "48door", "x47"): as one token the word in it matched
+-- nothing, so a station could be named unheard by leaving out the space. It
+-- is not the only reading, because "ex17" is "exit" respelled, not "ex" and
+-- 17: split alone, it cost the respelling rule above 18 of 56 plain words.
+function Lexicon.tokenize(text: string, splitCodes: boolean?): { string }
 	-- R84. `@` and `$` stand in for `a` and `s` ("j@ck", "bre$k"), but the
 	-- token class below treats them as separators, so "j@ck" arrived as "j" and
 	-- "ck". Rewritten only where they touch a letter, so "@bob" or "$5" are not
@@ -164,7 +170,27 @@ function Lexicon.tokenize(text: string): { string }
 	local raw: { string } = {}
 	for piece in string.gmatch(lowered, "[%a%d']+") do
 		local word = string.gsub(piece, "'", "")
-		if #word > 0 then
+		-- Only a run of two or more digits at either END is split off: digits
+		-- inside a word are a respelling ("d00r"), and a single trailing digit
+		-- is left to the leet table.
+		local front, codeAfter, codeBefore, back
+		if splitCodes then
+			front, codeAfter = string.match(word, "^(%a[%a%d]*%a)(%d%d+)$")
+			if front == nil then
+				front, codeAfter = string.match(word, "^(%a)(%d%d+)$")
+			end
+			codeBefore, back = string.match(word, "^(%d%d+)(%a[%a%d]*%a)$")
+			if codeBefore == nil then
+				codeBefore, back = string.match(word, "^(%d%d+)(%a)$")
+			end
+		end
+		if front and codeAfter then
+			table.insert(raw, front)
+			table.insert(raw, codeAfter)
+		elseif codeBefore and back then
+			table.insert(raw, codeBefore)
+			table.insert(raw, back)
+		elseif #word > 0 then
 			table.insert(raw, word)
 		end
 	end
@@ -399,6 +425,226 @@ function Lexicon.contains(haystack: { string }, needle: string): boolean
 		end
 	end
 	return false
+end
+
+-- THE CODE HAS TO BE SAID. A live code is a secret like a station's word, so
+-- it is heard in the forms a person types two digits in without needing any
+-- context: digits ("47", "047"), digits apart ("4 7", "4-7", "4 then 7"),
+-- digits glued to a word or a number word ("door47", "x47", "four7"), number
+-- words ("four seven", "forty seven", "fortyseven", "fourseven", "forty 7",
+-- "40 7"), a teen ("fifteen"), a simple sum ("40 plus 7", "40 and 7", "50-3",
+-- "6x8", "7 more than 40", "60 take away 13") and a code turned round ("74
+-- backwards", "the reverse of 7 4"). What it cannot read is a number only the
+-- group knows: "Bo's age plus 34" is safe until the Operator learns who Bo is,
+-- and it never will.
+
+-- How each digit is said: DIGIT_WORDS[d + 1] is digit d. The Operator reads a
+-- code back with these (Round.readBack), so hearing and speaking share them.
+Lexicon.DIGIT_WORDS = { "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine" }
+local UNIT_WORDS: { [string]: number } = {}
+for index, word in Lexicon.DIGIT_WORDS do
+	UNIT_WORDS[word] = index - 1
+end
+local TEEN_WORDS: { [string]: number } = {
+	ten = 10,
+	eleven = 11,
+	twelve = 12,
+	thirteen = 13,
+	fourteen = 14,
+	fifteen = 15,
+	sixteen = 16,
+	seventeen = 17,
+	eighteen = 18,
+	nineteen = 19,
+}
+local TENS_WORDS: { [string]: number } = {
+	twenty = 20,
+	thirty = 30,
+	forty = 40,
+	fourty = 40,
+	fifty = 50,
+	sixty = 60,
+	seventy = 70,
+	eighty = 80,
+	ninety = 90,
+}
+local function add(a: number, b: number): number
+	return a + b
+end
+local function subtract(a: number, b: number): number
+	return a - b
+end
+local OPERATIONS: { [string]: (number, number) -> number } = {
+	plus = add,
+	add = add,
+	["and"] = add,
+	minus = subtract,
+	times = function(a: number, b: number): number
+		return a * b
+	end,
+}
+-- "7 more than 40", "3 less than 50": the number after "than" is the base.
+local COMPARED: { [string]: (number, number) -> number } = {
+	more = function(a: number, base: number): number
+		return base + a
+	end,
+	less = function(a: number, base: number): number
+		return base - a
+	end,
+	fewer = function(a: number, base: number): number
+		return base - a
+	end,
+}
+local TURNED_ROUND: { [string]: boolean } = {
+	backwards = true,
+	backward = true,
+	reversed = true,
+	reverse = true,
+	flipped = true,
+}
+
+-- At most this many words may stand between two digits that are still read as
+-- one number: "4 then 7" is 47, and so is "4 and then a 7". Wider than that
+-- the digits are too far apart to be one thought in a chat line.
+Lexicon.DIGIT_GAP = 3
+
+-- A single digit, written or spelled: "4" or "four".
+local function oneDigit(word: string): string?
+	if string.match(word, "^%d$") then
+		return word
+	end
+	local value = UNIT_WORDS[word]
+	return if value ~= nil then tostring(value) else nil
+end
+
+-- A whole number one token can stand for: "47", "fifteen", "forty",
+-- "fortyseven", "fourseven".
+local function wholeNumber(word: string): number?
+	if string.match(word, "^%d+$") then
+		return tonumber(word)
+	end
+	local value = UNIT_WORDS[word] or TEEN_WORDS[word] or TENS_WORDS[word]
+	if value ~= nil then
+		return value
+	end
+	for tensWord, tens in TENS_WORDS do
+		local rest = string.match(word, "^" .. tensWord .. "(%a+)$")
+		local unit = rest and UNIT_WORDS[rest]
+		if unit and unit > 0 then
+			return tens + unit
+		end
+	end
+	for unitWord, first in UNIT_WORDS do
+		local rest = string.match(word, "^" .. unitWord .. "(%a+)$")
+		local second = rest and UNIT_WORDS[rest]
+		if first > 0 and second ~= nil then
+			return first * 10 + second
+		end
+	end
+	return nil
+end
+
+-- Every number one reading of a line holds, added to `found`.
+local function readNumbers(words: { string }, found: { [string]: boolean })
+	for i, word in words do
+		if string.match(word, "^%d+$") then
+			found[word] = true
+			-- "047" is 47: a leading zero is padding, not another number.
+			found[tostring(tonumber(word))] = true
+		else
+			local value = wholeNumber(word)
+			if value ~= nil then
+				found[tostring(value)] = true
+			end
+		end
+
+		-- Tens and then a digit: "forty seven", "forty 7", "40 7".
+		local tens = TENS_WORDS[word]
+		if tens == nil and string.match(word, "^[2-9]0$") then
+			tens = tonumber(word)
+		end
+		local unit = if words[i + 1] then oneDigit(words[i + 1]) else nil
+		if tens and unit and unit ~= "0" then
+			found[tostring(tens + (tonumber(unit) :: number))] = true
+		end
+
+		-- Two digits in order, a few words apart at most.
+		local first = oneDigit(word)
+		if first then
+			for gap = 1, Lexicon.DIGIT_GAP + 1 do
+				local later = words[i + gap]
+				local second = if later then oneDigit(later) else nil
+				if second then
+					found[first .. second] = true
+					break
+				end
+			end
+		end
+
+		-- A simple sum between two numbers: "40 plus 7", "40 and 7".
+		local operation = OPERATIONS[word]
+		if operation and i > 1 and i < #words then
+			local a, b = wholeNumber(words[i - 1]), wholeNumber(words[i + 1])
+			if a ~= nil and b ~= nil then
+				found[tostring(operation(a, b))] = true
+			end
+		end
+		-- "60 take away 13".
+		if word == "away" and words[i - 1] == "take" and i > 2 and i < #words then
+			local a, b = wholeNumber(words[i - 2]), wholeNumber(words[i + 1])
+			if a ~= nil and b ~= nil then
+				found[tostring(a - b)] = true
+			end
+		end
+		-- "7 more than 40".
+		local compared = COMPARED[word]
+		if compared and i > 1 and words[i + 1] == "than" and words[i + 2] then
+			local a, base = wholeNumber(words[i - 1]), wholeNumber(words[i + 2])
+			if a ~= nil and base ~= nil then
+				found[tostring(compared(a, base))] = true
+			end
+		end
+	end
+end
+
+-- Every number `text` can be read as, as digit strings. Symbols the word
+-- tokenizer drops are spelled out first, so "40+7" and "50-3" keep their
+-- operators.
+function Lexicon.numbersIn(text: string): { [string]: boolean }
+	local spelled = string.lower(text)
+	spelled = string.gsub(spelled, "%+", " plus ")
+	spelled = string.gsub(spelled, "%*", " times ")
+	spelled = string.gsub(spelled, "(%d)%s*x%s*(%d)", "%1 times %2")
+	spelled = string.gsub(spelled, "(%d)%s*%-%s*(%d)", "%1 minus %2")
+
+	-- Read twice: as typed, so a respelled number word ("f0rty") still reads,
+	-- and with every letter pulled apart from every digit, so a code glued to
+	-- a word or to a number word ("door47", "x47", "four7") reads too.
+	local apart = string.gsub(string.gsub(spelled, "(%a)(%d)", "%1 %2"), "(%d)(%a)", "%1 %2")
+	local found: { [string]: boolean } = {}
+	local turned = false
+	for _, reading in { spelled, apart } do
+		local words = Lexicon.tokenize(reading)
+		readNumbers(words, found)
+		for _, word in words do
+			turned = turned or TURNED_ROUND[word] == true
+		end
+	end
+
+	-- Turned round anywhere in the line: every two-digit number in it is read
+	-- the other way too ("74 backwards", "the reverse of 7 4").
+	if turned then
+		local reversed: { string } = {}
+		for number in found do
+			if string.match(number, "^%d%d$") then
+				table.insert(reversed, string.reverse(number))
+			end
+		end
+		for _, number in reversed do
+			found[number] = true
+		end
+	end
+	return found
 end
 
 return Lexicon

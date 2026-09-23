@@ -129,6 +129,12 @@ local Config = {
 	-- answers costs about 40 minutes, which is not a strategy any more.
 	GuessesBeforeLockout = 3,
 	LockoutSeconds = 20,
+	-- A wrong code a player enters is free this many times in a round; every
+	-- one after that rings through, and the Operator walks to that station's
+	-- room. With the deal shuffled, a code alone does not say which station it
+	-- is for, and trying it at each station in turn must be a gamble rather
+	-- than a protocol. One, so a single typo costs nothing.
+	FreeWrongDials = 1,
 
 	-- How close you must be to a station to submit at it, checked at SUBMIT
 	-- time. It must be WIDER than `PromptReach` below, so a player standing

@@ -180,6 +180,27 @@ check("an answer spelled out digit by digit is left alone", toks("type 4 3 7") =
 check("a lone @ or $ is not turned into a letter", toks("look @ it for $ 5") == "look|it|for|5")
 
 print("")
+print("a word glued to a code is two words, in the second reading")
+
+-- A station's name glued to its code ("door48", "board26") reached the
+-- Operator as one token that matched nothing, so a group could name every
+-- station unheard. The second reading splits a run of two or more digits off
+-- either end; the first, as typed, keeps every respelling it had.
+local function split(text: string): string
+	return table.concat(Lexicon.tokenize(text, true), "|")
+end
+check("a word with the code after it splits", split("door48") == "door|48")
+check("...and with the code in front", split("48door") == "48|door")
+check("...and a single letter too", split("x47") == "x|47")
+check("...and a respelled word keeps its respelling", split("d00r48") == "door|48")
+-- What must NOT change: the reading as typed.
+check("as typed, a respelling whose last letters are digits is still the word", toks("ex17") == "exit")
+check("...and so is one whose first letters are", toks("57airwell") == "stairwell")
+check("digits inside a word are still a respelling", split("b0ard") == "board")
+check("(control) a bare code stays one code", split("48") == "48")
+check("(control) a word and a code with a space between are two words", toks("door 48") == "door|48")
+
+print("")
 print("a word ending in ss is not a plural")
 
 -- R85: stripping the last s off "fuss" made it the same stem as "fuses", and

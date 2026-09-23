@@ -12,9 +12,18 @@
 --
 -- Personas are how the bots TALK, because talking is the game:
 --   firsttimer  says the plain word in round 1, then coins a codeword and keeps
---               using it until the Operator shows up for it
---   returning   starts with a codeword, swaps it the moment the panel shows red
+--               using it until the Operator shows up for it; says codes bare
+--               until it hears one read back
+--   returning   starts with a codeword, swaps it the moment the panel shows red,
+--               and hides every code from the start
 --   quiet       one mention per solve and one player who never speaks
+--
+-- A code is always entered as it was TOLD, never read off the board: a code
+-- the Operator heard has been replaced, and the actor only knows what was said.
+-- Hidden codes use the group's shared context, a number nobody else knows
+-- (`USUAL`): "blue kettle is 60 take away the usual". The group changes how it
+-- says that whenever it drops a codeword, because a phrase said before every
+-- restore is learned for every line at once.
 
 local process = require("@lune/process")
 
@@ -46,6 +55,14 @@ for index, station in Round.STATIONS do
 end
 local CODEWORD_STRIDE = #Round.STATIONS
 local PLAIN = { jack_number = "jack", breaker = "breaker", exit = "exit" }
+local USUAL = 13
+local HIDES = {
+	"take away the usual",
+	"less our lucky one",
+	"minus the magic bit",
+	"short of grandma's",
+	"without the old count",
+}
 
 -- R138: how long each group takes to react once the outside call rings, and
 -- how long the run to the lobby takes: 93 studs from the middle of the board
@@ -57,6 +74,8 @@ local RUN_TRAVEL_SECONDS = 7
 
 local sim = Sim.new(seed)
 local swaps, codeIndex, redSeen = 0, {} :: { [string]: number }, {} :: { [string]: boolean }
+local hiding = persona ~= "firsttimer"
+local hideIndex = 1
 local function codewordFor(concept: string): string
 	local i = codeIndex[concept] or FIRST_CODEWORD[concept] or 1
 	codeIndex[concept] = i
@@ -124,6 +143,7 @@ while played < wantRounds do
 				redSeen[concept] = false
 				codeIndex[concept] = (codeIndex[concept] or FIRST_CODEWORD[concept] or 1) + CODEWORD_STRIDE
 				swaps += 1
+				hideIndex = hideIndex % #HIDES + 1
 				sim:trace(
 					`   (the group drops its old word for the {objective.id} line and coins "{codewordFor(concept)}")`
 				)
@@ -139,11 +159,29 @@ while played < wantRounds do
 			sim:move(actor, room)
 			sim:tick(8)
 		end
-		sim:say(holder, `{NAMES[actor]} its the {word} {objective.answer}`)
+		local told = objective.answer
+		local function codeText(code: string): string
+			return if hiding then `is {(tonumber(code) :: number) + USUAL} {HIDES[hideIndex]}` else code
+		end
+		-- Say it; if the Operator reads the code back, it was heard and the
+		-- holder's panel now shows a new one, so the group starts hiding codes
+		-- and the holder tells the new one.
+		local function tell(text: string)
+			sim:say(holder, text)
+			if objective.answer ~= told then
+				if not hiding then
+					hiding = true
+					sim:trace("   (the group heard its code read back, and starts hiding the numbers)")
+				end
+				told = objective.answer
+				sim:say(holder, `{NAMES[actor]} new one, the {word} {codeText(told)}`)
+			end
+		end
+		tell(`{NAMES[actor]} its the {word} {codeText(told)}`)
 		if persona ~= "quiet" then
 			sim:tick(4)
 			sim:say(actor, "which one again")
-			sim:say(holder, `the {word} {objective.answer} go`)
+			tell(`the {word} {codeText(told)} go`)
 		end
 		sim:tick(2)
 		if not sim.round:isPlaying() then
@@ -153,7 +191,7 @@ while played < wantRounds do
 			sim:trace(`   {NAMES[actor]} was taken before reaching the station`)
 			continue
 		end
-		local result = sim:submit(actor, objective.id, objective.answer)
+		local result = sim:submit(actor, objective.id, told)
 		if result.ok then
 			panel()
 		else
@@ -194,7 +232,7 @@ end
 local stats = sim.stats
 print("")
 print(
-	`SUMMARY persona={persona} rounds={played} won={stats.won} lost={stats.lost} captures={stats.captures} understood={stats.understood} supervisorCalls={stats.calls} codewordSwaps={swaps} redAtEnd={red} minutes={string.format(
+	`SUMMARY persona={persona} rounds={played} won={stats.won} lost={stats.lost} captures={stats.captures} understood={stats.understood} supervisorCalls={stats.calls} codewordSwaps={swaps} redAtEnd={red} codesHeard={stats.codesHeard} rangThrough={stats.rangThrough} minutes={string.format(
 		"%.1f",
 		sim.now / 60
 	)}`

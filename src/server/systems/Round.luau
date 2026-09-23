@@ -7,6 +7,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Lexicon = require(ReplicatedStorage.Shared.Lexicon)
 local Types = require(ReplicatedStorage.Shared.Types)
 
 type Secret = Types.Secret
@@ -253,6 +254,29 @@ Round.LINES = {
 	-- a clock: when the moment is over it comes for the lobby. Kept clear of
 	-- "the line", which is what being caught is called.
 	ringing = "Ringing your party now. One moment, please.",
+	-- A wrong code that rang through: said to everyone, because the Operator is
+	-- now walking to that station's room.
+	wrongParty = "The party you have dialled is not in service.",
 }
+
+-- What the Operator says when it understood something. When a CODE moved it,
+-- it reads the code back first, digit by digit the way an operator reads a
+-- number ("Four seven. I have that party for you."), so a group learns that
+-- the number itself was heard. Only a code: it is spent the moment it is heard
+-- and not dealt again that round while any other code is left, so a player
+-- echoing the read-back gives nothing away. A plain word is never read back,
+-- because the owner's answer to R93 is that no line of the Operator's may hand
+-- a player a live word to echo.
+function Round.readBack(heard: string?): string
+	if heard == nil or not string.match(heard, "^%d+$") then
+		return Round.LINES.understood
+	end
+	local digits: { string } = {}
+	for digit in string.gmatch(heard, "%d") do
+		table.insert(digits, Lexicon.DIGIT_WORDS[(tonumber(digit) :: number) + 1])
+	end
+	local spoken = table.concat(digits, " ")
+	return `{string.upper(string.sub(spoken, 1, 1))}{string.sub(spoken, 2)}. {Round.LINES.understood}`
+end
 
 return Round

@@ -388,6 +388,11 @@ branch("the right answer", false, function()
 	local b = freshBoard()
 	return b:submit("board", ACTOR, "47", T0)
 end)
+branch("a code that was overheard and replaced", false, function()
+	local b = freshBoard()
+	b:reroll("jack_number")
+	return b:submit("board", ACTOR, "47", T0)
+end)
 
 local sawFault, sawBlameless = false, false
 for _, case in FAULT_BRANCHES do
@@ -403,7 +408,7 @@ end
 -- a sweep that never reaches a branch proves nothing about it.
 check("the sweep saw a refusal that WAS the actor's fault (guard)", sawFault)
 check("the sweep saw an outcome that was NOT (guard)", sawBlameless)
-check(`the sweep covered every branch it claims (guard, {#FAULT_BRANCHES})`, #FAULT_BRANCHES == 7)
+check(`the sweep covered every branch it claims (guard, {#FAULT_BRANCHES})`, #FAULT_BRANCHES == 8)
 
 -- Completeness, read out of the module rather than trusted. If a future round
 -- adds an eighth exit from `submit` and gives it a `fault` but no test, this
