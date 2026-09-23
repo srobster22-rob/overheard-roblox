@@ -9232,3 +9232,56 @@ Next: R151 RETRO, which now has a playtest newer than R146. It covers:
 - PLAYBOOK: judge R146's TRY (it fails on one group of five, 3 of 5) and R141's KEEP;
 - lessons.
 Then R152, this cycle's BIG SWING slot. Its first candidate is PT5 #1: read what the entrant is TOLD across the holder's messages, not one more encoding. PT5's broken (1) (holder's lines credit the holder's line) and (2) (player names) are FIX-sized, for R154.
+
+
+## R151 · RETRO · R147-R150: it learned to count and to spell, a lost round now ends, and one encoding still beats it
+Pick: RETRO in the k=1 slot. It moved here from R150, since a RETRO needs a playtest newer than the last RETRO (R146) and PT5 now is one; R145 → R146 set the precedent. This cycle's BIG SWING takes its k=2 slot (R152). No score (RETRO).
+- Covers: the scorecard for R147-R150; a market re-score by me and by a blind subagent that runs neither test.cmd nor tools/market (R146's saw our total there), keeping the LOWER per row; the `## Never` audit; the targets; PLAYBOOK (judge R146's TRY); lessons.
+Sync: AGENT_LOOP v3.3 unchanged; OWNER.md `## Next` empty, no VETO; COACH.md has no new notes. Studio MCP: no tools (tool search for "roblox" finds none). HEAD 2e31fd7 green.
+
+Player notices: nothing (RETRO).
+Impact: n/a (RETRO).
+Built: scorecard R147-R150:
+- R147 EXPAND (Y, 3/2/0 → 3/2/0): it learns to count.
+- R148 EXPAND (Y, 3/2/0 → 3/2/0): it learns your alphabet.
+- R149 FIX (Y, 2/2/0 → 2/2/0): a round that cannot be won ends.
+- R150 PLAYTEST (N): PT5.
+Content grew by one axis: Operator lines 12 → 14 (R147 `counted`, R148 `lettered`); every other count unchanged; CONTENT.md history row R151. R148's gate re-run had appended a second R148 row; it is removed, and `tools/inventory row` now refuses a round it already holds (run twice here: one R151 row).
+Health:
+- Largest file tests/wiring.luau 2,044 → 2,063 lines.
+- Largest function soak() 290, unchanged. In src, Heuristic.conveyed 113 (R147 and R148 each widened it) is now larger than World.build 110.
+- Shipped test code: src/server/systems/TestOperator.luau, 8,350 bytes, still shipping (backlog).
+- Suite 6 s → 6.6 s, 2,003 → 2,084 checks; lint 0. R148's full run failed only the load-bound timing check (228.8 ms at 100% CPU from other sessions); it passed alone at high priority, and every gate since has passed.
+Rounds lost: 0. None repeated. R148 needed its holder filter after its own replay found it learning nothing; R149's blind session met none of its rule (the group never lost).
+Backlog taken:
+- PT4 #1, the Operator learns what carries a code: number words (R147) and letters and radio words (R148). Each was beaten in its own blind session by the next encoding.
+- PT4 broken (1), an unwinnable round runs on (R149).
+- PT4 #4 (a visible clock for the way out) and #2 (capture with a cost) are not taken.
+Targets:
+- At least 4 of 5 rounds player-visible: MISSED, 3 of 5 (R147-R149; R150 and R151 are the playtest and this retro).
+- Content grew: MET, barely (one axis, two lines).
+- Headline metrics moved the right way: YES for a horror game, partly. Bots: players taken per round 1.9 → 2.5, Supervisor calls 1.6 → 1.7, codewords replaced 4 → 7, rounds won 5/6/6 → 5/6/5. Unscripted, PT4 → PT5: the veteran's players taken 0.8 → 1.2 a round, rounds won with the Operator never moving 8 of 13 → 6 of 13 (12 of 30 across PT5). But the critic still won 10 of 10.
+- Market score rose: NO. 18.7 → 18.7. No row has moved since PT4, and the blind re-score does not lift one (below).
+- The last playtest's #1 acted on: MET (PT4 #1 in R147 and R148).
+- Every COACH note has a disposition: MET.
+- 0 rounds lost: MET.
+- At most 1 weak round: MET (none: 5, 5 and 4).
+`## Never` audit: its one line is a process rule; none of its commands ran (scratch copies were made with `git archive` and `tar`, and nothing was deleted). No violation.
+PLAYBOOK, three changes:
+- R146's TRY is deleted. It failed its own test on one of five groups: the veteran's seed-42 group won 3 of 5 rounds with the Operator never moving, using letters written glued ("GF"). What it did well (each blind session tried the named scheme, and each found a cheaper one) goes into the new TRY.
+- New STOP: teaching the listener one encoding a round (R147-R150: each encoding was beaten inside its own blind session, and PT5 found three more).
+- New TRY: before the listener learns anything new, measure the design against a scheme corpus, meaning every scheme a group has won with, and pick the design that reads the most beside the blind chat's false trips. Judged at the next PLAYTEST.
+Lessons (LOOP_LESSONS.md): an encoding-by-encoding listener loses to the next encoding (R147-R150); a can-still-win check must ask about EACH needed thing, and a second judge that copies the first one's question is no second opinion (R149); credit by speaker when events cluster, not by clock (PT5); appending tools must be idempotent (R151); keep a timing budget and A/B it against HEAD under load (R148). One proposal for AGENT_LOOP §RETRO: a third TRY verdict, "rewrite".
+Verified: test.cmd exit 0 in 6.6 s (2,084 of 2,084); `lune run tools/market check`; `lune run tools/inventory row R151`, twice.
+Headline: unchanged this round (RETRO).
+- Bots: 5/6/5 won; 2.5 taken and 1.7 Supervisor calls per round; 7 codewords replaced; 30/160 blind chat; 21/21 rounds end.
+- Unscripted (PT5): veteran 10/13, phone players 5/7, critic 10/10; critic 5/10; 12 of 30 rounds won with the Operator never moving.
+Market: every row re-scored myself: 28/150, unchanged (PT5's evidence moves none). A blind subagent then re-scored without our scores, and without running test.cmd or tools/market (R146's saw our total there). It came to 45/150 = 30.0: hook 2, core loop 2, progression 1, accessibility 2, social 2, release 1, differentiator 3, the rest 1 (R146's blind: 43). It is higher or equal on every row, so ours stands on every row: 18.7, unchanged. Its replay of PT5's critic session matched the report exactly, and its own bot runs matched ours (5/6/5). MARKET.md history row R151.
+Content: Operator lines 14; history row R151.
+Coach: none new.
+Decisions: none.
+Vision and market check: ten rounds (R142-R151) did not move the market score up (20.7 at R142 → 18.7). The headline moved the right way for a horror game: more players taken, fewer rounds the Operator sleeps through. The north star ("a polite thing at the switchboard slowly learns it") is half delivered: it now learns number words, letters and nicknames, but every group finds the one encoding it cannot yet read. What changes:
+- The BIG SWING (R152) learns the CHANNEL, not an encoding: what the holder tells the entrant before a restore, whatever the transform (reversed, glued, split across messages, spelled). Its panel must measure each draft against the scheme corpus (the new TRY) and the blind chat.
+- R153's PLAYTEST swaps to EXPAND (only one building round since PT5); it takes the swing's second slice or PT5's alerts on line 1.
+- R154 FIX: PT5 broken (1) (credit the holder's lines to the holder's line) and (2) (player names are not station words). Both damage what the swing learns, so the swing's panel may pull them into its first slice.
+Next: R152 BIG SWING slice 1 (k=2 slot), by a 3-draft design panel on PT5 #1.

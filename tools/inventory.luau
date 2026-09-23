@@ -129,11 +129,16 @@ if fs.isFile("CONTENT.md") then
 		history = string.sub(existing, at)
 	end
 end
-if process.args[1] == "row" and process.args[2] then
+-- A round's row is added once: running `row` again (a gate re-run) appended a
+-- second R148 row.
+local rowFor = process.args[2]
+if process.args[1] == "row" and rowFor and string.find(history, `\n| {rowFor} |`, 1, true) then
+	print(`(history already has a {rowFor} row; not added again)`)
+elseif process.args[1] == "row" and rowFor then
 	if string.sub(history, -1) ~= "\n" then
 		history ..= "\n"
 	end
-	history ..= `| {process.args[2]} | {table.concat(summary, " | ")} |\n`
+	history ..= `| {rowFor} | {table.concat(summary, " | ")} |\n`
 end
 table.insert(out, "")
 fs.writeFile("CONTENT.md", table.concat(out, "\n") .. "\n" .. history)

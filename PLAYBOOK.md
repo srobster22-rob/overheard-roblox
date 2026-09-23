@@ -15,6 +15,7 @@
 - Trusting a metric named after the goal: "rounds until red" measured the panel, not the Operator acting (R131 vs PT1).
 - Leaving scratch probes in tests/: wiring fails on any unlisted file (R130).
 - Taking a bot headline as the proof of a change the bots cannot perceive: R144's panel row could not move a bot that never reads the panel. Replay a real session with a `look` at the moment players decide instead (R144).
+- Teaching the listener one encoding a round: R147's number words and R148's letters were each beaten inside their own blind session by the next encoding (one-off references, a shifted alphabet, a word between letters), and PT5 found three more (reversed digits, glued letters, one digit per message) (R147-R150).
 
 ## TRY
-- (from R146) Every EXPAND names the scheme a blind group would use to beat it (PT4: digits as letters, NATO words, "dozens", a relative's age) and has its blind session try that scheme. Judge at the next PLAYTEST: it passes if no unscripted group wins more than half its rounds with the Operator never moving (PT4's veteran: 8 of 13).
+- (from R151) Before the listener learns anything new, run every scheme a group has already won with against it: a scheme corpus of replayable lines (PT4, PT5 and the blind sessions: digits as letters, NATO words, dozens, reversed digits, glued letters, one digit per message, riddles, a word between letters). Report how many it reads beside the blind chat's false trips, and pick the design that reads the most. Judge at the next PLAYTEST: it passes if no unscripted group wins more than half its rounds with the Operator never moving (PT5: 12 of 30, one group 3 of 5).
