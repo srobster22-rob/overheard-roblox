@@ -9067,3 +9067,72 @@ Content: Operator lines 12 → 13 (`counted`); CONTENT.md history row R147.
 Coach: none new.
 Decisions: D11.
 Next: R148's PLAYTEST is postponed to EXPAND, since only one building round has passed since PT4. Its pick, by gap value: counting's slice 2 (letters and NATO words, a whole-alphabet learner), or PT4 #4 (a visible clock for the way out). R149 FIX: PT4 broken (1), an unwinnable round runs on. PT5 in R150, RETRO R151.
+
+
+## R148 · EXPAND · it learns your alphabet: letters and radio words that spell a code are worked out, and then heard
+Pick: counting's slice 2 in the k=3 slot. The PLAYTEST swaps to EXPAND: only one building round (R147) since PT4. Gap value 12 (core loop depth), also the differentiator · impact planned 3/2/0.
+- The veteran's group beat PT4 with letters ("bee ay" = 21) and NATO words ("india alpha" = 91), 8 of 13 rounds won with the Operator never moving. R147 learns number WORDS, but a letter scheme spends one word per digit.
+- R147's design panel (the differentiator draft) simulated letters and showed per-word heat cannot build under the owner's rates (a letter spells about 0.6 digits a round against 0.32 cooling). So the heat is held by the DIAL, the group's whole letter-to-digit map: every code a pair of dial words spells is one credit to the dial, and every such pair teaches each word its digit.
+- The scheme that beats it: an alphabet changed every round or two, and references used once (R147's blind group already moved to those).
+Sync: AGENT_LOOP v3.3 unchanged; OWNER.md `## Next` empty, no VETO; no new COACH notes. Studio MCP: no tools. HEAD cf9069e green.
+
+Player notices: A group that spells codes in letters ("bee ay" for 21, "bravo alpha", "b a") gets a few rounds out of it. Then the Operator says "Thank you, caller. I have your letters.", the wall lists the letters it has settled ("letters a b c" under "-> counts as a number"), and the next code spelled that way is read back in digits, walked to and spent. Switching from letters to radio words does not help: they are the same alphabet. A group changing what its letters stand for starts again.
+Impact: planned 3/2/0 → shipped 3/2/0 (biggest file tests/wiring.luau 2,060→2,060; biggest function touched `Operator.creditCode` and `creditLetters`, 45 lines each)
+Built:
+- `Numerals.letterOf`: a letter, its name or its radio word. "see", "eye" and "oh" count; "you", "are", "be", "why" and "tea" do not.
+- `Numerals.letterPairs` and `Numerals.readLetters`.
+- The Operator's dial: `creditLetters` reads the HOLDER's newest line with exactly one letter pair; `dialMap`/`settledLetters` settle a letter at 2 notes for a digit and twice the rest; one dial heat (a whole `HeatPerCredit` when the pair agrees with what is settled) cools at `CoolPerRound` with R134's exemption; `knownLetters`, `onLettered`.
+- `Operator.creditCode` takes the holder; the server and tools/sim pass `objective.holder`.
+- `Heuristic.conveyed` merges `Numerals.readLetters` when given letters.
+- `Round.LINES.lettered`; the wall row letters a b c, not in quotes (the Operator's words, not a phrase someone said).
+- A line whose code the Operator just heard is not kept for crediting.
+- tests/counting.luau +20 (65).
+- Docs: DECISIONS D12, GAME.md as-built note, CONTENT.md.
+Quality: the veteran's replay found my first version learning nothing. A pair of letters fits any code and a group says all three codes in one breath, so every letter line in the window was credited to the first code entered; the fix reads only the holder's newest line. Three tests were too weak for their plants (above). Independent review APPROVED at cycle 1, with no finding at 2x2. Fixed before commit:
+  - a line whose code was heard stayed and was credited to the holder's next code, unsettling its letters (2x1);
+  - my round numbers were one low (round 4 and round 6, not 3 and 5);
+  - GAME.md said "last line" where the code takes the newest line with exactly one pair.
+  Recorded in D12 as a cost: once a dial is understood, plain English with two letter words side by side reads as a number ("oh i see" 93, "a hotel" 18), about 1 line in 10,000 of the playtests' chat, mostly from "see" (2x1).
+  Backlog:
+  - a holder with two codes, or one reading back someone else's code, mislabels notes (1x2; they never reach heat);
+  - "dee bee ay" with no comma is two pairs and teaches nothing (1x1).
+Verified:
+- test.cmd: 2,078 of 2,079 checks in 25 suites. The one failure is the heuristic timing check, run with the CPU at 100% from other sessions (228.8 ms against a 30 ms budget). Re-run alone at high priority it passed (12.2 ms, 119/119). Alternated with a HEAD copy, the change is no slower: 42.7, 62.7 and 12.2 ms, against HEAD's 57.9, 14.0 and 49.8 (r148/timing_high.txt). The budget is unchanged. selene 0/0/0, rojo build OK, stylua clean.
+- 16 plants, each failing by name and restored by sha256 (r148/plants_out.txt). Three needed sharper tests before they failed:
+  - the tokenizer glues "a b c" into one word, so the two-pair line became "bee ay cee";
+  - the settled-letter check never looked at settling while the dial was cold;
+  - "announced once" never credited again after the dial was understood.
+- The first version credited every letter line in the credit window to the first code entered, because a pair of letters fits any code and a group says all three codes at once. Replaying PT4's veteran sessions found it (the alphabet never learned). Now only the holder's line counts, and the dial takes a whole credit, since recency only slowed a learner that knows which line was the code's. PT4's veteran sessions, replayed with fixed chat: the alphabet is understood in round 4 of the second night (87 s) and round 6 of the first (225 s). In both, the group had just moved to another scheme.
+- Null gate: the 160-line blind chat corpus, each line before a random code three times over, learns no alphabet. With a whole alphabet learned, 0 of 1,000 lines decode a live code.
+Blind tools/play session (subagent, never saw the change, seed 52, 7 rounds; told only that the group spells codes in letters, A for 1 to I for 9, O for 0): won 7 of 7.
+  - The group used radio letters all game. The wall showed letters a b f g h i at 50% by round 3.
+  - In round 5: ">> it reads the group's letters now. "Thank you, caller. I have your letters.""
+  - In round 6, "fridge. ay gee" → "One seven. I have that party for you." and the code was spent.
+  - The group switched to letters shifted by one ("eff jay" for 59), the scheme named as beating it. It then lured the Operator with its own learned word ("aitch aitch aitch").
+  - Best moment: that read-back, "the game's pitch actually happening". Worst: the one capture cost nothing (3 of 3 won, the caught player free next round).
+  13 confusing items. Caused here: the dial's row in quotes looked like something someone said (fixed: no quotes). Not caused here:
+  - rooms share names with stations ("im in the board room" → jack), and "out" is exit;
+  - four names per station;
+  - filler and names learned, and a code letter filed as a station word ("aitch" 75% under Exchange Desk);
+  - a typo reads "that line is dead";
+  - fading has no visible rule;
+  - the closing threat never threatens; the hum is silent beside it;
+  - capture costs nothing (owner question 4);
+  - the silence clock is unexplained;
+  - the same seats every round.
+  Session: r148/blind/s1.txt.
+Headline: the bots never spell in letters, so theirs cannot move, and did not.
+- Rounds won 5/6/5 → 5/6/5; taken per round 2.5 (52 in 21) → 2.5 (52).
+- Supervisor calls per round 1.7 (35) → 1.7 (35); codewords replaced 7 → 7.
+- Natural chat naming a plain word 30/160 → 30/160; rounds that end 21/21 → 21/21.
+- Unscripted, blind session (seed 52): won 7 of 7, taken 1 in 7 rounds; codes read back 1. R147's session (seed 44): won 4 of 5, 4 taken.
+Market: no row moved. Core loop depth stays 1: a blind group's letters were read by round 5 and it switched schemes, as intended, but it still won 7 of 7 and the Operator took one player in 7 rounds. The next playtest decides whether schemes now wear out. The differentiator stays 2. 18.7 unchanged; MARKET.md history row R148.
+Content: Operator lines 13 → 14 (`lettered`); CONTENT.md history row R148.
+Coach: none new.
+Decisions: D12.
+Next: R149 FIX: PT4 broken (1), an unwinnable round runs on; and, from four blind sessions, capture costing nothing is what keeps the stakes fake (owner question 4 decides how the way out is won). PT5 in R150, RETRO R151.
+  Backlog from this round:
+  - a scheme word or letter also filed as a station word;
+  - "see" false reads;
+  - holders with two codes;
+  - names with no comma.

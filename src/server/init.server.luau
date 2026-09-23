@@ -348,6 +348,13 @@ operator.onCounted = function(key: string, value: number)
 	broadcastLexicon()
 end
 
+-- R148: the group's letters are understood.
+operator.onLettered = function()
+	print("[operator] reads the group's letters")
+	heardRemote:FireAllClients(Round.LINES.lettered, "", 1)
+	broadcastLexicon()
+end
+
 -- A code said aloud is spent: its holder gets a new one on their panel.
 operator.onCodeHeard = function(concept: string)
 	if board:reroll(concept) then
@@ -367,7 +374,7 @@ board.onSolved = function(objective, _actor: number)
 	print(`[objective] {objective.id} restored`)
 	operator:credit(objective.concept, os.clock())
 	-- R147: and whatever was said that works out as the code just entered.
-	operator:creditCode(objective.answer, os.clock())
+	operator:creditCode(objective.answer, os.clock(), objective.holder)
 	pushObjectives(nil)
 	broadcastLexicon()
 	-- R138: the last line opens the way out rather than winning. The outside

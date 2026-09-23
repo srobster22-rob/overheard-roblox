@@ -262,6 +262,8 @@ Round.LINES = {
 	-- names no word (the owner's R93 answer): the wall shows which. No "from now
 	-- on": an unused word cools like any other (R147's blind session).
 	counted = "Thank you, caller. I will count it that way.",
+	-- R148: the group's letters are understood; the wall shows which.
+	lettered = "Thank you, caller. I have your letters.",
 }
 
 -- Where a concept brings the Operator, as the wall names it: the station's own

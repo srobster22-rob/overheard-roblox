@@ -195,8 +195,10 @@ function Readout.lexiconRows(entries: { any }): { { text: string, heat: number?,
 		end
 		for _, entry in groups[key] do
 			table.insert(rows, {
+				-- A counting row with no value is the dial's (R148): the Operator's
+				-- own words, so not in quotes like a phrase someone said.
 				text = string.format(
-					'"%s"%s  %d%%%s',
+					if entry.concept == "counting" and entry.value == nil then "%s%s  %d%%%s" else '"%s"%s  %d%%%s',
 					entry.phrase,
 					if entry.value then ` = {entry.value}` else "",
 					math.floor(entry.heat * 100 + 0.5),

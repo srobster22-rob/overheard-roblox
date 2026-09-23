@@ -382,4 +382,109 @@ function Numerals.read(text: string, known: { [string]: number }): { [string]: b
 	return found
 end
 
+-- LETTERS (R148). PT4's veteran passed codes as letters ("bee ay" = 21) and as
+-- radio words ("india alpha" = 91): one word per digit. Every spelling of a
+-- letter is the same letter here, so a group that moves from "b a" to "bee
+-- ay" to "bravo alpha" is still using the one alphabet the Operator learns
+-- (Operator.creditCode). "see", "eye" and "oh" are how people spell C, I and
+-- zero, so they count; letter names that are everyday words in any other way
+-- ("you", "are", "be", "why", "tea") are left out.
+local LETTER_WORDS: { [string]: string } = {
+	ay = "a",
+	bee = "b",
+	cee = "c",
+	see = "c",
+	dee = "d",
+	ee = "e",
+	eff = "f",
+	gee = "g",
+	aitch = "h",
+	eye = "i",
+	jay = "j",
+	kay = "k",
+	el = "l",
+	em = "m",
+	en = "n",
+	oh = "o",
+	pee = "p",
+	cue = "q",
+	ar = "r",
+	ess = "s",
+	tee = "t",
+	vee = "v",
+	ex = "x",
+	wye = "y",
+	zed = "z",
+	zee = "z",
+	alpha = "a",
+	alfa = "a",
+	bravo = "b",
+	charlie = "c",
+	delta = "d",
+	echo = "e",
+	foxtrot = "f",
+	golf = "g",
+	hotel = "h",
+	india = "i",
+	juliet = "j",
+	juliett = "j",
+	kilo = "k",
+	lima = "l",
+	mike = "m",
+	november = "n",
+	oscar = "o",
+	papa = "p",
+	quebec = "q",
+	romeo = "r",
+	sierra = "s",
+	tango = "t",
+	uniform = "u",
+	victor = "v",
+	whiskey = "w",
+	whisky = "w",
+	xray = "x",
+	yankee = "y",
+	zulu = "z",
+}
+
+-- The letter a word spells, or nil: a single letter, a letter's name, or its
+-- radio word.
+function Numerals.letterOf(word: string): string?
+	if string.match(word, "^%a$") then
+		return word
+	end
+	return LETTER_WORDS[word]
+end
+
+-- The pairs of letters side by side in a line, one sentence at a time.
+function Numerals.letterPairs(text: string): { { string } }
+	local out: { { string } } = {}
+	for sentence in string.gmatch(string.lower(text), "[^%.,!%?;:]+") do
+		local previous: string? = nil
+		for _, word in Lexicon.tokenize(sentence) do
+			local letter = Numerals.letterOf(word)
+			if letter and previous then
+				table.insert(out, { previous, letter })
+			end
+			previous = letter
+		end
+	end
+	return out
+end
+
+-- Every two-digit number the line spells with learned letters.
+function Numerals.readLetters(text: string, dial: { [string]: number }): { [string]: boolean }
+	local found: { [string]: boolean } = {}
+	if next(dial) == nil then
+		return found
+	end
+	for _, pair in Numerals.letterPairs(text) do
+		local first, second = dial[pair[1]], dial[pair[2]]
+		if first ~= nil and second ~= nil and first > 0 then
+			found[`{first}{second}`] = true
+		end
+	end
+	return found
+end
+
 return Numerals

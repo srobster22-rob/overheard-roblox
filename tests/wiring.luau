@@ -2047,11 +2047,11 @@ local solvedBody = string.match(serverCode, "board.onSolved = function%(.-" .. N
 check("(guard) found board.onSolved", #solvedBody > 0)
 check(
 	"the server credits the code just entered",
-	string.find(solvedBody, "operator:creditCode(objective.answer, os.clock())", 1, true) ~= nil
+	string.find(solvedBody, "operator:creditCode(objective.answer, os.clock(), objective.holder)", 1, true) ~= nil
 )
 check(
 	"...and so does the sim",
-	string.find(botCode, "self.operator:creditCode(objective.answer, self.now)", 1, true) ~= nil
+	string.find(botCode, "self.operator:creditCode(objective.answer, self.now, objective.holder)", 1, true) ~= nil
 )
 
 print(`\n{checks - failures}/{checks} passed`)

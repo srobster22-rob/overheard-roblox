@@ -152,7 +152,8 @@ function Heuristic.conveyed(
 	secrets: { Secret },
 	lexicon: { Coinage },
 	codes: { [string]: string }?,
-	known: { [string]: number }?
+	known: { [string]: number }?,
+	letters: { [string]: number }?
 ): { Understanding }
 	local words = Lexicon.tokenize(utterance.text)
 	local stems = Lexicon.stemAll(words)
@@ -194,6 +195,12 @@ function Heuristic.conveyed(
 	local numbers = if codes then Lexicon.numbersIn(utterance.text) else {}
 	if codes and known then
 		for number in Numerals.read(utterance.text, known) do
+			numbers[number] = true
+		end
+	end
+	-- R148: and spelled with the group's letters, once those are understood.
+	if codes and letters then
+		for number in Numerals.readLetters(utterance.text, letters) do
 			numbers[number] = true
 		end
 	end

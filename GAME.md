@@ -85,7 +85,15 @@ silent and win.
 > the Operator says "Thank you, caller. I will count it that way."
 > and hears a code said that way like one said in digits. The wall lists the
 > word and its value under "counts as a number". Still safe: a fact said once,
-> letters and NATO words (one word per digit), and anything with two unknowns.
+> and anything with two unknowns.
+>
+> **As built (R148): it learns your alphabet.** The holder's newest line before
+> a code that has exactly one pair of letters side by side ("bee ay" before 21),
+> teaches each letter its digit, however it is spelled (b, bee, bravo). The
+> dial as a whole learns at the owner's rates; understood, the Operator says
+> "Thank you, caller. I have your letters." and hears a code spelled that way.
+> The wall lists the letters it has settled. Still safe: an alphabet changed
+> before it settles, and anything said once.
 
 ## Round shape
 

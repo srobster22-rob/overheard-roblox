@@ -35,6 +35,15 @@ type Counting = {
 	coinedBy: number,
 }
 
+-- R148: the group's alphabet. How often each letter has spelled each digit,
+-- and ONE heat for the whole dial: a letter spells about 0.6 digits a round,
+-- too few for a heat of its own to outrun the owner's cooling (R147's panel).
+type Dial = {
+	evidence: { [string]: { [number]: number } },
+	heat: number,
+	coinedBy: number?,
+}
+
 local Operator = {}
 Operator.__index = Operator
 
@@ -53,6 +62,9 @@ export type Operator = typeof(setmetatable(
 		said: { { text: string, at: number, speaker: number } },
 		counting: { [string]: Counting },
 		countedSinceBoundary: { [string]: boolean },
+		-- R148: the letters the group spells codes with; see `creditCode`.
+		dial: Dial,
+		dialUsed: boolean,
 		backend: Types.ComprehensionBackend,
 		-- Each concept's live code right now, asked for at the moment something
 		-- is said, so a code re-dealt or re-rolled is never heard stale.
@@ -64,6 +76,8 @@ export type Operator = typeof(setmetatable(
 		onCodeHeard: (concept: string) -> ()?,
 		-- R147: a word the group uses as a number has just been understood.
 		onCounted: (key: string, value: number) -> ()?,
+		-- R148: the group's letters have just been understood.
+		onLettered: (() -> ())?,
 	},
 	Operator
 ))
@@ -78,12 +92,15 @@ function Operator.new(secrets: { Secret }): Operator
 		said = {},
 		counting = {},
 		countedSinceBoundary = {},
+		dial = { evidence = {}, heat = 0, coinedBy = nil },
+		dialUsed = false,
 		backend = Heuristic :: any,
 		liveCodes = nil,
 		onUnderstood = nil,
 		onBurned = nil,
 		onCodeHeard = nil,
 		onCounted = nil,
+		onLettered = nil,
 	}, Operator)
 end
 
@@ -94,12 +111,21 @@ function Operator.hear(self: Operator, utterance: Utterance)
 	-- left `breaker` free, because both words are plain language and only one
 	-- could be reported. Either alone was understood; the combination hid one.
 	local codes = if self.liveCodes then self.liveCodes() else nil
-	local conveyed = (self.backend :: any).conveyed(utterance, self.secrets, self.lexicon, codes, self:knownValues())
+	local conveyed = (self.backend :: any).conveyed(
+		utterance,
+		self.secrets,
+		self.lexicon,
+		codes,
+		self:knownValues(),
+		self:knownLetters()
+	)
 
+	local spentACode = false
 	for _, understanding in conveyed do
 		if understanding.concept == nil or understanding.confidence < Config.ActThreshold then
 			continue
 		end
+		spentACode = spentACode or understanding.byCode == true
 		local payload = ""
 		for _, secret in self.secrets do
 			if secret.concept == understanding.concept then
@@ -131,7 +157,13 @@ function Operator.hear(self: Operator, utterance: Utterance)
 	end
 
 	-- Every line, as said, for `creditCode`. Only the last CreditWindow of it is
-	-- ever read, so a long round keeps the newest lines.
+	-- ever read, so a long round keeps the newest lines. Not a line whose code
+	-- was just heard: that code is spent, and kept, the line would be credited
+	-- to the holder's NEXT code (R148's review: "yours: f g" read, then 38
+	-- entered, unsettled f and g).
+	if spentACode then
+		return
+	end
 	table.insert(self.said, { text = utterance.text, at = utterance.at, speaker = utterance.speaker.UserId })
 	if #self.said > Operator.SAID_KEPT then
 		table.remove(self.said, 1)
@@ -139,6 +171,9 @@ function Operator.hear(self: Operator, utterance: Utterance)
 end
 
 Operator.SAID_KEPT = 200
+
+-- R148: defined below `creditCode`, which calls it.
+local creditLetters: (self: Operator, code: string, now: number, holder: number?) -> ()
 
 -- The value a counting word stands for and its heat: the strongest.
 local function strongestValue(c: Counting): (number?, number)
@@ -163,7 +198,7 @@ end
 -- PT4's three blind groups beat the listener by round 2 with schemes like
 -- these; the station learner could never see them, because a word said before
 -- every station's restore cancels out there (R143).
-function Operator.creditCode(self: Operator, code: string, now: number)
+function Operator.creditCode(self: Operator, code: string, now: number, holder: number?)
 	local target = tonumber(code)
 	if target == nil then
 		return
@@ -206,6 +241,102 @@ function Operator.creditCode(self: Operator, code: string, now: number)
 			end
 		end
 	end
+	creditLetters(self, code, now, holder)
+end
+
+Operator.DIAL_SEEN = 2
+
+-- The letters the dial has settled: a digit a letter has spelled at least
+-- DIAL_SEEN times, and at least twice as often as every other digit together.
+local function dialMap(self: Operator): { [string]: number }
+	local out: { [string]: number } = {}
+	for letter, digits in self.dial.evidence do
+		local best, bestCount, total = nil, 0, 0
+		for digit, count in digits do
+			total += count
+			if count > bestCount or (count == bestCount and best ~= nil and digit < best) then
+				best, bestCount = digit, count
+			end
+		end
+		if best ~= nil and bestCount >= Operator.DIAL_SEEN and bestCount >= 2 * (total - bestCount) then
+			out[letter] = best
+		end
+	end
+	return out
+end
+
+-- IT LEARNS YOUR ALPHABET (R148). The holder's last line before the code, when
+-- it has exactly one pair of letters side by side ("bee ay" before 21), teaches
+-- each letter its digit, whatever the spelling ("b", "bee" and "bravo" are one
+-- letter to it, Numerals.letterOf). Only the HOLDER's: unlike a sum, a pair of
+-- letters fits any code, and a group says all three codes in one breath, so
+-- every letter line in the window was being credited to whichever code was
+-- entered first. When the pair agrees with what the dial has settled --
+-- one letter at least is known and neither is contradicted -- the dial gains
+-- `HeatPerCredit`. Understood, it reads a pair of
+-- settled letters as a code (Numerals.readLetters).
+--
+-- The veteran's group in PT4 won 8 of 13 rounds with the Operator never
+-- moving on letters and radio words. A group that changes what its letters
+-- stand for has its old evidence against it: a letter is settled only while
+-- one digit clearly leads.
+function creditLetters(self: Operator, code: string, now: number, holder: number?)
+	local first, second = tonumber(string.sub(code, 1, 1)), tonumber(string.sub(code, 2, 2))
+	if #code ~= 2 or first == nil or second == nil or holder == nil then
+		return
+	end
+	local map = dialMap(self)
+	local wasKnown = self.dial.heat >= Config.ActThreshold
+	local function note(letter: string, digit: number)
+		local digits = self.dial.evidence[letter] or {}
+		digits[digit] = (digits[digit] or 0) + 1
+		self.dial.evidence[letter] = digits
+	end
+	for i = #self.said, 1, -1 do
+		local line = self.said[i]
+		local age = now - line.at
+		if age < 0 or age > Config.CreditWindow or line.speaker ~= holder then
+			continue
+		end
+		local pairs = Numerals.letterPairs(line.text)
+		if #pairs ~= 1 then
+			continue
+		end
+		local a, b = pairs[1][1], pairs[1][2]
+		local agrees = (map[a] == first or map[b] == second)
+			and (map[a] == nil or map[a] == first)
+			and (map[b] == nil or map[b] == second)
+		note(a, first)
+		note(b, second)
+		table.remove(self.said, i)
+		if self.dial.coinedBy == nil then
+			self.dial.coinedBy = line.speaker
+		end
+		if agrees then
+			-- A whole credit: recency is how the station learner guesses which
+			-- words belonged to a restore, and this line is known to be the one.
+			self.dial.heat = math.clamp(self.dial.heat + Config.HeatPerCredit, 0, 1)
+			self.dialUsed = true
+		end
+		-- The newest such line is the one that carried this code.
+		break
+	end
+	if not wasKnown and self.dial.heat >= Config.ActThreshold and self.onLettered then
+		(self.onLettered :: any)()
+	end
+end
+
+-- The letters the dial has settled, understood or not (the wall and the tests).
+function Operator.settledLetters(self: Operator): { [string]: number }
+	return dialMap(self)
+end
+
+-- The letters it reads as digits: the settled ones, once the dial is understood.
+function Operator.knownLetters(self: Operator): { [string]: number }
+	if self.dial.heat >= Config.ActThreshold then
+		return dialMap(self)
+	end
+	return {}
 end
 
 -- The words it understands as numbers, and what each stands for: those whose
@@ -238,6 +369,21 @@ function Operator.countingRows(self: Operator): { Coinage }
 			})
 		end
 	end
+	-- R148: the dial, as the letters it has settled.
+	local settled = {}
+	for letter in dialMap(self) do
+		table.insert(settled, letter)
+	end
+	table.sort(settled)
+	if self.dial.heat > 0 and #settled > 0 and self.dial.coinedBy ~= nil then
+		table.insert(out, {
+			phrase = `letters {table.concat(settled, " ")}`,
+			concept = "counting",
+			heat = self.dial.heat,
+			sightings = 0,
+			coinedBy = self.dial.coinedBy :: number,
+		})
+	end
 	return out
 end
 
@@ -258,6 +404,11 @@ local function coolCounting(self: Operator, amount: number, keepUsed: boolean): 
 		if next(c.values) == nil then
 			self.counting[key] = nil
 		end
+	end
+	-- The dial cools the same way; what each letter has spelled is kept.
+	if self.dial.heat > 0 and not (keepUsed and self.dialUsed and self.dial.heat >= Config.ActThreshold) then
+		self.dial.heat = math.max(0, self.dial.heat - amount)
+		changed = true
 	end
 	return changed
 end
@@ -507,6 +658,7 @@ function Operator.coolRound(self: Operator, amount: number): boolean
 	if amount <= 0 then
 		self.creditedSinceBoundary = {}
 		self.countedSinceBoundary = {}
+		self.dialUsed = false
 		return false
 	end
 	local changed = false
@@ -529,6 +681,7 @@ function Operator.coolRound(self: Operator, amount: number): boolean
 	forgetLostWords(self)
 	changed = coolCounting(self, amount, true) or changed
 	self.countedSinceBoundary = {}
+	self.dialUsed = false
 	return changed
 end
 

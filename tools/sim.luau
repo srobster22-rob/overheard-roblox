@@ -92,6 +92,9 @@ function Sim.new(seed: number): any
 	self.operator.onCounted = function(key: string, value: number)
 		self:trace(`   >> it counts "{key}" as {value} now. "{Round.LINES.counted}"`)
 	end
+	self.operator.onLettered = function()
+		self:trace(`   >> it reads the group's letters now. "{Round.LINES.lettered}"`)
+	end
 	self:place()
 	return self
 end
@@ -216,7 +219,7 @@ function Sim.submit(self: any, id: number, stationId: string, value: string): an
 	end
 	if result.ok then
 		self.operator:credit(objective.concept, self.now)
-		self.operator:creditCode(objective.answer, self.now)
+		self.operator:creditCode(objective.answer, self.now, objective.holder)
 		self:trace(`   {Sim.NAMES[id]} restores the {stationId} line.`)
 		if self.board:allSolved() and self.escape:open(self.now) then
 			self:trace(`   every line is through. "{Round.LINES.ringing}"`)

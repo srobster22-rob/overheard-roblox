@@ -283,6 +283,162 @@ do
 end
 
 print("")
+print("it learns your alphabet (R148)")
+check(
+	"a letter is the same letter however it is spelled",
+	Numerals.letterOf("b") == "b" and Numerals.letterOf("bee") == "b" and Numerals.letterOf("bravo") == "b"
+)
+check(
+	"letter names that are everyday words are not letters",
+	Numerals.letterOf("you") == nil and Numerals.letterOf("are") == nil and Numerals.letterOf("dozen") == nil
+)
+local vetPairs = Numerals.letterPairs("cy dee, yours: bee ay")
+check(
+	'PT4\'s "cy dee, yours: bee ay" is one pair, b a (a name before a comma is not in it)',
+	#vetPairs == 1 and vetPairs[1][1] == "b" and vetPairs[1][2] == "a"
+)
+check("settled letters read as a code", has(Numerals.readLetters("its bee ay", { b = 2, a = 1 }), "21"))
+-- The veteran's scheme: a letter is its place in the alphabet. Spelled three
+-- ways across two rounds, one code said before each restore.
+local ALPHABET = { "o", "a", "b", "c", "d", "e", "f", "g", "h", "i" }
+local SPELL = {
+	[1] = function(l: string): string
+		return l
+	end,
+	[2] = function(l: string): string
+		return ({ a = "ay", b = "bee", c = "cee", d = "dee" } :: any)[l] or l
+	end,
+	[3] = function(l: string): string
+		return ({ a = "alpha", b = "bravo", c = "charlie", d = "delta" } :: any)[l] or l
+	end,
+}
+local function spelled(code: string, how: number): string
+	local first, second = tonumber(string.sub(code, 1, 1)) :: number, tonumber(string.sub(code, 2, 2)) :: number
+	return `yours is {SPELL[how](ALPHABET[first + 1])} {SPELL[how](ALPHABET[second + 1])}`
+end
+do
+	local op = Operator.new(pool)
+	local lettered = 0
+	op.onLettered = function()
+		lettered += 1
+	end
+	local at = 0
+	local function round(codes: { string }, how: number)
+		for _, code in codes do
+			at += 5
+			say(op, spelled(code, how), at)
+			op:creditCode(code, at, 1)
+		end
+	end
+	round({ "21", "32", "13" }, 1)
+	check("round 1 settles the letters but the dial is not yet understood", next(op:knownLetters()) == nil)
+	op:coolRound(Config.CoolPerRound)
+	round({ "12", "23", "31" }, 2)
+	local letters = op:knownLetters()
+	check(
+		"...understood in round 2, when the letters come back in another spelling",
+		letters.a == 1 and letters.b == 2 and letters.c == 3
+	)
+	check("it announces the letters once", lettered == 1)
+	local heardCodes = {}
+	op.liveCodes = function()
+		return { jack_number = "23" }
+	end
+	op.onCodeHeard = function(concept: string)
+		table.insert(heardCodes, concept)
+	end
+	say(op, spelled("23", 3), at + 5)
+	check("then a code said in radio words is heard", heardCodes[1] == "jack_number")
+	-- The review's F1: the heard line must not teach the holder's next code.
+	-- "bravo charlie" was read as 23; credited to 45 it would note b = 4, c = 5.
+	op:creditCode("45", at + 6, 1)
+	check(
+		"a line whose code was heard teaches nothing afterwards",
+		(op.dial.evidence.b :: any)[4] == nil and (op.dial.evidence.c :: any)[5] == nil
+	)
+	at += 10
+	say(op, spelled("31", 1), at)
+	op:creditCode("31", at, 1)
+	check("...and it does not say so again while the letters keep working", lettered == 1)
+	local rows = Readout.lexiconRows(Round.wallRows(op:snapshot(), op:countingRows()))
+	local shown = false
+	for _, r in rows do
+		shown = shown or string.sub(r.text, 1, 13) == "letters a b c"
+	end
+	check("the wall shows the letters it has settled, not in quotes (nobody said it)", shown)
+	local before = op.dial.heat
+	op:coolRound(Config.CoolPerRound)
+	check("a dial still in use keeps through the round's boundary", op.dial.heat == before and op:knownLetters().a == 1)
+	op:coolRound(Config.CoolPerRound)
+	op:coolRound(Config.CoolPerRound)
+	check("rounds of disuse cool the dial under the line", next(op:knownLetters()) == nil)
+end
+do
+	-- Three holders say their codes in one breath; the codes are entered in
+	-- another order. Each is learned from its own holder's line only.
+	local op = Operator.new(pool)
+	local at = 0
+	for _ = 1, 2 do
+		at += 10
+		say(op, "cy yours: bee ay", at, 1)
+		say(op, "ana, the one by you: cee bee", at, 2)
+		say(op, "dee, the front: ay aitch", at, 3)
+		op:creditCode("18", at + 5, 3)
+		op:creditCode("21", at + 5, 1)
+		op:creditCode("32", at + 5, 2)
+	end
+	local settled = op.dial.evidence
+	local function top(letter: string): number?
+		local best, count = nil, 0
+		for digit, n in settled[letter] or {} do
+			if n > count then
+				best, count = digit, n
+			end
+		end
+		return best
+	end
+	check(
+		"three codes said in one breath are each learned from their own holder",
+		top("a") == 1 and top("b") == 2 and top("c") == 3 and top("h") == 8
+	)
+end
+do
+	local op = Operator.new(pool)
+	say(op, "yours is bee ay cee", 1, 1)
+	op:creditCode("12", 1, 1)
+	check("a line with two pairs of letters teaches nothing", next(op.dial.evidence) == nil)
+	say(op, "yours is bee ay", 10, 1)
+	say(op, "no wait. bee bee", 11, 1)
+	op:creditCode("22", 12, 1)
+	check(
+		'only the holder\'s newest letters count ("bee ay", then "no wait. bee bee")',
+		op.dial.evidence.a == nil and (op.dial.evidence.b :: any)[2] == 2
+	)
+end
+do
+	-- The group changes what its letters stand for: a = 0 now, not 1.
+	local op = Operator.new(pool)
+	local at = 0
+	for _, code in { "21", "12", "21", "12" } do
+		at += 5
+		say(op, spelled(code, 1), at)
+		op:creditCode(code, at, 1)
+	end
+	for _, code in { "20", "02", "20", "02" } do
+		at += 5
+		local first, second = string.sub(code, 1, 1), string.sub(code, 2, 2)
+		local function letter(d: string): string
+			return if d == "0" then "a" else ALPHABET[(tonumber(d) :: number) + 1]
+		end
+		say(op, `yours is {letter(first)} {letter(second)}`, at)
+		op:creditCode(code, at, 1)
+	end
+	local a = op:settledLetters().a
+	check(`a letter that has stood for two digits as often is not settled (a = {a})`, a == nil)
+	check("(control) ...while one that has only ever stood for one is", op:settledLetters().b == 2)
+end
+
+print("")
 print("null gate: ordinary chat")
 local corpus: { string } = {}
 for line in string.gmatch(fs.readFile("tests/blind_chat.txt"), "[^\r\n]+") do
@@ -296,7 +452,7 @@ do
 		for _, line in corpus do
 			at += 1
 			say(op, line, at)
-			op:creditCode(tostring(math.random(10, 99)), at)
+			op:creditCode(tostring(math.random(10, 99)), at, 1)
 		end
 	end
 	local learned = {}
@@ -307,6 +463,7 @@ do
 		`the blind corpus, each line before a random code, learns no number word ({table.concat(learned, ", ")})`,
 		#learned == 0
 	)
+	check(`...and no alphabet (dial heat {op.dial.heat})`, next(op:knownLetters()) == nil)
 	-- Read with every PT4 scheme word learned, against three random live codes a deal.
 	local known = { dozen = 12, usual = 13, [Numerals.key({ "quarters" })] = 25, grandma = 71 }
 	local false_ = 0
@@ -327,6 +484,21 @@ do
 		`...and read with PT4's scheme words learned, decodes a live code in {false_} of {deals} lines`,
 		false_ * 500 < deals
 	)
+	-- R148: and with a whole alphabet learned, A = 1 to I = 9, O = 0.
+	local alphabet = { o = 0, a = 1, b = 2, c = 3, d = 4, e = 5, f = 6, g = 7, h = 8, i = 9 }
+	local lettered = 0
+	for _ = 1, deals do
+		local live: { [string]: boolean } = {}
+		for _ = 1, 3 do
+			live[tostring(math.random(10, 99))] = true
+		end
+		for n in Numerals.readLetters(corpus[math.random(#corpus)], alphabet) do
+			if live[n] then
+				lettered += 1
+			end
+		end
+	end
+	check(`...and with a whole alphabet learned, in {lettered} of {deals} lines`, lettered * 100 < deals)
 end
 
 print(`\n{checks - failures}/{checks} passed`)
