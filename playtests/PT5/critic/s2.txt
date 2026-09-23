@@ -1,0 +1,118 @@
+seed 5
+# session 2: a sloppy group that talks plainly, to find the losing edge
+Bo: i got cutoff 11. where is the cutoff
+Cy: night latch wants 25
+Dee: patch them through to 85, whoever is at the switchboard
+Ana: i have nothing
+wait 2
+look
+Bo: huh my number changed to 31
+Dee: mine too. now 54. ana can you do mine, board 54
+Ana enters board 54
+wait 6
+look
+Cy: it got me and dee!! we cant move
+Bo: ok ok. stop saying numbers. ana, go to the dusty room, i'll tell you mine when you're there
+Ana goes to archive
+look
+Bo: ana, the lever thing in there = a deck of cards minus one
+Ana: 51?? i mean. ok
+Ana enters breaker 51
+wait 1
+look
+look
+Bo: ok ana DONT repeat it. ninety three minus one
+Ana enters breaker 92
+Bo goes to lobby
+look
+Bo: ana you still ok?
+wait 1
+look
+Cy: WAIT it went for the dusty room when you said her name. dont say her name
+Ana goes to lobby
+Cy: bo. the one where you are = the old nintendo. the one with goldeneye
+Bo enters latch 64
+wait 1
+look
+Bo: got it
+Dee: whoever isnt bo. go to the room with the cords
+Ana goes to board
+Dee: grandma = a dollar minus a nickel, in cents
+Ana enters board 95
+wait 1
+look
+Ana goes to lobby
+wait 4
+look
+Dee: ok lessons. no numbers, not even the word. no names before a code. riddles only
+Cy: and nicknames: grandma is the cords one, toaster is the lever one, front is the way-home one
+next round
+look
+Ana: grandma = days in february, normal year
+Bo enters board 28
+wait 1
+Cy: toaster = a full deck of cards
+Dee enters breaker 52
+wait 1
+Bo: i'll walk to the front
+Bo goes to lobby
+Dee: front = dirk's jersey
+Bo enters latch 41
+wait 1
+look
+Ana goes to lobby
+Cy and Dee go to lobby
+wait 3
+look
+Dee: clean. same nicknames again
+next round
+look
+Ana: toaster, for you dusty room folks: two dozen
+Cy enters breaker 24
+wait 1
+Cy: grandma = a dollar minus eight cents
+Bo enters board 92
+wait 1
+Ana: ok i'm heading for the front. who has the front
+Ana goes to lobby
+Dee: me. front = the meme. the one every kid in my class yells
+Ana: the front one? the meme one? got it
+Ana enters latch 67
+wait 1
+look
+Bo goes to lobby
+Cy and Dee go to lobby
+wait 3
+Cy: that was like ten seconds
+next round
+look
+Cy: the panel says it understands "front" now. new word for that one: doormat
+Dee: grandma = a trombone parade. how many trombones
+Ana: lol. ok
+Ana enters board 74
+wait 1
+Ana: toaster = one less than thirty
+Cy enters breaker 29
+wait 1
+look
+look
+Dee: it queued our room. quick
+Ana: toaster = a full deck plus a pair
+Cy enters breaker 54
+Cy and Dee go to board
+look
+Bo: its parked on the doormat. we wait for it to leave
+wait 4
+Cy: still there?
+wait 4
+look
+Dee: ugh i think "leave" counts. ok decoy: lever lever lever
+Ana goes to lobby
+Bo: doormat = seven sevens
+Ana enters latch 49
+wait 1
+look
+Ana: done! come to me. careful its got my room queued
+Bo, Cy and Dee go to lobby
+wait 4
+look

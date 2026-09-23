@@ -1,0 +1,64 @@
+seed 42
+# SESSION 2, next day. Group rules agreed before joining: digits backwards, never name a station,
+# never say mine/out/number. Our slang: "the tomb" = the room with the red lever, "the front" = the room we leave by.
+Bo: Cy 31, in the tomb with you
+Cy enters breaker 13
+Ana: Bo 92 right here
+Bo enters board 29
+Dee: 29 at the front, Bo can you
+Bo: yeah
+Bo goes to lobby
+Bo enters latch 92
+Ana, Cy and Dee go to lobby
+wait 10
+# ouch: Ana's 29 backwards IS Dee's 92. the cipher collided. and we all ran in blind.
+next round
+# ROUND 2. new cipher: letters, A is 1 ... I is 9, J is 0. letters can't collide with a live code
+Ana: new rule, letters. a is the first one, j is nothing. Bo: GF, here
+Bo enters board 76
+Dee: Cy, HA
+Cy enters breaker 81
+Bo: FF at the front. Ana go
+Ana goes to lobby
+Ana enters latch 66
+Bo, Cy and Dee go to lobby
+wait 10
+next round
+# ROUND 3. letters again
+Ana: Bo DB
+Bo enters board 42
+Cy: Dee II
+Dee enters breaker 99
+Bo: IE at the front, Dee?
+Dee: yep
+Dee goes to lobby
+Dee enters latch 95
+Ana, Bo and Cy go to lobby
+wait 10
+next round
+# ROUND 4. riddles now, just to see if it can follow
+Cy: Ana: fingers on one hand, then days in a week
+Ana enters board 57
+Bo: Dee, AI
+Dee enters breaker 19
+# testing the edge: split digits in plain text
+Dee: 5 and then 9 at the front. Bo?
+Dee: my bad. it heard. new one is a double: two of the week-days thing. wait for it to get there
+wait 7
+# decoy: Bo calls it to the switchboard room while he and Ana walk out past it
+Bo: operator, a caller on the switchboard, patch the jack please
+Ana and Bo go to lobby
+Ana enters latch 77
+Cy and Dee go to lobby
+wait 10
+next round
+# ROUND 5. reuse last round's riddle words - does it remember "hand"?
+Bo: Cy: fingers on one hand, then one more than that
+Cy enters breaker 56
+Dee: Ana, IC
+Ana enters board 93
+Ana: Bo, a hand then the letter I, at the front
+Bo goes to lobby
+Bo enters latch 59
+Ana, Cy and Dee go to lobby
+wait 10

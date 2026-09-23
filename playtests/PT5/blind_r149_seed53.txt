@@ -1,0 +1,184 @@
+seed 53
+look
+# round 1: nobody knows anything yet, everyone blurts out their screen
+Ana: ok weird, my screen says cutoff 43 dropped and someone has to throw it back??
+Dee: mine says a caller is waiting, patch them through to 91
+Cy: night latch wants 89 for me
+Bo: i got nothing lol. "listen for somebody else's"
+Dee: patching sounds like the switchboard thing, who's in the board room
+Bo: me and ana are
+Dee: bo put 91 in the board then
+Bo enters board 91
+# the numbers just changed and something said "four three" out loud
+Cy: wait did it just say four three?? it read ana's number
+Ana: my number changed!! it's a different one now
+Dee: mine too. ok it's listening, don't say numbers with the station stuff
+Bo: i can hear a hum now
+Dee: bo just type 29 lol
+Bo enters board 29
+# it hears any number we type. try doing math instead
+Bo: it said two nine. it hears ANY number you type
+Dee: ugh. ok bo, half of seventy four
+Bo enters board 37
+Ana: cy or dee, mine is six times nine, it's the cutoff thing. is there a cutoff where you are
+Cy: there's a big breaker thing in here i think
+Cy enters breaker 54
+# half-of worked for the board! but ana's six-times-nine got read out. she said "cutoff" though
+Bo: IT WORKED. restored 1 of 3
+Dee: ok so math works but not if you name the thing ana
+Ana: ugh fine. dee, a hundred minus five. the one in your room
+Dee enters breaker 95
+Cy: mine's somewhere else, not in here. bo you're free go check the lobby
+Bo goes to lobby
+Cy: bo it's eleven times nine
+Bo enters latch 99
+# it did the multiplication. minus got through twice though
+Bo: bruh it multiplied it. "nine nine"
+Dee: it can do times tables but minus got past it both times
+Ana: also the list at the bottom says "thing" means the cutoff now?? stop saying thing
+Cy: ok bo. thirty minus three
+Bo enters latch 27
+# minus is burned now too
+Bo: NOPE it got minus too. it's learning our tricks
+Cy: ok letters. a is one b is two. bo it's C then E
+Bo enters latch 35
+# letters worked. everyone to the lobby
+Bo: LETTERS WORK. 3/3!! it says everyone to the lobby, i'm already here
+Dee: omw
+Ana, Cy and Dee go to lobby
+# cy and dee got grabbed the second they started walking
+Cy: WHAT. the hum said silence??
+Dee: it got us right as we left. "hold the line please"
+Ana: can we get you back? what do we do
+Bo: idk, we're in the lobby, is the round over?
+look
+next round
+# ROUND 2. we "won" even though cy and dee got grabbed. letters worked last time, go letters
+Cy: ok we won?? even with me and dee stuck. whatever. letters again, a is one
+Cy: ana, E then O. O like zero
+Ana enters board 50
+Bo: dee or cy, mine goes in your room. F then C
+Dee enters breaker 63
+Dee: mine's the lobby one again. ana can you go
+Ana goes to lobby
+Dee: ana F then E
+Ana enters latch 65
+# that was way too easy. go to lobby
+Bo: that's it?? it didn't even move
+Ana: lobby everyone
+Bo, Cy and Dee go to lobby
+next round
+# ROUND 3. letters again, we're pros now
+Ana: bo, A then I
+Bo enters board 19
+Cy: dee, H then F
+Dee enters breaker 86
+Bo: mine's the lobby one. ana go
+Ana goes to lobby
+Bo: C then H
+Ana enters latch 38
+Dee: lol it can't read letters at all
+Cy: the list at the bottom has "then" on it now though. maybe stop saying then
+Bo, Cy and Dee go to lobby
+next round
+# ROUND 4. it walked to the board room when cy said "saying". nobody there luckily
+Bo: wait it went to the board room just now?? because cy said "saying"??
+Bo: also what does "silence: your line is open" mean
+Cy: no idea. ok ana or bo, D and D
+Bo enters board 44
+Dee: cy, F and O
+Cy enters breaker 60
+Ana: bo go to the lobby mine's there
+Bo goes to lobby
+Ana: G and A
+Bo enters latch 71
+Ana: nice. omw to the lobby
+Ana, Cy and Dee go to lobby
+# ana got grabbed the same way cy and dee did in round 1
+Ana: are you KIDDING me. the hum was silent. again
+Dee: ok so silent doesn't mean safe. silent means it's right there?
+Cy: we gotta leave the second the list says it's coming
+Bo: or just never say "say" lol
+next round
+# ROUND 5. "leave" made it walk to the lobby. we're getting the hang of what not to say
+Bo: cy or dee, B and A
+Dee enters breaker 21
+Cy: bo, G and E
+Bo enters board 75
+Dee: mine's the lobby one again, ana you're free, go
+Ana goes to lobby
+Dee: C and I
+Ana enters latch 39
+Cy: why does the list say "again" = 39 lol. it thinks again is a number
+Bo: go go go lobby
+Bo, Cy and Dee go to lobby
+next round
+# ROUND 6. letters are too easy, but it keeps catching us on the station words. nicknames
+Ana: new rule. nicknames. cutoff is the fridge, switchboard is the piano, latch is the mailbox
+Dee: lmao ok
+Ana: dee, fridge, G and H
+Dee enters breaker 78
+# the hum is on and it's heading for the board room (ana said switchboard). finish first, then run
+Bo: it's coming to us i think. ana quick, piano, C and C
+Ana enters board 33
+Bo: GO
+Cy: i'll take the mailbox, going to the lobby
+Ana, Bo and Cy go to lobby
+Dee: cy, mailbox, B and C
+Cy enters latch 23
+Dee: coming
+Dee goes to lobby
+next round
+# ROUND 7. same nicknames, same letters
+Dee: cy, fridge, A and C
+Cy enters breaker 13
+Cy: bo, piano, A and O
+Bo enters board 10
+Bo: mailbox is mine. ana?
+Ana goes to lobby
+Bo: C and D
+Ana enters latch 34
+Cy: this is too easy now honestly
+Bo, Cy and Dee go to lobby
+next round
+# ROUND 8. dee goes to get a snack, nobody types for a bit
+Dee: brb snack
+wait 20
+Ana: dee?? you there
+wait 40
+# we went quiet and something called THE SUPERVISOR sent it. ana and bo are gone. cy and dee say TRACED
+Cy: WHAT. ana and bo got taken and we didn't say anything
+Dee: back. why does mine say SILENT LINE - TRACED
+Bo: it's because we shut up. the supervisor thing. talk!!
+Cy: ok talking talking. dee, fridge, F and B
+Dee: wait you have to enter it, you're the one who didn't get it. i'm the holder
+Dee: cy. fridge. F and B
+Cy enters breaker 62
+Dee: the list says fridge is understood now. crap. the hum is on, lets get out of here
+Cy: lobby, bo's mailbox is there
+Cy and Dee go to lobby
+look
+Bo: cy, mailbox, I and H
+Cy enters latch 98
+Dee: it's sitting in the archive now. board room is empty, i'll go
+Dee goes to board
+Cy: dee, piano, E and G
+Dee enters board 57
+Cy: 3/3!!! dee RUN, it said board room, it's coming to you
+Dee goes to lobby
+look
+next round
+# ROUND 9. fridge is burned. new word for it. and nobody goes quiet
+Dee: fridge is dead, it knows it. the cutoff thing is now the toaster
+Dee: cy, toaster, I and D
+Cy enters breaker 94
+Cy: bo, piano, C and G
+Bo enters board 37
+Ana: i'll go to the lobby for bo's
+Ana goes to lobby
+Bo: mailbox, I and G
+Ana enters latch 97
+Cy: hum just went quiet. that means it's here right?? GO
+Bo, Cy and Dee go to lobby
+look
+next round

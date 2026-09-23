@@ -1,0 +1,8 @@
+seed 5
+# probe 3: does "bo ok" read as "book"?
+Ana: bo ok
+wait 14
+Ana: book
+wait 14
+Ana: bo. ok
+wait 1

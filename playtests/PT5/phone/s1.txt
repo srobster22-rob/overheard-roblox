@@ -1,0 +1,300 @@
+seed 11
+# round 1 - nobody knows the game yet. first messages.
+wait 3
+Ana: cutoff 85 someone do it
+wait 3
+Bo: patch caller to 86
+wait 2
+Cy: latch wants 78
+wait 3
+Dee: wat do i do
+wait 3
+look
+wait 2
+Cy: wait im stuck
+wait 3
+Ana: it said my number
+wait 3
+Dee: cant move lol
+wait 2
+Bo: my number changed
+wait 3
+Bo: ana its 3 then 1
+wait 3
+Ana: ok
+wait 2
+Ana enters board 31
+wait 2
+look
+# ---- round 2
+next round
+look
+wait 3
+Ana: dont say ur numbers
+wait 4
+Bo: ok code words
+wait 3
+Cy: ana the big desk
+wait 3
+Bo: dee the flippy thing
+wait 3
+Cy: 90 plus 2
+wait 3
+Bo: 8 times 8
+wait 2
+look
+wait 3
+Bo: run guys
+wait 2
+Cy and Dee go to lobby
+wait 2
+look
+wait 1
+Dee: me n cy in lobby
+wait 3
+Ana: dee do the door thing
+wait 3
+Ana: four oh
+wait 3
+Dee: wher is door thing
+wait 2
+look
+wait 1
+Dee enters latch 40
+wait 1
+Cy: its coming
+wait 1
+Cy and Dee go to board
+wait 1
+look
+wait 2
+Cy: dee put one five here
+wait 3
+Dee enters board 15
+wait 3
+Bo: now do mine pls
+wait 3
+Bo: two seven
+wait 3
+look
+wait 1
+Cy: it herd run
+Cy and Dee go to lobby
+wait 1
+look
+# ---- round 3
+next round
+look
+wait 3
+Ana: no numbers ok
+wait 3
+Ana: dee do the flippy
+wait 3
+Ana: 3
+wait 3
+Ana: 8
+wait 3
+look
+wait 2
+Dee enters breaker 38
+wait 3
+Dee: did it work
+wait 3
+look
+Cy: ya good
+wait 3
+Cy: dee go lobby mine
+wait 3
+Cy: 2
+wait 3
+Cy: 7
+wait 1
+Dee goes to lobby
+wait 1
+Dee enters latch 27
+wait 2
+look
+wait 1
+Bo: cy come to me
+wait 3
+Bo: 2
+wait 3
+Bo: 2 again
+wait 1
+Cy goes to board
+wait 1
+Cy enters board 22
+wait 2
+look
+wait 1
+Dee: yay
+Cy goes to lobby
+wait 2
+look
+# ---- round 4
+next round
+look
+wait 3
+Cy: dee flippy
+wait 2
+Dee: ana big desk
+wait 2
+Cy: 4
+wait 2
+Dee: 6
+wait 2
+Cy: again
+wait 2
+Dee: again
+wait 2
+Ana: ok
+wait 1
+Dee enters breaker 44
+wait 1
+Ana enters board 66
+wait 2
+look
+Bo: nice
+wait 3
+Bo: ana go lobby
+wait 3
+Bo: 8
+wait 3
+Bo: 3
+wait 1
+Ana goes to lobby
+wait 1
+Ana enters latch 83
+wait 2
+look
+wait 2
+Ana: all go lobby
+wait 1
+Bo, Cy and Dee go to lobby
+wait 2
+look
+# ---- round 5
+next round
+look
+wait 3
+Bo: cy flippy
+wait 2
+Dee: bo big desk
+wait 2
+Bo: 3
+wait 2
+Dee: 9
+wait 2
+Bo: again
+wait 2
+Dee: 3
+wait 2
+look
+wait 1
+Cy enters breaker 33
+wait 1
+Bo enters board 93
+wait 2
+Ana: cy go lobby pls
+wait 3
+Ana: 7
+wait 3
+Ana: 9
+wait 1
+Cy goes to lobby
+wait 1
+Cy enters latch 79
+wait 2
+Cy: done
+Ana, Bo and Dee go to lobby
+wait 3
+look
+# ---- round 6
+next round
+look
+wait 4
+Dee: cy flippy
+wait 3
+Bo: ana big desk
+wait 3
+Dee: 6
+wait 3
+Bo: 2
+wait 3
+Dee: 7
+wait 3
+Bo: 0
+wait 3
+look
+wait 1
+Cy enters breaker 67
+wait 1
+Ana enters board 20
+wait 4
+look
+wait 4
+Dee: 2 more
+wait 4
+Bo: who has last
+wait 4
+look
+wait 4
+Cy: me lobby one
+wait 4
+look
+wait 1
+Cy: dee go lobby
+wait 3
+Cy: 6
+wait 3
+Cy: 5
+wait 1
+Dee goes to lobby
+wait 1
+Dee enters latch 65
+wait 2
+look
+wait 2
+Dee: cy come
+Cy goes to lobby
+wait 3
+Ana: wat happend to us
+look
+# ---- round 7
+next round
+look
+wait 3
+Dee: evry1 talk ok
+wait 3
+Ana: dee flippy
+wait 2
+Cy: bo big desk
+wait 2
+Ana: 7
+wait 2
+Cy: 1
+wait 2
+Ana: 5
+wait 2
+Cy: again
+wait 1
+Dee enters breaker 75
+wait 1
+Bo enters board 11
+wait 2
+Bo: lobby one is mine
+wait 3
+Dee: ok
+wait 3
+Bo: 3
+wait 3
+Bo: 6
+wait 1
+Dee goes to lobby
+wait 1
+Dee enters latch 36
+wait 2
+Ana: go go
+Ana, Bo and Cy go to lobby
+wait 3
+look

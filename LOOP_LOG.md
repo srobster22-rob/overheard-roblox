@@ -9194,3 +9194,41 @@ Next: R150 PLAYTEST (PT5), the one R148 postponed: three building rounds have pa
   - letters with a word between them ("C then E") are never a pair, so R148's alphabet never settles (core loop, 12): the next EXPAND;
   - the hum reads silence for the last 2 s before it arrives (three grabs, PT3 and PT4 too);
   - a word understood with no UNDERSTOOD line.
+
+
+## R150 · PLAYTEST · PT5: a genre veteran, phone players and a critic play build 39c2fd6
+Pick: PLAYTEST in the k=0 slot. A RETRO needs a playtest newer than the last RETRO (R146), and PT4 ran in R145, so PT5 runs here and the RETRO moves to R151. Three building rounds have passed since PT4 (R147, R148, R149), so the playtest R148 postponed is due. No score (PLAYTEST).
+- Personas: genre veteran; phone players (rotated after PT1's first-timers, PT2's returning group, PT3's min-maxer and PT4's struggling players); critic. All three write their own chat, on the stepped clock.
+- It judges R146's TRY: it passes if no unscripted group wins more than half its rounds with the Operator never moving (PT4's veteran: 8 of 13). R149's blind group already beat R148 with a word between its letters ("C then E"), so the veteran is told nothing about schemes.
+Sync: AGENT_LOOP v3.3 unchanged; OWNER.md `## Next` empty, no VETO; COACH.md has no new notes. Studio MCP: no tools. HEAD 39c2fd6 green.
+
+Player notices: nothing (PLAYTEST).
+Impact: n/a (PLAYTEST).
+Built: PLAYTESTS.md PT5; playtests/PT5/ (the three personas' sessions, probes, repros and reports, plus R149's blind session); MARKET.md evidence for core loop and the differentiator, and history row R150.
+Verified: every persona played blind and unscripted through tools/play, the real server modules on a stepped clock, text only. Their numbers were recounted here by replaying their session files (r150/rounds.py: outcome, players newly taken, UNDERSTOOD and Supervisor lines per round); the phone players' count matched theirs, the veteran's and critic's too. Three "broken" claims were replayed:
+- The Lexicon misfile reproduces (phone/repro_lexicon_misfile.txt): the breaker restored at 14.0 s takes "big desk", said about the board, and the board restored at 15.0 s learns nothing.
+- "bo ok", "book" and "bo. ok" each send it to the archive as 'directory' (critic/p4_bo_ok.txt); the first put Cy and Dee on the line.
+- R149's blind group's "C then E", "I and H" and "F and B" are 0 letter pairs (r149/pairs_probe.luau), so R148's alphabet can never learn them.
+Headline:
+- Rounds won, unscripted: veteran 10/13 (PT4 11/13), phone players 5/7, critic 10/10 (PT4 11/12). Bots 5/6/5 → 5/6/5.
+- Taken per round: veteran 1.2 (PT4 0.8), phone players 1.7, critic 0.4 (PT4 0.5). Bots 2.5 → 2.5.
+- Supervisor calls per round: veteran 0.08 (PT4 0.08), phone players 0.14, critic 0.2 (PT4 0.17). Bots 1.7 → 1.7.
+- Group words that bit: understood on 5 lines in 30 rounds, 2 players taken (PT4: 5 lines, 1 taken in 31). Bots: codewords replaced 7 → 7.
+- Natural chat naming a plain word 30/160 → 30/160. Rounds that end: 21/21 → 21/21, and all 30 unscripted.
+- R146's TRY measure, rounds won with the Operator never moving: 12 of 30 (the veteran 6 of 13, PT4's veteran 8 of 13). It fails on one group: the veteran's seed-42 group, 3 of 5, with letters written glued ("GF").
+Findings:
+- Still solved by round 2-4, but no longer silently: codes read aloud are heard, first rounds cost groups (veteran 3 losses, phone players 2), and the Operator moved in 18 of 30 rounds. Every group's way through is ONE encoding the listener cannot read: reversed digits, glued letters, one digit per message, riddles, a word between letters.
+- Two defects in what it learns: a restore credits every recent line, so two restores a second apart file both stations' words under the first (all three personas); and player names are learned as station words ("ana" 74%, "ana you still ok?" sent it to the archive).
+- The climax lands on the win's tick (veteran, critic); warnings call it (phone players, critic); alerts sit below line 2 of the panel, where a phone player never reads (phone players).
+- Critic 5/10 (PT4 4/10); only 4 store-shot moments of play plus 1 UI shot.
+- Best moment: the veteran's cipher collision, `Ana: "Bo 92 right here"` → `"Nine two. I have that party for you."`, the group's own reversal landing on a teammate's live code.
+Market: no row moved. Core loop stays 1, differentiator 2, hook 1 (PLAYTESTS.md PT5 gives the evidence for each). 18.7 unchanged; MARKET.md history row R150. `lune run tools/market check` passes.
+Content: unchanged (PLAYTEST).
+Coach: none new.
+Decisions: none.
+Next: R151 RETRO, which now has a playtest newer than R146. It covers:
+- the scorecard for R147-R150;
+- a blind market re-score (keep the lower score on each row);
+- PLAYBOOK: judge R146's TRY (it fails on one group of five, 3 of 5) and R141's KEEP;
+- lessons.
+Then R152, this cycle's BIG SWING slot. Its first candidate is PT5 #1: read what the entrant is TOLD across the holder's messages, not one more encoding. PT5's broken (1) (holder's lines credit the holder's line) and (2) (player names) are FIX-sized, for R154.

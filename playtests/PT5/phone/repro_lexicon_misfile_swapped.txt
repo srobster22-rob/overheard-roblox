@@ -1,0 +1,22 @@
+seed 11
+# Round 1 of seed 11: Ana holds Cutoff 85 (breaker, archive), Bo holds board 86 (board room), Cy holds latch 78.
+# Two codes are passed one digit per message, then restored one second apart, BOARD first (the swap of repro_lexicon_misfile.txt).
+# Expected: "big desk" (said about the board) is learned for the Exchange Desk.
+wait 3
+Ana: dee flippy
+wait 2
+Bo: ana big desk
+wait 2
+Ana: 8
+wait 2
+Bo: 8
+wait 2
+Ana: 5
+wait 2
+Bo: 6
+wait 1
+Ana enters board 86
+wait 1
+Dee enters breaker 85
+wait 1
+look

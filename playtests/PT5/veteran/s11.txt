@@ -1,0 +1,128 @@
+seed 11
+Ana: ok mine says the red lever thing, eighty five
+Bo: i got a caller who needs plugging, 86
+Cy: door thingy wants 78
+Dee: nothing on mine. where are the keypads?
+wait 2
+Dee enters latch 78
+Cy enters latch 78
+Ana enters board 86
+# lesson: it hears everything. Now we code-talk.
+Ana: ok it heard all of that. calling mine pineapple now. pineapple one five
+Dee: pineapple is in my room i bet, where it is walking. trying
+Dee enters breaker 15
+Bo: mine is banana. banana three one. Ana you're next to me
+Ana enters board 31
+# lesson 2: it's the NUMBER it hears. new rule: say it backwards
+Ana: it hears the number itself. rule: say numbers BACKWARDS. pineapple 81
+Dee enters breaker 18
+Bo: banana 39
+Ana enters board 93
+Cy: kiwi 12, kiwi is where it queued after banana
+Dee goes to lobby
+Dee enters latch 21
+# the thing is camped in the archive on the last one. decoy it to the lobby while Dee sneaks back
+Dee: hey operator, the exit door, the night latch, lobby lobby lobby
+Dee goes to archive
+Ana: mango 36. mango is the one it's camping
+Dee enters breaker 63
+# oops, we parked it on the exit. pull it to the board room while Ana and Bo leave it
+Bo: operator! the switchboard, patch the jack, board room please
+Ana, Bo and Dee go to lobby
+wait 3
+next round
+# ROUND 2. we learned: each room has one keypad. talk rooms-not-stations, numbers backwards, no names of things
+Dee: Cy. 09. right where we stand
+Cy enters breaker 90
+Bo: Ana, 04, same deal, right here
+Ana enters board 40
+Ana: 81 for whoever walks to where we all got caught
+Cy: on it
+Cy goes to lobby
+Cy enters latch 18
+Ana: out out out
+Ana, Bo and Dee go to lobby
+wait 2
+next round
+# ROUND 3. rule for the end: NOBODY TYPES once it's all through
+Dee: Cy you do mine, 19
+Cy enters breaker 91
+Cy: Bo, yours is 43, dont move
+Bo enters board 34
+Ana: 32, same spot as before. Dee?
+Dee: going
+Dee goes to lobby
+Dee enters latch 23
+Ana, Bo and Cy go to lobby
+wait 1
+wait 10
+next round
+# ROUND 4. don't say mine. keep it to name + backwards digits
+Ana: Dee, 91, where you are
+Dee enters breaker 19
+Dee: Bo 38 on your side
+Bo enters board 83
+Cy: 56 at the far one. Bo can you run it
+Bo: yep
+Bo goes to lobby
+Bo enters latch 65
+Ana, Cy and Dee go to lobby
+wait 10
+next round
+# ROUND 5. Bo went to get a drink, everyone else is slow to start
+wait 15
+wait 20
+Ana: ok ok im here. Bo?? you there
+Cy: here
+Dee: here, Bo is afk lol
+wait 10
+Bo: back sorry what did i miss
+Ana: Bo we are getting traced, move with me to the other side NOW
+Ana and Bo go to archive
+Dee: Cy, 67 by you
+Cy enters breaker 76
+Cy: 39 at the far room, Dee take it
+Dee goes to lobby
+Dee enters latch 93
+# it's camping Ana's keypad. Dee throws a decoy at OUR room while the three of us swap past it
+Dee: hey operator, the cutoff breaker in the archive dropped
+Ana, Bo and Cy go to board
+Ana: Bo, 64 when we get in
+Bo enters board 46
+Ana, Bo and Cy go to lobby
+wait 10
+next round
+# ROUND 6
+Ana: Cy 78 yours
+Cy enters breaker 87
+Dee: Ana 13 on you
+Ana enters board 31
+Bo: 02 at the far room, Cy?
+Cy: got it
+Cy goes to lobby
+Cy enters latch 20
+Ana, Bo and Dee go to lobby
+wait 10
+next round
+# ROUND 7. Ana's is a palindrome, backwards won't hide it
+Bo: Cy, 45 yours
+Cy enters breaker 54
+Dee: Ana 08 on you
+Ana enters board 80
+Ana: mine reads the same both ways, so: the loneliest number, twice. far room. Dee?
+Dee: lol ok
+Dee goes to lobby
+Dee enters latch 11
+Ana, Bo and Cy go to lobby
+wait 10
+next round
+# ROUND 8. same shape as every round so far
+Dee: Cy 94
+Cy enters breaker 49
+Cy: Bo 25 your room
+Bo enters board 52
+Ana: 26 far room, Dee
+Dee goes to lobby
+Dee enters latch 62
+Ana, Bo and Cy go to lobby
+wait 10

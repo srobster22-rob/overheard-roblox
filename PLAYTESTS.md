@@ -1,5 +1,73 @@
 # PLAYTESTS — newest first. Bots: `lune run tools/playtest <persona> <rounds> <seed>`. Unscripted play: `lune run tools/play <session file>` (sessions and reports under playtests/).
 
+### PT5 · R150 · personas: genre veteran (DOORS / 99 Nights / Phasmophobia), phone players (rotated after PT1's first-timers, PT2's returning group, PT3's min-maxer and PT4's struggling players), critic · build 39c2fd6
+Sessions: all three played BLIND (no source, no word lists) through `tools/play` on a STEPPED clock, text only (Roblox Studio not connected: no screenshots, no sound). All three were UNSCRIPTED and wrote every chat line and move from what was on screen.
+- Genre veteran: two groups, 13 rounds, 7.0 stepped minutes (seeds 11 and 42), plus two probes.
+- Phone players: four casual friends, 3-6 word messages with 2-4 s gaps, reading only the top of their screens; 7 rounds, 7.3 stepped minutes (seed 11), plus two repros.
+- Critic: two groups, 10 rounds, 6.7 stepped minutes (seeds 11 and 5), plus four probes.
+- Sessions and reports: playtests/PT5/. R149's blind session (seed 53, 9 rounds, same rules) is kept beside them.
+
+Headline:
+- Rounds won, unscripted: veteran 10/13 (PT4 11/13), phone players 5/7, critic 10/10 (PT4 11/12); R149's blind group 9/9. Bots 5/6/5 of 7 (PT4 5/6/6).
+- Players taken per round: veteran 1.2 (16 in 13; PT4 0.8), phone players 1.7 (12 in 7), critic 0.4 (4 in 10; PT4 0.5). Bots 2.5 (PT4 1.9).
+- Supervisor calls per round: veteran 0.08 (1 in 13; PT4 0.08), phone players 0.14, critic 0.2 (PT4 0.17). Bots 1.7 (PT4 1.6).
+- Codewords the Operator learned and used: veteran "pineapple" and "mine" understood, "mine" took 2 (PT4 0); phone players 0; critic "toaster" burned and "front" understood, 0 caught (PT4 "grandma", 1 caught). A player's NAME was understood as a station word ("ana" 74%). Bots: 7 replaced (PT4 4).
+- Codes heard (R142 on): veteran 8, phone players 8, critic 13, nearly all in each group's first rounds.
+- Natural chat naming a secret: 30 of 160 (unchanged). Rounds that end: all 30, and R149's 9.
+- Won with the Operator never moving (R146's TRY): 12 of 30 (veteran 6 of 13, PT4 8 of 13; phone players 3 of 7; critic 3 of 10); R149's blind group 2 of 9. The TRY fails on one group: the veteran's seed-42 group, 3 of 5, with letters written glued ("GF", "HA").
+
+Versus DOORS: the exit. DOORS ends a run with Seek: lights flicker, eyes open on the walls, and you sprint and pick a door under pressure; it is the climax and the reason you queue again. Here, once the lines are through, the group stands silent in the lobby for 10 s, the trace says "it is coming for the lobby", and the round is won on the same tick (the critic's worst moment too). The veteran: the idea "is better than anything DOORS has", but once known, silence plus a cipher means it never shows up.
+
+Felt samey:
+- Every round and seed deals the same layout: Ana and Bo in the board room, Cy and Dee in the archive, three 2-digit codes, one player with nothing. Only the latch ever needs a walk.
+- Once a group has its scheme, a round is name the station, send the code, walk, enter, lobby, 10 s ring; round 8 looks like round 1. Downtime (14 s intermission, 10 s ring) is longer than play.
+- The Operator's lines never change ("I have that party for you", "Go ahead, caller").
+
+Confusing:
+- Warnings call it: "dont say ur numbers", "no numbers ok", "it heard "number" again", "understands "front" now" (phone players, critic; PT4 too). Two of the phone group's warnings cost two players each.
+- The hum reads "you can hear it" for any walk anywhere and "silence" while it waits, even in your room; R149's blind group was taken three times reading that silence as safe.
+- Nothing says which room holds which station; groups learn it by leaking and watching where it walks. 'directory' is a station word on no panel (critic).
+- Which disguises are safe: "four oh" and "fifty five minus eleven" pass, "one five", "90 plus 2", "one less than thirty" do not; a riddle can spend someone else's code ("ninety three minus one" spent 90).
+- Codes change silently: the "spent" notice is only in the trace; the holder just sees a new number (phone players).
+- The Lexicon: word stems, name pairs, percentages nobody can use; "understood" words with no UNDERSTOOD or BURNED line (critic; R149 blind).
+- The Supervisor names nobody; a talker next to a silent player is taken.
+- Being taken costs nothing; `ROUND WON: 2 of 2 still free got out` reads like a flawless win (all three).
+- "Secrets it listens for: 4" with three codes (veteran, critic; PT4 too); "wait for it to walk off" gives no time.
+
+Broken:
+- (1) The Lexicon files a group's words under the wrong station. At a restore every line of the last 20 s is credited to that line, so when two lines are restored about a second apart the first takes both stations' words and the second learns nothing (phone/repro_lexicon_misfile.txt: "big desk", said about the board, under Cutoff; the swapped repro files "flippy" under Exchange Desk). All three personas hit it (veteran s11 171.0 s, critic s1 57.0 s and s2 118.0 s), as PT4 did ("mailbox" and "piano" under Cutoff).
+- (2) Player names are learned as station words: "ana" reached 74% for the breaker and `Bo: "ana you still ok?"` sent it to the archive (critic/s2.txt 21.0 s); "dee" and "ana" under Cutoff (phone players). The entrant is named right before most codes.
+- (3) "bo ok" and "bo. ok" are read as "book", a directory word: words are joined across a full stop (critic/p4_bo_ok.txt).
+- (4) A wrong number learned: `"cards" = 93` (critic/s2.txt).
+- Tool limits, not the game: two walks run one after the other, and a walk cannot be cancelled (critic s1).
+
+Critic: 5/10 (PT4 4/10). Reasons not to play:
+- (1) Any riddle beats the Operator: s2 R2 is 8 s from the round start to every line through, with no Operator line.
+- (2) It barely learns across rounds: "porch" 68% fades to 36% by the next round; a word burned only when said four times in one round.
+- (3) Nothing at stake and no climax: a win with half the team taken, the same deal every round, no end to the night.
+Store shots: only 4 moments of play plus 1 UI shot (the "Seven eight." read-back; BURNED "toast"; "ana you still ok?" sending it off; a restore with a player on the line; the Lexicon panel). 0 real screenshots (Studio not connected).
+
+Best moment: the cipher collision. The veteran's group reversed its digits, and Ana's 29 reversed was Dee's live 92: `Ana: "Bo 92 right here"` → `"Nine two. I have that party for you."` (veteran/s42.txt R1), "the only real 'oh no' of the night". Close seconds: the phone group's "four oh" escape by 0.3 s; the critic's "ana you still ok?" sending it to the archive ("WAIT it went for the dusty room when you said her name").
+
+Phone players: they missed what sits below the first two panel lines: the silence warning (the call came at 352.0 s, the Operator 6.2 s later), the read-back and "walking to the board room" (reaction 0.2 s late), and the spent-code notice. The one change: "IT'S COMING TO YOUR ROOM" and "SILENT LINE, TALK NOW" on line 1 with a countdown. Would they play tomorrow? Probably not: after one digit per message, the Operator never moved on its own for four rounds.
+
+Matrix re-scores:
+- Core loop depth stays 1. Every group still found a code the listener cannot read by round 2-4: reversed digits, glued letters, one digit per message, riddles, and (R149's blind group) letters with a word between them. What changed: codes read aloud are now heard, so first rounds cost groups (the veteran lost 3 of 13, the phone players 2 of 7), and the Operator moved in 18 of 30 rounds (PT4's veteran: 5 of 13). The critic won 10 of 10.
+- Differentiator stays 2. A group's own word was understood on 5 lines in 30 rounds and took 2 players (PT4: 5 lines, 1 player); a player's name read as a station word is a defect, not learning.
+- Hook stays 1: warnings call it, and the first round costs a new group everything (the phone players lost rounds 1 and 2 with 8 taken) without saying why.
+- Market 18.7 unchanged.
+
+Backlog (ranked by gap value):
+1. Core loop (12): every group finds a code the listener cannot read. Each scheme found so far is one encoding (reversed digits, glued letters, a digit per message, riddles, letters with a word between). The swing's next slice should read what the entrant is TOLD across the holder's messages, not one more encoding. BIG SWING candidate.
+2. Differentiator (12): broken (1), words credited to the wrong station. The holder's lines belong to the holder's line (R148 already reads letters that way). FIX.
+3. Differentiator (12): broken (2), player names learned as station words. The server knows every name. FIX.
+4. Core loop (12): the climax lands on the win's tick and nothing escalates (veteran, critic).
+5. Hook (12): warnings call it; the hum's silence reads as safe; nothing says which room holds which station.
+6. Hook (12): alerts belong on line 1 of the panel (phone players).
+7. Core loop (12): being taken costs nothing (owner question 4).
+8. Broken (3) and (4): words joined across a full stop; a wrong learned number.
+9. "Secrets it listens for: 4"; the Supervisor names nobody.
+
 ### PT4 · R145 · personas: genre veteran (DOORS / 99 Nights / Phasmophobia), struggling players (rotated after PT1's first-timers, PT2's returning group and PT3's min-maxer), critic · build f679b1c
 Sessions: all three played BLIND (no source, no word lists) through `tools/play` on a STEPPED clock, text only (Roblox Studio not connected: no screenshots, no sound). All three were UNSCRIPTED and wrote every chat line and move from what was on screen.
 - Genre veteran: two groups, 13 rounds, 7.8 stepped minutes (seeds 11 and 23).

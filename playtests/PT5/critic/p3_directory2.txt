@@ -1,0 +1,18 @@
+seed 5
+# probe 2: narrow the 'directory' trigger
+Ana: lol
+wait 1
+Ana: bo
+wait 1
+Ana: ok
+wait 1
+Ana: cy
+wait 1
+Ana: haha
+wait 1
+Ana: who is it
+wait 1
+Ana: call me
+wait 1
+Ana: lmao
+wait 1

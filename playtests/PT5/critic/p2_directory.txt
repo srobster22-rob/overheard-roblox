@@ -1,0 +1,28 @@
+seed 5
+# probe: which plain word is the fourth secret, 'directory'?
+Ana: for the
+wait 1
+Ana: it
+wait 1
+Ana: its sitting right on it
+wait 1
+Ana: new
+wait 1
+Ana: front
+wait 1
+Ana: dusty room
+wait 1
+Ana: her name
+wait 1
+Ana: went
+wait 1
+Ana: wait
+wait 1
+Ana: dont say
+wait 1
+Ana: said
+wait 1
+Ana: lol bo ok
+wait 1
+Ana: when you
+wait 1

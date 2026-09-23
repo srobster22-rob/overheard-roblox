@@ -1,0 +1,202 @@
+seed 11
+look
+Ana: ok i got something on my panel, only i can see it
+Bo: same. mine says a caller is waiting
+Dee: mine says nothing on my line, listen for somebody else's
+Cy: mine's about the night latch, it wants 78
+wait 3
+look
+Cy: uh my number changed. it heard me. it walked to the lobby
+Dee: ok so dont say the thing or the number. lets use nicknames
+Bo: ana look at the big thing in front of us. ate sicks
+wait 2
+Ana: the what
+Bo: the one with the cords. ate. then sicks
+wait 3
+look
+Ana: oh. got it
+Ana enters board 86
+wait 1
+look
+Ana: nice. bo my turn. the lever thing. octopus legs, then fingers on one hand
+wait 2
+Bo: lever thing... is it in here?
+Bo enters breaker 85
+wait 1
+look
+Dee: its coming here i can hear it. cy move
+Cy and Dee go to lobby
+look
+Cy: dee. the one next to you. a dozen plus three
+Dee enters latch 15
+wait 1
+look
+Dee: done. whats left
+wait 2
+look
+Ana: mine. same as i told bo. its in the dusty room you just left
+Dee: the octopus one? ok going back
+Dee goes to archive
+Dee enters breaker 85
+wait 1
+look
+Dee: guys its got me. im on the line. i can talk but cant move
+Bo: nooo. is there a way to get you off?
+Ana: panel says everyone to the lobby. go go
+Ana and Bo go to lobby
+wait 2
+look
+Cy: we're all here except dee. now what
+wait 5
+look
+Bo: we made it. sorry dee
+Dee: its fine. next time dont walk into the room it's standing in lol
+next round
+look
+Dee: ok nicknames this time. grandma = the big one with cords. toaster = the one in the dusty room. porch = the one where we all met up at the end
+Cy: got it. grandma wants three two
+wait 2
+look
+Cy: dang it heard the numbers even spelled out. my code changed. its coming to grandma's room
+Ana: bo lets bail to the porch
+Ana and Bo go to lobby
+Bo: ana. porch = the age you can vote
+Ana enters latch 18
+wait 1
+look
+Ana: porch done. dee, toaster = blackjack
+Dee enters breaker 21
+wait 1
+look
+Cy: ok its sitting on grandma. im gonna call it over here then dee and i run. ana bo go to grandma when it moves
+Cy: lever lever lever
+Cy and Dee go to lobby
+Ana and Bo go to board
+look
+Cy: ana. grandma = a dollar minus a dime, in cents
+Ana enters board 90
+wait 1
+look
+Bo: thats all three! porch, everyone
+Ana and Bo go to lobby
+wait 4
+look
+Dee: ez
+next round
+look
+Ana: i got nothing this round
+Cy: ana, grandma = one less than a score
+Ana enters board 19
+wait 1
+Bo: dusty room people. toaster = the famous route
+Cy: get your kicks. got it
+Dee enters breaker 66
+wait 1
+look
+Dee: ana can you go to the porch
+Ana: omw
+Ana goes to lobby
+look
+Dee: ana. porch = a quinceanera
+Ana enters latch 15
+wait 1
+Ana: done. everybody come to me
+Bo goes to lobby
+Cy and Dee go to lobby
+wait 3
+look
+Cy: 3 for 3. it learned porch tho, look at the panel
+Bo: yeah dont say that word anymore. call it the front
+next round
+look
+Bo: ana. grandma = two dozen
+Ana enters board 24
+wait 1
+Ana: toaster = the hitchcock movie. the steps one
+Dee enters breaker 39
+wait 1
+look
+Bo: i'll take the front
+Bo goes to lobby
+Cy: bo. front = days in february, normal year
+wait 10
+look
+Bo: hmm hold on, is it 28 or 29 in a leap year. doesnt matter
+wait 15
+look
+Bo: I SAID IT. im so dumb. its got me
+Cy: lol bo. ok new number for the front and its sitting right on it
+wait 10
+look
+Cy: wait why is it coming HERE. dee run with me
+Cy and Dee go to lobby
+look
+Cy: dee. front = same as the toaster was last round
+Dee enters latch 66
+wait 1
+look
+Ana goes to lobby
+wait 5
+look
+Ana: sorry i was afk. what does traced mean
+Dee: no idea. nothing happened to us
+next round
+look
+Ana: bo. grandma = fifty five minus eleven
+wait 1
+look
+Bo enters board 44
+wait 1
+Dee: cy. toaster. eighty-three
+wait 1
+look
+Cy: DEE. ok out out
+Cy and Dee go to lobby
+Cy: dee, front = two weeks, in days
+Dee enters latch 14
+wait 1
+look
+Dee: my toaster number changed. its sitting on the toaster now. and it said it queued our room, cy we gotta move
+Cy and Dee go to board
+look
+Bo: it heard "number" again. its coming HERE. everyone to the dusty room
+Ana, Bo, Cy and Dee go to archive
+Dee: ana. toaster = a dozen less than my old toaster. no wait. three then four
+Ana enters breaker 34
+wait 1
+look
+Dee: ugh sorry. ok ana: toaster = the decade of big hair and synth pop
+Ana enters breaker 80
+wait 1
+look
+Cy: go go go
+Ana, Bo, Cy and Dee go to lobby
+wait 5
+look
+Bo: 5 for 5. is this ever gonna get harder
+next round
+look
+Cy: dee, toaster time
+Dee: toaster ready
+Cy: toaster = three dozen minus four
+Dee: toaster, yep
+Dee enters breaker 32
+wait 1
+look
+Dee: toaster done
+wait 1
+look
+Cy: DEE it knows toaster now. its coming. move
+Cy and Dee go to lobby
+Dee: sorry. ana, grandma = the funny number. you know the one
+Ana: lol. nice
+Ana enters board 69
+wait 1
+Bo: cy, the one where you are = two snowmen side by side
+Cy enters latch 88
+wait 1
+look
+Ana: its coming to us. bo lets go
+Ana and Bo go to lobby
+wait 4
+look

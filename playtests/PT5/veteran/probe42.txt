@@ -1,0 +1,6 @@
+seed 42
+# probe (not a played round): can a holder key their OWN code? does the Operator leave a room on its own?
+Dee goes to lobby
+Dee enters latch 92
+Dee: out
+wait 30
