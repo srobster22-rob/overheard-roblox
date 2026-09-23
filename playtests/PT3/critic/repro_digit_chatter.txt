@@ -1,0 +1,18 @@
+seed 7
+# exploration: does a message of bare digits keep your line open (beat the Supervisor) while teaching it nothing?
+Ana: 1
+Bo: 2
+Cy: 3
+Dee: 4
+wait 40
+Ana: 1
+Bo: 2
+Cy: 3
+Dee: 4
+wait 40
+Ana: 1
+Bo: 2
+Cy: 3
+Dee: 4
+wait 40
+look

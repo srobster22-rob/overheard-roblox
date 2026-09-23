@@ -8762,3 +8762,15 @@ Next: R140 PLAYTEST (postponed from R138, now three building rounds since R136):
 Pick: PLAYTEST, postponed from R138 (three building rounds since R136: R137, R138, R139) — personas: genre veteran (DOORS / 99 Nights), min-maxer (the rotation after PT2's returning group), critic. The veteran and the min-maxer play UNSCRIPTED, writing their own group's chat blind to the word lists, through a new session player (tools/play.luau) on a stepped clock; the bots and it now share one world (tools/sim.luau). Studio MCP not live (OWNER.md question 1), so no screenshots.
 
 Slice 1 (committed on its own because the previous session ended mid-playtest, 22 Sep ~17:03): tools/sim.luau, the headless world, shared by the bots and tools/play.luau, which replays a session file (chat, walks, code entries, waits) and prints each player's screen. tools/playtest.luau keeps only the bots' script, and its SUMMARY lines are identical for all three personas before and after. test.cmd replays tools/sessions/smoke.txt. Gate: test.cmd exit 0, selene src 0/0, rojo build OK. Studio MCP checked again 23 Sep 01:40: the roblox-studio server lists no tools.
+
+Player notices: nothing (PLAYTEST).
+Impact: n/a (PLAYTEST).
+Built: PT3 in PLAYTESTS.md; the three reports and 19 session files under playtests/PT3/. Fixes to the session player after PT3 exposed its faults: a walker now leaves their room at the doorway (1.5 s) and is in the corridor for the walk; several players can walk at once ("Ana, Bo and Cy go to lobby"); a caught player's refused walk costs no time; `next round` plays a live round out instead of forfeiting it; a byte-order mark no longer breaks a session file. MARKET.md re-scored from PT3.
+Quality: my tool manufactured a finding. Walkers stayed counted in the room they were leaving for the whole 7 s walk, so PT3 reported "no escape once it is called"; rerun on the fixed tool, the walker gets out and only the player who stayed is taken. PT3 lists it as a tool fault, not a game bug. The bots use instant moves and are unchanged.
+Verified: test.cmd exit 0; bot SUMMARY lines unchanged; both escape repros rerun with 3 s more: "On the line now: Bo" and "On the line now: Ana" only; a group walk moves all three at once.
+Headline: rounds won, bots 5/6/6 → 5/6/6; unscripted, first measured: veteran 7/10, min-maxer 15/16, critic 4/6. Taken per round, bots 1.7 → 1.7; veteran 1.9. Supervisor calls per round, bots 1.9 → 1.9; veteran 0.3. Codewords replaced, bots 4 → 4; unscripted: 2 burns in 10 veteran rounds. Natural chat naming a secret 30/160 → 30/160. Rounds that end 21/21 → 21/21, and every unscripted round ended.
+Market: 22.0 → 18.7: core loop 2→1 (digits and seat order beat the listener, 38 of 39 rounds), differentiator 3→2 (seen in the first minute, rarely bites). Core loop is now a top gap (12).
+Content: unchanged (PLAYTEST).
+Coach: none new (no notes since R139).
+Decisions: none.
+Next: R141 RETRO (a retro needs a playtest newer than R135's, so it moved from R140's slot); then R142 BIG SWING from PT3's #1: the code has to be SAID.

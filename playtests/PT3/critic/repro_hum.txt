@@ -1,0 +1,11 @@
+seed 7
+# exploration: what happens when it arrives in a room with people in it
+Ana: board
+wait 3
+look
+wait 5
+look
+Bo: ana are you ok
+Ana: i cant do anything
+wait 20
+look

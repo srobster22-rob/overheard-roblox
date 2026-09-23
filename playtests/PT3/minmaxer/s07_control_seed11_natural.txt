@@ -1,0 +1,70 @@
+seed 11
+# MATCH C - CONTROL. The same four players talk the way a normal group types, with no protocol,
+# to measure what the Operator (and its learning) costs a team that does NOT min-max.
+#
+# ROUND 1. Panels: Ana 86 (cutoff), Bo 79 (night latch), Cy nothing, Dee 86 (caller/patch).
+Ana: cutoff 86, whoever is in the archive
+Dee: my caller wants 86 too lol, patch them through on the desk
+Bo: night latch is 79
+Cy: on it, im in the archive
+Cy enters breaker 86
+Bo: ok patching the caller
+Bo enters board 86
+Bo: board done
+look
+Ana: wait whats that humming
+Bo: RUN
+Bo goes to lobby
+look
+Ana: it got us, were on the line
+Cy: ok me and dee do the latch. 79?
+Bo: yeah 79
+Dee: going to the lobby
+Dee goes to lobby
+Cy goes to lobby
+look
+Dee: turning the latch
+Dee enters latch 79
+Cy: nice, now we wait by the door
+wait 3
+look
+Dee: why is it humming again
+wait 8
+look
+#
+# ROUND 2
+next round
+look
+# Panels: Ana 92 (caller/patch), Bo 48 (cutoff), Cy 15 (night latch), Dee nothing. Lexicon opens with "archive" 18% carried over.
+# The group learned two words last round ("board done", "by the door") and avoids them, but otherwise chats normally.
+Ana: caller wants 92, bo can you patch it
+Bo: yep patching 92
+Bo enters board 92
+Bo: cutoff 48, whoever is in the archive
+Dee: im in the archive, got it
+Dee enters breaker 48
+look
+Cy: latch is 15. meet in the lobby
+Dee: ok leaving the archive
+look
+Bo: its humming again
+Ana: just go go go
+Ana goes to lobby
+look
+wait 1
+look
+Ana: its IN the lobby!! dont come
+Bo: ok waiting
+Cy: same, staying put
+wait 20
+look
+Bo: its moving, go now
+Dee: go go
+Bo goes to lobby
+Dee goes to lobby
+look
+Bo: im the last one. 15 right?
+Cy: yes 15
+Bo enters latch 15
+wait 11
+look

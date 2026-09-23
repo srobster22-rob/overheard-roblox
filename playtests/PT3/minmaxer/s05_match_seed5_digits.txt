@@ -1,0 +1,130 @@
+seed 5
+# MATCH A - the min-max protocol "digits only, pre-stage the lobby".
+# Team convention agreed before the match: holders type ONLY their two digits, nothing else.
+# Enterers find the station by trial (2 wrong tries are free; the 3rd try is either right or jams).
+# Everyone walks to the lobby; the latch is entered only once the lobby is (nearly) full, so the ring finds us all there.
+#
+# ROUND 1. Panels: Ana 85 (caller/patch), Bo 11 (cutoff), Cy 25 (night latch), Dee nothing.
+Ana: 85
+Bo: 11
+Cy: 25
+# Bo is in the board room with Ana. He knows 11 is his own cutoff, so the board is 85 or 25.
+Bo enters board 85
+# Dee is in the archive with Cy. The board took 85 (restored 1/3), Cy's own is the latch, so the cutoff is 11.
+Dee enters breaker 11
+Ana goes to lobby
+Bo goes to lobby
+Dee goes to lobby
+# three of us in the lobby; turn the latch now, Cy walks in inside the 10 s ring window
+Ana enters latch 25
+Cy goes to lobby
+wait 4
+look
+#
+# ROUND 2
+next round
+look
+# Panels: Ana 30 (night latch), Bo nothing, Cy 84 (caller/patch), Dee 74 (cutoff).
+Ana: 30
+Cy: 84
+Dee: 74
+Bo: .
+# Ana is at the board and knows her 30 is the latch: board is 84 or 74, she tries the first one said.
+Ana enters board 84
+# Cy is at the breaker: the board took 84 (restored 1/3), so the cutoff is 30 or 74. First said: 30.
+Cy enters breaker 30
+Cy enters breaker 74
+Ana goes to lobby
+Bo goes to lobby
+Cy goes to lobby
+# Ana holds the latch, so Bo turns it; Dee walks in inside the ring window
+Bo enters latch 30
+Dee goes to lobby
+wait 4
+look
+#
+# ROUND 3
+next round
+look
+# Panels: Ana 51 (cutoff), Bo 89 (night latch), Cy nothing, Dee 53 (caller/patch).
+Ana: 51
+Bo: 89
+Dee: 53
+Cy: .
+# Ana at the board: her 51 is the cutoff, so the board is 89 or 53. First said: 89.
+Ana enters board 89
+Ana enters board 53
+# Cy at the breaker: board took 53, so 51 or 89. First said: 51.
+Cy enters breaker 51
+Ana goes to lobby
+Bo goes to lobby
+Dee goes to lobby
+# Bo holds the latch, so Ana turns it; Cy walks in inside the ring window
+Ana enters latch 89
+Cy goes to lobby
+wait 4
+look
+#
+# ROUND 4
+next round
+look
+# Panels: Ana nothing, Bo 95 (caller/patch), Cy 29 (cutoff), Dee 53 (night latch).
+Bo: 95
+Cy: 29
+Dee: 53
+Ana: .
+# Ana at the board, holds nothing: first code said is 95.
+Ana enters board 95
+# Dee at the breaker: 53 is her latch, board took 95, so the cutoff is 29.
+Dee enters breaker 29
+Ana goes to lobby
+Bo goes to lobby
+Cy goes to lobby
+# Dee holds the latch, so Ana turns it; Dee walks in inside the ring window
+Ana enters latch 53
+Dee goes to lobby
+wait 4
+#
+# ROUND 5
+next round
+look
+# Panels: Ana 55 (cutoff), Bo 94 (night latch), Cy nothing, Dee 51 (caller/patch).
+# Speedrun variant this round: two players are fed to the Operator so only two have to walk.
+Ana: 55
+Bo: 94
+Dee: 51
+Cy: .
+# Bo at the board: his 94 is the latch, first other code said is 55.
+Bo enters board 55
+Bo enters board 51
+# Cy at the breaker: the board took 51, candidates 55 and 94, first said 55.
+Cy enters breaker 55
+# the archive pair is done; Cy calls the Operator onto herself with one plain word
+Cy: fuse
+Ana goes to lobby
+Ana enters latch 94
+Bo goes to lobby
+wait 4
+look
+#
+# ROUND 6
+next round
+look
+# Panels: Ana nothing, Bo 25 (caller/patch), Cy 67 (cutoff), Dee 38 (night latch). Cy and Dee are back after last round's sacrifice, no penalty.
+Bo: 25
+Cy: 67
+Dee: 38
+Ana: .
+Ana enters board 25
+# Dee at the breaker: 38 is hers (latch), board took 25, so 67.
+Dee enters breaker 67
+Ana goes to lobby
+Bo goes to lobby
+Cy goes to lobby
+Ana enters latch 38
+Dee goes to lobby
+wait 4
+#
+# ROUND 7
+next round
+look

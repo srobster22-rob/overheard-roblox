@@ -1,0 +1,19 @@
+seed 7
+# BROKEN: pass every code as bare digits and keep talking in digits - it never hears a thing
+Ana: 88
+Bo enters board 88
+Bo: 11
+Cy: 48
+Ana goes to archive
+Ana enters breaker 11
+Ana goes to lobby
+Bo goes to lobby
+Cy goes to lobby
+Ana: 0
+Bo: 0
+Cy: 0
+Dee: 0
+Dee goes to lobby
+Dee enters latch 48
+wait 11
+look

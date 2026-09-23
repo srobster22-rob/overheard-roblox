@@ -1,0 +1,94 @@
+seed 3
+# MATCH B - protocol "glue the station word to the code" (board26, cutoff17, latch95).
+# Probes showed the Operator splits on spaces and punctuation and even reads leetspeak (d00r, b0ard),
+# but a word glued to digits ("door48", "board88") is never heard. Humans read it fine.
+# Each glued token is said ONCE, so the learner can hold it at 25% at most (it acts at 75%).
+#
+# ROUND 1. Panels: Ana 95 (night latch), Bo nothing, Cy 26 (caller/patch), Dee 17 (cutoff).
+Ana: latch95
+Cy: board26
+Dee: cutoff17
+Bo: .
+Bo enters board 26
+Cy enters breaker 17
+Ana goes to lobby
+Bo goes to lobby
+Cy goes to lobby
+# Ana holds the latch, Bo turns it; Dee walks in inside the ring window
+Bo enters latch 95
+Dee goes to lobby
+wait 4
+look
+#
+# ROUND 2
+next round
+look
+# Panels: Ana 19 (cutoff), Bo 30 (night latch), Cy nothing, Dee 44 (caller/patch).
+Ana: cutoff19
+Bo: latch30
+Dee: board44
+Cy: .
+Ana enters board 44
+Cy enters breaker 19
+Ana goes to lobby
+Bo goes to lobby
+Cy goes to lobby
+# Bo holds the latch, Ana turns it; Dee walks in inside the ring window
+Ana enters latch 30
+Dee goes to lobby
+wait 4
+look
+#
+# ROUND 3
+next round
+look
+# Panels: Ana 74 (cutoff), Bo 14 (night latch), Cy nothing, Dee 48 (caller/patch).
+# This round we dawdle on purpose: there is no clock before the ring, only the Supervisor.
+Ana: cutoff74
+Bo: latch14
+Dee: board48
+Cy: .
+Ana enters board 48
+Cy enters breaker 74
+wait 40
+# 40 s in: "say something" is up on every panel; a single character each resets it
+Ana: .
+Bo: .
+Cy: .
+Dee: .
+wait 30
+Ana goes to lobby
+Cy goes to lobby
+Dee goes to lobby
+# Bo holds the latch, Ana turns it; Bo walks in inside the ring window
+Ana enters latch 14
+Bo goes to lobby
+wait 4
+look
+#
+# ROUND 4
+next round
+look
+# ROUND 3 RESULT: LOST. My fault: the one "." at 122 s reset every timer to the same moment, and the
+# 30 s wait plus three walks ran all four lines past 45 s together. Two Supervisor calls, Ana and Cy
+# taken in the lobby, my pre-written "Ana enters latch 14" was refused, and my pre-written "next round"
+# forfeited the round ("stalls out") while Dee stood free in the lobby and could have turned it.
+# Lesson: look before every critical action, never pre-write "next round".
+#
+# Panels: Ana nothing, Bo 61 (caller/patch), Cy 25 (cutoff), Dee 30 (night latch).
+Bo: board61
+Cy: cutoff25
+Dee: latch30
+Ana: .
+Ana enters board 61
+Dee enters breaker 25
+look
+Ana goes to lobby
+Bo goes to lobby
+Cy goes to lobby
+look
+# three in the lobby, silence timers fine; Dee holds the latch so Ana turns it and Dee walks in inside the ring window
+Ana enters latch 30
+Dee goes to lobby
+wait 4
+look

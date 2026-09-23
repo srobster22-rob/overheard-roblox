@@ -1,0 +1,5 @@
+seed 7
+# exploration: can you flee when it is walking to your room?
+Ana: board
+Ana goes to archive
+look

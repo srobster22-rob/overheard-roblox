@@ -1,0 +1,199 @@
+seed 7
+Ana: yo we in
+Bo: telephone exchange at night lmao this is giving doors hotel lobby
+Cy: ok nobody touch anything until we know what kills u
+Dee: bet
+look
+# first-timers: everybody reads their panel out loud
+Ana: my screen says a caller is waiting, patch them thru to 88
+Bo: mine says cutoff 11 dropped someone has to throw it back
+Cy: latch wants 48 whatever that means
+Dee: i got nothing?? says listen for somebody elses line
+Ana: im at the board rn ill try it
+Ana enters board 88
+look
+# reaction to the refusal
+Ana: it wont let me. says somebody else has to patch it
+Bo: oh its like keep talking and nobody explodes. i got u
+Bo enters board 88
+Bo: where tf is the breaker tho
+Cy: prob in the archive? me and dee are here, i see a latch maybe
+Dee: cy say ur number again i'll do it
+Cy: 48
+Dee enters latch 48
+look
+Cy: YO look at the lexicon panel. "say" 100% understood. its learning our words
+Dee: latch isnt in here, it said not at that station
+Bo: ok nobody type numbers plain anymore. dee u heard my thing earlier, do it
+Dee enters breaker 11
+look
+Ana: im free now, ill go find the latch. prob by the front door
+Ana goes to lobby
+look
+wait 5
+look
+# Ana got grabbed walking in
+Ana: BRO it grabbed me the second i walked in. im on the line, i can talk but cant do anything
+Bo: rip bozo
+Cy: it went where u typed. u said front door. it walks to whatever room we name
+Dee: so its figure from doors but it hears chat instead of footsteps
+Bo: ok nobody name rooms. going quiet
+# it's walking toward Cy and Dee. hum is back
+Cy: hum is back. its coming here i can feel it
+Dee: im not moving. staying dead quiet
+Cy goes to board
+Bo enters latch 48
+wait 8
+look
+# Dee got taken while silent
+Dee: WHAT i didnt type anything. being quiet does nothing
+Ana: its not about noise. it just goes to the room u mention and eats whoever is there
+Bo: last thing is where ana got got. by elimination. im going for it
+Cy: bo ur the only one left who knows the thing. go go go
+Bo goes to lobby
+Bo enters latch 48
+look
+# all three restored, extraction
+Bo: WE DID IT all 3 lit. screen says everyone come to where im standing
+Cy: omw. nobody type anything
+Cy goes to lobby
+look
+wait 5
+look
+# ===== ROUND 1 WON =====
+Bo: GG. 2 of us made it out
+Ana: ok the rules: it reads chat. burns words it hears before a fix. walks to rooms u name and grabs whoever is there
+Dee: and it doesnt care if ur quiet. i was silent and still got got
+next round
+look
+# ===== ROUND 2: minimal words plan =====
+Ana: new plan. numbers + names only. no place words no task words
+Bo: ok
+Dee: cy. 14
+Cy enters breaker 14
+look
+Cy: bo. 37
+Bo enters board 37
+look
+# the hum is back, the thing is on the move
+Cy: HUM. its moving. who tf said what
+Dee: ana said names and numbers lmaooo thats literally the stuff it eats
+Ana: my bad. bo: 19. go where u went last time
+Bo goes to lobby
+Bo enters latch 19
+look
+Cy goes to lobby
+look
+Dee goes to lobby
+look
+wait 5
+look
+# door is open, the thing is coming for the exit, Ana is still at the board
+Bo: ANA RUN its open
+Ana: omw omw
+Ana goes to lobby
+look
+wait 3
+look
+# ===== ROUND 2 LOST =====
+Bo: bruh i was standing at the open door for like 10 secs and it wouldnt let me leave
+Ana: thats on me i was slow. and cy and dee were already gone
+Dee: ok real rules. everybody goes to the exit BEFORE the last one gets turned
+Cy: and nicknames. the phone room is kitchen, the book room is library, the front is garage
+Bo: bet
+next round
+look
+# ===== ROUND 3: bare numbers + nicknames, everyone to the exit before the last turn =====
+Bo: ana 39
+Ana enters board 39
+Cy: dee 83
+Dee enters breaker 83
+look
+Dee: bo 28. everyone to garage first
+Ana: garage omw
+Ana goes to lobby
+Cy goes to lobby
+Dee goes to lobby
+Bo goes to lobby
+Bo: all in garage?
+Cy: ya
+Bo enters latch 28
+look
+wait 12
+look
+# ===== ROUND 3 WON 4/4 =====
+Bo: EZ 4 for 4
+Cy: it didnt even move lmao. name plus number and it has nothing to grab onto
+Dee: wait my screen said say something at the end. is that a timer
+Ana: idk mine too. prob wants us to talk
+next round
+look
+# ===== ROUND 4 =====
+Dee: ana 57
+Ana enters board 57
+Ana: cy 28
+Cy enters breaker 28
+look
+Dee: brb 1 sec gotta grab water
+Bo: k
+wait 20
+look
+wait 20
+look
+wait 20
+look
+wait 30
+look
+# ===== ROUND 4 LOST to the Supervisor =====
+Dee: im back what happened
+Bo: u went afk and the SUPERVISOR came. "i have a silent line". it sent the thing to us
+Ana: so we cant just shut up either. u gotta keep chatting but it learns what u chat
+Cy: thats actually evil. ok spam random junk every few secs
+next round
+look
+# ===== ROUND 5: name+number, plus junk spam so the Supervisor leaves us alone =====
+Dee: ana 14
+Ana enters board 14
+Ana: cy 25
+Cy enters breaker 25
+Bo: dee 27. all to garage
+Cy: skibidi
+Ana goes to lobby
+Ana: lol
+Bo goes to lobby
+Bo: ong
+Cy goes to lobby
+Cy: bing bong
+Dee goes to lobby
+Dee: yippee
+Dee enters latch 27
+look
+Ana: hi
+wait 10
+look
+# ===== ROUND 5 WON 4/4 =====
+Bo: ok we cracked it. name number, junk spam, everyone to garage, last one turns it
+Dee: lowkey its getting easy tho. it hasnt moved in 2 rounds
+Cy: next round lets mess with it. if it walks to whatever room we say we can send it somewhere dumb
+next round
+look
+# ===== ROUND 6: same roles as round 1, same 48. try to bait it into an empty room =====
+Cy: wait my latch is 48 again?? same as the first round lol
+Ana: bo 92
+Bo enters board 92
+Bo: dee 60
+Dee enters breaker 60
+Cy: dee 48 too, u do the garage one
+Ana goes to lobby
+Ana: lol
+Bo goes to lobby
+Bo: ok the phone room is empty now. watch this
+Bo: numbers numbers numbers lmao
+look
+Cy goes to lobby
+Cy: bo ur actually insane
+Dee goes to lobby
+Dee enters latch 48
+look
+wait 10
+look

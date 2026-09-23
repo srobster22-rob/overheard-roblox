@@ -11,12 +11,17 @@
 --     seed 7                      the first line only; which game is dealt
 --     Ana: meet me at the thing   a chat message (heard only while a round is live)
 --     Ana goes to lobby           walk to a room: board, archive or lobby; the
---                                 clock runs for the walk (about 7 s)
+--                                 clock runs for the walk (about 7 s). A walker
+--                                 is out of their room after 1.5 s and in the
+--                                 corridor, where nobody can be taken, until
+--                                 they reach the new room
+--     Ana, Bo and Cy go to lobby  several players walk at once
 --     Bo enters board 47          enter a code at a station in the room you
 --                                 stand in: board, breaker or latch
 --     wait 5                      let 5 seconds pass
 --     look                        print everyone's screen at this point
---     next round                  the intermission, then the next round
+--     next round                  the round plays out if it is still going,
+--                                 then the intermission and the next round
 --     # anything                  a comment
 -- The players are Ana, Bo, Cy and Dee. Everything a player could see is
 -- printed: the event trace, and at `look` and at the end each player's screen
@@ -39,8 +44,11 @@ for id, name in Sim.NAMES do
 	ID[string.lower(name)] = id
 end
 
+-- A byte-order mark is dropped: Windows PowerShell's `Set-Content -Encoding
+-- UTF8` writes one, and "seed 7" behind it is not a command.
+local source = string.gsub(string.gsub(fs.readFile(path :: string), "^\239\187\191", ""), "\r\n", "\n")
 local lines: { string } = {}
-for raw in string.gmatch(string.gsub(fs.readFile(path :: string), "\r\n", "\n") .. "\n", "(.-)\n") do
+for raw in string.gmatch(source .. "\n", "(.-)\n") do
 	table.insert(lines, raw)
 end
 
@@ -82,25 +90,30 @@ for number = first, #lines do
 		continue
 	end
 	local who, said = string.match(trimmed, "^(%a+):%s*(.+)$")
-	local mover, room = string.match(trimmed, "^(%a+) goes to (%a+)$")
+	local movers, room = string.match(trimmed, "^([%a, ]-)%s+goe?s?%s+to%s+(%a+)$")
 	local enterer, station, code = string.match(trimmed, "^(%a+) enters (%a+) (%S+)$")
 	local seconds = string.match(trimmed, "^wait%s+([%d%.]+)$")
 	if who then
 		local id = ID[string.lower(who)] or fail(number, text, "no such player")
 		sim:say(id, said)
-	elseif mover then
-		local id = ID[string.lower(mover)] or fail(number, text, "no such player")
+	elseif movers then
 		if sim.rooms[room] == nil then
 			fail(number, text, "the rooms are board, archive and lobby")
 		end
-		local from = sim.roomOf[id]
-		sim:trace(`   {Sim.NAMES[id]} walks from the {from} room to the {room} room`)
-		sim:tick(sim:walkSeconds(from, room))
-		if sim.line:isConnected(id) then
-			sim:trace(`   {Sim.NAMES[id]} is on the line and cannot walk`)
-		else
-			sim:move(id, room)
+		local ids: { number } = {}
+		for name in string.gmatch(movers, "%a+") do
+			if string.lower(name) ~= "and" then
+				table.insert(ids, ID[string.lower(name)] or fail(number, text, `no player called {name}`))
+			end
 		end
+		for _, id in ids do
+			if sim.line:isConnected(id) then
+				sim:trace(`   {Sim.NAMES[id]} is on the line and cannot walk`)
+			elseif sim.roomOf[id] ~= room then
+				sim:trace(`   {Sim.NAMES[id]} walks from the {sim.roomOf[id]} room to the {room} room`)
+			end
+		end
+		sim:walk(ids, room)
 	elseif enterer then
 		local id = ID[string.lower(enterer)] or fail(number, text, "no such player")
 		if sim.line:isConnected(id) then
@@ -116,6 +129,10 @@ for number = first, #lines do
 	elseif trimmed == "look" then
 		look()
 	elseif trimmed == "next round" then
+		if sim.round:isPlaying() then
+			sim:trace("   (the round is still being played; it plays out before the next one)")
+			sim:tickUntilOver(300)
+		end
 		sim:nextRound()
 		sim:trace(`===== ROUND {sim.round.number} =====`)
 	else

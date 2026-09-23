@@ -1,0 +1,95 @@
+seed 21
+# GAME 2 - a different group of four, cautious from the start because of the title
+Ana: title is OVERHEARD. so something listens. keep it vague
+Bo: mine wants a caller patched through to 55
+Cy: mine is a cutoff, 40, has to be thrown back
+Dee: latch wants 84
+Ana: my line is empty
+Bo enters board 55
+Bo: it wont let me do my own
+Ana: im next to you. I'll do the patch one
+Ana enters board 55
+look
+Cy: whoa the wall panel just filled up with everything we typed
+Dee: it has percentages next to our words. mine and patched are at 50
+Ana: so it learns a word the more we use it. new word every time then
+Dee: Cy I'll do your 40, there's a thing on the wall in here
+Dee enters breaker 40
+look
+Cy: two down. the last one is Dees and its in the room nobody has seen
+Ana: everybody go there first. we finish it together
+Ana goes to lobby
+Ana: im here. its empty. theres a latch on the wall
+Bo: coming
+Bo goes to lobby
+Cy: omw
+Cy goes to lobby
+Dee: last one moving
+Dee goes to lobby
+Dee: ok Cy you do mine
+Cy enters latch 84
+look
+Bo: lets get out of here
+wait 11
+look
+Ana: WHAT. we had it. we were all standing right there
+Cy: it was ringing. it walked in and took all four of us
+Dee: the wall doesnt even show what Bo typed. nothing new on it
+Bo: sorry. no idea which word did that
+next round
+look
+# ROUND 2 - nicknames for everything, and nobody talks about the end
+Ana: new plan. nicknames. the room me and Bo start in is the piano
+Ana: Cy and Dee start in the attic. the one where it got us is the porch
+Bo: piano attic porch. got it
+Cy: 35. piano
+Bo: mine
+Bo enters board 35
+look
+Dee: uh. the first nickname is marked understood on the wall already. took it one go
+Ana: then never type it again. fresh nickname every single time
+Dee: 25. the dusty room
+Cy: mine
+Cy enters breaker 25
+look
+Ana: 20. the cold room. everybody gather there, then Bo does it
+Ana: and after that NOBODY types a thing until it rings
+Ana goes to lobby
+Ana: here
+Bo: omw
+Bo goes to lobby
+Cy: omw
+Cy goes to lobby
+Dee: omw
+Dee goes to lobby
+Dee: here. go Bo
+Bo enters latch 20
+look
+wait 11
+look
+Cy: clean. four of four
+Dee: the nickname trick works as long as we burn through them
+next round
+look
+# ROUND 3 - habit kills: Cy reaches for last round's nickname
+Cy: 53. piano
+Dee: CY. that one is on the wall
+Bo: mine, quick before it gets here
+Bo enters board 53
+look
+Ana: its coming here. me and Bo are done for
+Dee: 50. dusty room
+Cy: mine
+Cy enters breaker 50
+wait 7
+look
+Ana: yep. its in here. cant move
+Ana: 91 is mine. the cold room. you two finish it
+Cy: omw
+Cy goes to lobby
+Dee: omw
+Dee goes to lobby
+Dee: here
+Dee enters latch 91
+wait 11
+look

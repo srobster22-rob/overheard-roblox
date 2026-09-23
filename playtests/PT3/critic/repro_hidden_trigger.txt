@@ -1,0 +1,5 @@
+seed 7
+# BUG/CONFUSING: a built-in trigger word summons it, and the Lexicon wall shows nothing
+Ana: board
+wait 1
+look

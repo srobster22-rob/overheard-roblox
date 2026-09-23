@@ -1,0 +1,10 @@
+seed 7
+# send it to the lobby, then name the board room while it walks: the trace says it "queues" the board room
+Bo: door
+Bo: numbers
+wait 30
+look
+Ana: hi
+Bo: hi
+wait 15
+look

@@ -1,0 +1,8 @@
+seed 7
+# Ana walks into the lobby as the Operator arrives there, then (already on the line) tries to walk again
+Bo: door
+Ana goes to lobby
+wait 1
+Ana goes to archive
+Cy: how long was that
+look

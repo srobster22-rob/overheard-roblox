@@ -1,0 +1,114 @@
+seed 7
+# ROUND 1 - first contact. Nobody has read anything; we play it the way a fresh group would.
+Ana: ok hi everyone, can you hear me
+Bo: yeah. my screen says cutoff 11 dropped, someone has to throw it back
+Ana: mine says a caller is waiting, patch them through to 88
+Cy: night latch wants 48. where is the latch
+Dee: my line is empty lol. says listen for somebody else's
+look
+Ana: I'm in the board room, there's a board here I think
+Ana enters board 88
+Ana: it refused me. says somebody else has to patch it
+Ana: and something called the operator is walking here??
+Bo: ok I'm next to you, I'll do it
+Bo enters board 88
+wait 2
+Cy: wait what just happened. it BURNED the word say??
+Dee: the panel on the wall is filling up with everything we typed
+Dee: I think it learns our words. stop typing the numbers
+Ana: ok. Bo I can do yours, is the thing you need in this room?
+Ana enters breaker 11
+Ana: nope. not in here
+# (Bo slips on the burned word too - realistic, and redundant: it is already coming)
+Bo: the hum just came on. everyone's screen says you can hear it
+Ana: I'll check the archive
+Ana goes to archive
+look
+Bo: I can't move. it says I'm on the line
+Ana: same. I can talk but I can't do anything
+Cy: ok me and Dee are still free. Bo what was yours again
+Bo: 11. throw it back, whatever that means
+Dee: there's a thing on the wall in here, trying it
+Dee enters breaker 11
+look
+Cy: DEE. that worked, 2 out of 3
+Dee: ok so the last one is Cys. the latch thing
+Cy: has to be the lobby, its the only room nobody has been in
+Dee: going. Cy come with me so we're together
+Dee goes to lobby
+Cy goes to lobby
+Dee: yeah there's a latch here
+Dee enters latch 48
+look
+wait 12
+look
+Cy: what. it got to the lobby before I did and grabbed Dee
+Dee: I didnt even say anything
+Ana: it came for us right after I typed the room name too
+next round
+look
+# ROUND 2 - the group regroups: numbers only, no nouns, keep talking
+Ana: ok new rule. numbers only. do not name anything
+Bo: agreed. and nobody types that s word again
+Cy: 37. goes in Ana and Bos room
+Bo: got it
+Bo enters board 37
+look
+Dee: 14. goes in our room
+Cy: on it
+Cy enters breaker 14
+Ana: hum is back. 19 is mine, the last room
+Bo: going to the last room. Ana stay here
+Bo goes to lobby
+look
+Cy: its in here with us. we're stuck
+# (Dee slips: 'says' was burned in round 1 - it sends the Operator to the board room Ana is just leaving)
+Dee: weird, my screen says the hum is silent now that its IN here. we can still talk though
+Bo: I made it. I can see the last one
+Ana: wait for me before you do it, I'm coming to you
+Ana goes to lobby
+Ana: here
+Bo: doing it
+Bo enters latch 19
+look
+Cy: go go go
+wait 11
+look
+Bo: WE DID IT. sorry Cy and Dee
+Dee: worth it. numbers only works
+Cy: it never got the numbers. it got the room names
+next round
+look
+# ROUND 3 - confident now: digits, whose room, then everyone meets in the last room
+Bo: 39. our room
+Ana: mine
+Ana enters board 39
+Cy: 83. our room
+Dee: got it
+Dee enters breaker 83
+Dee: 28. last room. everybody meet there first, then we do it
+Ana: omw
+Ana goes to lobby
+Bo: omw too
+Bo goes to lobby
+Cy: coming
+Cy goes to lobby
+Dee: right behind you
+Dee goes to lobby
+Ana: all here?
+Bo: yep
+Cy: yep
+Dee: yep. Ana do it
+Ana enters latch 28
+look
+wait 11
+look
+# REPRO (confusing): 'yep' became 75% understood at the round-3 latch with no BURNED line or voice line;
+# the first time anyone says it in round 4, it walks to the lobby
+Bo: that was clean
+Ana: too clean. it didnt even move
+next round
+look
+Cy: yep
+wait 1
+look

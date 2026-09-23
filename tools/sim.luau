@@ -121,6 +121,10 @@ end
 -- Roblox's default walk, studs per second.
 Sim.WALK = 16
 
+-- Where a walking player is between rooms: the corridor junction, which no
+-- room contains, so nobody walking can be taken there.
+Sim.CORRIDOR = "corridor"
+
 -- How long a player takes to walk from the middle of one room to another: the
 -- corridor route the Operator also takes, at a walk.
 function Sim.walkSeconds(self: any, from: string, to: string): number
@@ -132,6 +136,50 @@ function Sim.walkSeconds(self: any, from: string, to: string): number
 	end
 	studs += math.sqrt((b.x - at.x) ^ 2 + (b.z - at.z) ^ 2)
 	return studs / Sim.WALK
+end
+
+-- Players walking to a room together, the way they do live. Each is out of its
+-- room once it reaches the doorway (half a room from the middle, 1.5 s), in the
+-- corridor for the walk, and in the new room once through its door. The clock
+-- runs until the last of them is through. A player taken before reaching the
+-- doorway stays where they were taken. Returns who set off.
+--
+-- Until R140's playtest this tool moved a walker only when the whole walk was
+-- over, so a player who left the moment the Operator was called was still
+-- counted in the room 7 s later, and PT3 reported "no escape once it is called".
+-- Live, they are out of the room in 1.5 s.
+function Sim.walk(self: any, ids: { number }, room: string): { number }
+	assert(self.rooms[room], `no room called '{room}'`)
+	local doorway = Layout.halfRoom() / Sim.WALK
+	local plan, last, walking = {}, 0, {}
+	for _, id in ids do
+		local from = self.roomOf[id]
+		if from ~= room and not self.line:isConnected(id) then
+			local through = self:walkSeconds(from, room) - doorway
+			table.insert(plan, { id = id, out = false, arrived = false, through = through })
+			table.insert(walking, id)
+			last = math.max(last, through)
+		end
+	end
+	local elapsed = 0
+	while elapsed < last - 1e-9 do
+		self:tick(Config.TickSeconds)
+		elapsed += Config.TickSeconds
+		for _, step in plan do
+			if not step.out and self.line:isConnected(step.id) then
+				step.arrived = true
+			elseif not step.out and elapsed >= doorway - 1e-9 then
+				step.out = true
+				self.roomOf[step.id] = Sim.CORRIDOR
+				self.standing[step.id] = Layout.junction()
+			elseif step.out and not step.arrived and elapsed >= step.through - 1e-9 then
+				step.arrived = true
+				self.roomOf[step.id] = room
+				self.standing[step.id] = self.rooms[room]
+			end
+		end
+	end
+	return walking
 end
 
 -- A code entered at a station. Taken only from a player standing in that

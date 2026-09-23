@@ -1,0 +1,74 @@
+seed 12
+# MATCH D - the refined min-max protocol: "seat code".
+# Found across 12 seeds and 26 rounds: the deal is ALWAYS a rotation. Whoever has nothing, the next seat
+# (Ana > Bo > Cy > Dee > Ana) holds the board, the one after holds the cutoff, the one after holds the latch.
+# So holders type only their two digits; the one who types no number is the empty seat, and every station follows.
+# No words, no trials, nothing for the learner. Ana and Bo always start in the board room, Cy and Dee in the archive.
+#
+# ROUND 1. Panels: Ana 37 (caller/patch), Bo 15 (cutoff), Cy 38 (night latch), Dee nothing.
+Ana: 37
+Bo: 15
+Cy: 38
+look
+# Dee typed no number: Dee is empty, so Ana (next seat) = board 37, Bo = cutoff 15, Cy = latch 38.
+Bo enters board 37
+Dee enters breaker 15
+Ana goes to lobby
+Bo goes to lobby
+Dee goes to lobby
+look
+# three in the lobby; Cy holds the latch, so Ana turns it and Cy walks in inside the ring window
+Ana enters latch 38
+Cy goes to lobby
+wait 4
+look
+#
+# ROUND 2
+next round
+look
+# Panels: Ana 10 (night latch), Bo nothing, Cy 53 (caller/patch), Dee 26 (cutoff).
+Ana: 10
+Cy: 53
+Dee: 26
+# Bo typed no number: Bo is empty, so Cy = board 53, Dee = cutoff 26, Ana = latch 10.
+Bo enters board 53
+Cy enters breaker 26
+Bo goes to lobby
+Cy goes to lobby
+Dee goes to lobby
+look
+Bo enters latch 10
+Ana goes to lobby
+wait 4
+look
+#
+# ROUND 3
+next round
+look
+# Panels: Ana 58 (night latch), Bo nothing, Cy 44 (caller/patch), Dee 40 (cutoff).
+# This round: redo the dawdle that cost match B round 3, correctly. There is no clock before the ring,
+# so the only thing to manage is one character per player inside every 45 s.
+Ana: 58
+Cy: 44
+Dee: 40
+Bo enters board 44
+Cy enters breaker 40
+wait 40
+Ana: .
+Bo: .
+Cy: .
+Dee: .
+wait 40
+Ana: .
+Bo: .
+Cy: .
+Dee: .
+# fresh timers: three walks + the latch + the 10 s ring is 31.8 s, well inside 45 s
+Bo goes to lobby
+Cy goes to lobby
+Dee goes to lobby
+look
+Bo enters latch 58
+Ana goes to lobby
+wait 4
+look

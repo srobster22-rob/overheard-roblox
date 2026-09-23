@@ -1,0 +1,196 @@
+seed 21
+# second group: cautious DOORS veterans. the game is called OVERHEARD so they assume talking is bad
+look
+# nobody types. everyone just tries whatever their own panel says
+Bo enters board 55
+Cy enters breaker 40
+Dee enters latch 84
+look
+wait 20
+look
+# still nobody types. they explore like you would the first floor of doors
+Dee goes to lobby
+Dee enters latch 84
+look
+Ana goes to archive
+look
+wait 5
+look
+# every screen says "say something". veterans smell a trap and keep holding
+wait 8
+look
+# SILENT LINE - TRACED on every screen and the hum just started. panic typing
+Ana: WHAT is silent line traced
+Bo: ok ok im talking. hi. hello
+Cy: i hear it moving
+Dee: im alone up front with the latch thing, it wont take my own number
+look
+wait 4
+look
+# Ana and Cy got taken in the archive
+Ana: rip me and cy. on the line, can type but cant do anything
+Cy: did u see that. dee said number and it went "understood jack number". it hears words not noise
+Cy: and its headed for bo next. bo move
+Bo: dee 55
+Dee: bo 84
+Cy: and mine is 40 for whoever gets to where me and ana are
+Bo goes to lobby
+Bo enters latch 84
+look
+Dee: cy u literally said it again lmao
+Cy: oh no. ok im shutting up
+Bo: going to where ana and cy are for the 40 one. its walking the other way
+Bo goes to archive
+Bo enters breaker 40
+look
+# it is parked where the 55 needs to go. the caught players volunteer as bait
+Ana: big brain time. bo go back to dee. then me and cy yell a word so it comes back to us. we are already caught anyway
+Bo: bet
+Bo goes to lobby
+Cy: breaker breaker breaker
+look
+Dee goes to board
+Bo: dee its the 55 i gave u
+Dee enters board 55
+Dee goes to lobby
+look
+wait 5
+look
+# ===== ROUND 1 WON (2 of 2 free) =====
+Cy: BAIT CALLERS lets gooo. being dead is a job in this game
+Bo: ok rules for next one. keep typing junk so the supervisor chills. numbers only with a name. and dont say the magic words
+Dee: whats the magic words
+Ana: number, breaker, and prob door. those made it move
+next round
+look
+# ===== ROUND 2: new rules. names+numbers, junk to keep lines open =====
+Dee: cy 25
+Cy enters breaker 25
+Cy: bo 35
+Bo enters board 53
+look
+Bo: wait it didnt work??
+Cy: bo 35 not 53 u goober
+Bo enters board 35
+look
+Bo: yo wrong numbers dont do anything. it just said that line is dead
+Dee: wait so can u just spam the keypad
+Ana: try it. bo go to garage, im NOT telling u mine
+Bo goes to lobby
+Bo: spamming
+Bo enters latch 10
+Bo enters latch 11
+Bo enters latch 12
+Bo enters latch 13
+Bo enters latch 14
+Bo enters latch 15
+Bo enters latch 16
+Bo enters latch 17
+Bo enters latch 18
+Bo enters latch 19
+Bo enters latch 20
+look
+# Bo got caught leaving. Ana and Bo on the line in the phone room
+Bo: BRO i LEFT. i was out the door when it got there
+Cy: u said numbers lmaooo "wrong numbers dont do anything"
+Ana: ok dee ur turn to test the spam thing. im not telling u my number
+Dee: bet
+Dee goes to lobby
+Dee: spamming the keypad
+Dee enters latch 10
+Dee enters latch 11
+Dee enters latch 12
+Dee enters latch 13
+Dee enters latch 14
+Dee enters latch 15
+Dee enters latch 16
+Dee enters latch 17
+Dee enters latch 18
+Dee enters latch 19
+Dee enters latch 20
+look
+# keypad jammed, and Bo said door so it is coming to the exit where Dee is
+Dee: IT JAMMED. wait 20s. cant spam it
+Cy: bo u just said the d word. its coming for dee
+Dee: RUNNING
+Dee goes to archive
+look
+# Cy is the last one free. the thing is parked on the latch
+Dee: it got me walking out AGAIN. u cant outrun it at all
+Ana: cy ur the last one. mine is 20. the one up front
+Bo: me and ana will bait it back here. numbers numbers numbers
+look
+Cy: ok going
+Cy goes to lobby
+Cy enters latch 20
+look
+Cy: its ringing. im alone up here
+Ana: dont say ANYTHING cy
+wait 10
+look
+# ===== ROUND 2 WON (1 of 1 free) =====
+Cy: SOLO CLUTCH
+Dee: ok the d word, the n word lol, and "out" all make it move. we need slang
+Bo: phone room = kitchen. book room = library. the way out = garage. the switch thing = pizza. the lever = taco
+Ana: and u say the digits like "kitchen pizza 4 5"
+next round
+look
+# ===== ROUND 3: slang round. kitchen/library/garage, pizza = my code =====
+Dee: cy library pizza 5 0
+Cy: library pizza 5 0 got it
+Cy enters breaker 50
+look
+Cy: kitchen pizza 5 3. bo thats u
+Bo: kitchen pizza 5 3 ok
+Bo enters board 53
+look
+Ana: garage pizza 9 1. dee u take it, u go last
+Dee: garage pizza 9 1 ok
+Bo: everybody garage
+Ana goes to lobby
+Ana: garage garage
+Bo goes to lobby
+Bo: in garage
+Cy goes to lobby
+Cy: garage
+Dee goes to lobby
+Dee: garage pizza time
+Dee enters latch 91
+look
+wait 10
+look
+# ===== ROUND 3 WON 4/4 =====
+Bo: slang works. it never moved
+Cy: look at the lexicon tho. pizza is at 50 and its on there like 3 times
+Dee: so it IS learning pizza. if it gets to 100 we switch
+next round
+look
+# ===== ROUND 4: the group leans on its meme word =====
+Dee: kitchen pizza 3 7. ana thats urs
+Ana: kitchen pizza 3 7 ok
+Bo: pizza pizza pizza
+Cy: pizza time fr
+Ana enters board 37
+look
+Ana: library pizza 8 5, cy
+Cy enters breaker 85
+look
+# pizza got burned and Ana used it in the very next line
+Cy: PIZZA IS BURNED. says pizza 100 understood
+Dee: and ana just said it lmaooo
+Bo: its coming here. cy 1 3, u go last
+Ana: running
+Ana goes to lobby
+look
+wait 3
+look
+Ana: got caught running AGAIN. u literally cant leave a room once its coming
+Dee: ok new slang next round. cy lets go, dont type the p word
+Cy goes to lobby
+Cy: here
+Dee goes to lobby
+Dee: here too
+Cy enters latch 13
+look
+wait 10
+look
