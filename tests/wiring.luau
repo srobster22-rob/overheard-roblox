@@ -1252,9 +1252,10 @@ check(
 -- R138: the way out, through the same step as the server. The bot playtest's
 -- traces are quoted as evidence in the log, so it is held to the same rule.
 check("...and settles the way out with the server's own step", string.find(soakCode, "escape:step(", 1, true) ~= nil)
-local botCode = LuauCode.stripNonCode(fs.readFile("tools/playtest.luau"))
-check("(guard) read the bot playtest", #botCode > 0)
-check("the bot playtest settles the way out with that step too", string.find(botCode, "escape:step(", 1, true) ~= nil)
+-- R140: the bots and tools/play.luau share one world, tools/sim.luau.
+local botCode = LuauCode.stripNonCode(fs.readFile("tools/sim.luau"))
+check("(guard) read the playtest world", #botCode > 0)
+check("the playtest world settles the way out with that step too", string.find(botCode, "escape:step(", 1, true) ~= nil)
 
 -- (control) a member no server path reaches for must not be reported as covered.
 check("(control) the reader does not invent coverage", string.find(soakCode, ".neverWrittenMember", 1, true) == nil)

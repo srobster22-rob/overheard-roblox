@@ -8756,3 +8756,9 @@ Content: unchanged (FIX).
 Coach: C1-C10 taken; S1-S6 ranked; P1-P3 and P5 taken (P4 in R138). No note disagreed with a recorded owner answer.
 Decisions: D8 (a phrase the filter cannot pass is left off the panel, not shown hashed).
 Next: R140 PLAYTEST (postponed from R138, now three building rounds since R136): three personas, one unscripted and writing its own chat; then R141 RETRO.
+
+
+## R140 · PLAYTEST · PT3: two unscripted groups and a critic, on the build that hears chat
+Pick: PLAYTEST, postponed from R138 (three building rounds since R136: R137, R138, R139) — personas: genre veteran (DOORS / 99 Nights), min-maxer (the rotation after PT2's returning group), critic. The veteran and the min-maxer play UNSCRIPTED, writing their own group's chat blind to the word lists, through a new session player (tools/play.luau) on a stepped clock; the bots and it now share one world (tools/sim.luau). Studio MCP not live (OWNER.md question 1), so no screenshots.
+
+Slice 1 (committed on its own because the previous session ended mid-playtest, 22 Sep ~17:03): tools/sim.luau, the headless world, shared by the bots and tools/play.luau, which replays a session file (chat, walks, code entries, waits) and prints each player's screen. tools/playtest.luau keeps only the bots' script, and its SUMMARY lines are identical for all three personas before and after. test.cmd replays tools/sessions/smoke.txt. Gate: test.cmd exit 0, selene src 0/0, rojo build OK. Studio MCP checked again 23 Sep 01:40: the roblox-studio server lists no tools.

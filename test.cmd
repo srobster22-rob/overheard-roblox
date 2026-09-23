@@ -15,6 +15,8 @@ REM R138: the bots' traces are evidence in LOOP_LOG, and nothing ran them, so a
 REM call to a removed API went unnoticed (COACH.md C11). The trace is discarded;
 REM `gate` fails the run if the bots win no round at all.
 "%ROKIT%\lune.exe" run tools/playtest quiet 2 11 gate > nul || set FAILED=1
+REM R140: and the session player an unscripted playtester uses.
+"%ROKIT%\lune.exe" run tools/play tools/sessions/smoke.txt > nul || set FAILED=1
 echo(
 echo === market numbers ===
 REM R139: MARKET.md's totals and gap values must be the ones its own matrix

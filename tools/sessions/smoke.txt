@@ -1,0 +1,7 @@
+# A short session test.cmd replays, so tools/play.luau cannot rot.
+seed 7
+Ana: hello is anyone there
+Bo goes to archive
+look
+Cy: im by the cards
+wait 5
