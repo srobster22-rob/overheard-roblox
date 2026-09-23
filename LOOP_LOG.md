@@ -8774,3 +8774,21 @@ Content: unchanged (PLAYTEST).
 Coach: none new (no notes since R139).
 Decisions: none.
 Next: R141 RETRO (a retro needs a playtest newer than R135's, so it moved from R140's slot); then R142 BIG SWING from PT3's #1: the code has to be SAID.
+
+
+## R141 · RETRO · R136-R140: honest scores, a mechanic that works live, and a monster players can ignore
+Pick: RETRO, moved from R140's slot (v3.3: a retro needs a playtest newer than the last retro's, R135; PT3 ran in R140). This is the BIG SWING cycle's k=1 slot, so the swing takes k=2 and k=4. Sync: AGENT_LOOP v3.3 unchanged; OWNER.md `## Next` empty and no VETO; no new COACH notes; Studio MCP checked 23 Sep: the roblox-studio server lists no tools (the unblock is OWNER.md question 1).
+
+Player notices: nothing (RETRO).
+Impact: n/a (RETRO).
+Built: scorecard R136-R140: R136 MARKET SETUP (player-visible N), R137 EXPAND (Y, 2/3/0 → 2/3/+1), R138 EXPAND (Y, 2/3/0 → 2/3/+1), R139 FIX (Y on a live server, 3/3/+1 → 3/3/+1), R140 PLAYTEST (N). Content GREW: stations, rooms and concepts with a station 2→3, interactables 3→4 (R137); phases 1→3, Operator lines 10→11 (R138). Health: largest file tests/wiring.luau 1,769 → 1,957 lines; largest function soak() 290 (World.build 110 in src); shipped test code: src/server/systems/TestOperator.luau, 8,350 bytes (v3.3: test code does not ship; backlog); suite 5.0 s, 1,813 counted checks; lint 0. Rounds lost 0 (R140 took two commits when the session ended mid-playtest). Backlog taken: PT2 #2 (R137), PT1 #4 (R138), COACH C1-C11 and P1-P5 (R138-R139), the first unscripted playtest (R140).
+Targets: 4 of 5 player-visible MISSED (3: two slots were setup and playtest); content grew MET; headline metrics: no trend yet (bots unchanged, unscripted first measured in R140); market score rose NO (23.3 → 18.7 by two honest re-scores, while the core mechanic started working on a live server); the last playtest's top items acted on MET (PT2 #2 and PT1 #4; PT3 #1 goes to R142); every COACH note has a disposition MET; 0 rounds lost MET; at most 1 weak round MET (none). `## Never` audit: its one line is a process rule; no violation.
+PLAYBOOK: the R136-R140 TRY (every EXPAND ships a trace excerpt of it happening) became a KEEP: PT3's blind players met the latch and the way out unprompted. New KEEP: let players who never saw the rules produce the evidence (blind corpus R139, blind playtest R140). New TRY: every building round ends with one blind tools/play session by a subagent that has not seen the change; judged at the next PLAYTEST against PT3's eight confusing items.
+Lessons (LOOP_LESSONS.md): the platform-side trap (R139), an instrument that manufactured a finding (R140), subagent report files refused, and blind players beating 139 rounds of bots; one proposal for AGENT_LOOP §3.
+Verified: test.cmd exit 0 in 5.0 s; `lune run tools/market check`; `lune run tools/inventory row R141`.
+Headline: unchanged this round (RETRO): bots 5/6/6, 1.7 taken and 1.9 calls per round, 4 codewords replaced, 30/160 blind chat, 21/21 rounds end; unscripted veteran 7/10, min-maxer 15/16, critic 4/6.
+Market: re-scored every row, then a blind subagent re-scored from the evidence without seeing ours: 45/150 = 30.0 (hook 2, social 3, differentiator 3, accessibility 2, progression 1, release 1, the rest 1). Every blind row was higher or equal, so the lower (ours) stands on every row: 18.7 unchanged. Road-Side Shawarma (2025) added as the comparable from the last 18 months (56.0). The blind scorer also confirmed the digits bypass on HEAD and the walk fix, and noted that a server's listened-for words are dealt once and that a one-player server can never win (backlog).
+Content: unchanged (RETRO); history row R141 added to CONTENT.md.
+Coach: none new.
+Decisions: none.
+Next: vision and market check: ten rounds moved the market score down by honest re-scores, and the north star ("a polite thing at the switchboard slowly learns it") is not delivered: PT3 shows the learning can be ignored. R142 BIG SWING (this cycle's k=2 slot) takes PT3 #1, the code has to be SAID, chosen by a three-draft design panel.
