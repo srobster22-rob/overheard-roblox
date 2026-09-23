@@ -9136,3 +9136,61 @@ Next: R149 FIX: PT4 broken (1), an unwinnable round runs on; and, from four blin
   - "see" false reads;
   - holders with two codes;
   - names with no comma.
+
+
+## R149 · FIX · a round that cannot be won ends: one line no free player may enter loses it at once
+Pick: FIX in the k=4 slot. PT4 left a player-facing defect open, reproduced on HEAD 27f934e today; a group's lost round sits for three minutes with nothing to do — gap value 12 (Core loop depth: PT4 scored it broken) · impact planned 2/2/0.
+- Defect: PT4 broken (1). The only free player holds the one line nobody else may enter, and the round runs until the Supervisor takes him. Replayed on HEAD (critic/probe_loss.txt): everyone but Bo is on the line at 14.2 s, the round is lost at 192.2 s, 178 s later.
+- Cause: the loss rule asks whether ANY unsolved line can still be entered (`Objectives.anyFinishable`). The way out opens only when EVERY line is restored (R138), so one line nobody free may enter already decides the round. With the other lines restored the same position ends at once (critic/s2.txt R1), which is why only some groups meet it.
+- Fix: the round is lost when some unsolved line has no free player who has not read it. The soak's own judge moves to the same question, so its "a stranded round ends within a tick" check can see this shape.
+- Not taken: a visible clock for the way out (PT4 #4), for the next EXPAND.
+Sync: AGENT_LOOP v3.3 unchanged; OWNER.md `## Next` empty, no VETO; COACH.md unchanged since R146. Studio MCP: no tools. HEAD 27f934e green apart from the load-bound timing check (R148).
+
+Player notices: When the Operator takes all but one of the group, and the one left free holds a line nobody else may enter, the round ends there: "ROUND LOST", "Nobody left free could finish it." Before, that player could keep restoring the other lines for up to three minutes, in a round nobody could win, until the Supervisor took him.
+Impact: planned 2/2/0 → shipped 2/2/0 (biggest file tests/wiring.luau 2,060→2,063; biggest function touched `Objectives.stranded`, 17 lines)
+Built:
+- `Objectives.stranded(able)` replaces `anyFinishable`: an unrestored line none of the free players may enter, or nil.
+- `Lifecycle.nobodyCanWin` loses the round when there is one (`line:count() > 0` guard kept).
+- tests/objectives: the PT4 shape (survivor can enter other lines, still stranded), with the others restored too, a finished board. tests/lifecycle: PT4's two-line shape and its control. tests/wiring: the pin follows the call.
+- tests/soak: its own judge (`everyLineEnterable`, a second implementation) asks about EVERY line. Its R111 count is a guard again: strandings with someone still free.
+- GAME.md as-built note under Losing.
+Quality: self-review only (a FIX takes no independent reviewer). Nothing duplicated but the soak's judge, which is a second implementation on purpose (its comment says why). No DECISIONS row: R48 already decided such a round should END; this makes the rule match R138's way out.
+Verified:
+- The running build: PT4's probe replayed (critic/probe_loss.txt): HEAD loses at 192.2 s, 178 s after Bo is left alone at 14.2 s; now ROUND LOST at 14.2 s (r149/probe_before.txt, probe_after.txt).
+- The harsh soak (7 seeds): HEAD 28 rounds, 28 lost, 0 stranded with someone free; now 58 rounds, 34 lost, 31 of them stranded with someone free. The extra rounds are time a stranded round used to hold. Planting the old rule back, the soak's new judge counts 3,240 ticks (810 simulated seconds, about 29 s per lost round) of rounds that could not be won.
+- test.cmd: 2,084 of 2,084 checks in 25 suites (the timing check passed, with the load down to 1%). selene 0/0/0, rojo build OK, stylua clean.
+- 3 plants, each failing by name and restored by sha256 (r149/plants_out.txt):
+  - the rule asks for ANY line again: fails objectives, lifecycle, and the soak's "a stranded round ends within a tick" (3,240 ticks over 28 lost rounds);
+  - a restored line still counts as stranded: fails "a finished board strands no line";
+  - the loss ignores stranded lines: fails lifecycle and the soak's new guard.
+Blind tools/play session (subagent, never saw the change, seed 53, 9 rounds; told only that the group is new and careless): won 9 of 9, so it never met this round's rule (no round lost, no line stranded; checked on the replay, r149/blind/s1.out).
+  - Round 1: every player read their code aloud, and 7 codes were heard in 6 s. Then "ok letters. a is one b is two. bo it's C then E" restored the latch.
+  - Rounds 2-9: the group spelled every code with a word between the letters ("C then E", "mailbox, I and H", "fridge, F and B"). That is never a pair, so R148's alphabet never settled, and no code was heard again. This is the scheme that beats R148, cheaper than the one R148 named (a changed alphabet). Dee: "lol it can't read letters at all"; Cy, round 7: "this is too easy now honestly".
+  - Best moment: round 8. The Supervisor put Ana and Bo on the line, Bo relayed the latch code from the line ("cy, mailbox, I and H"), and Dee got out 7 s before the Operator arrived. Worst: three grabs came from reading "the hum: silence" as safe (it reads silence for the last 2 s before it arrives; PT3 and PT4 noted it).
+  12 confusing items, none caused here:
+  - five names per station, and "UNDERSTOOD 'jack_number'" reads like debug output;
+  - nothing says which room holds which station;
+  - the hum's silence before arrival; the hum has no louder state and no direction;
+  - "number" and "say" count as the board; BURNED shown under a line without the word;
+  - arithmetic read at once one time and missed the next;
+  - the wall's word stems and pairs;
+  - winning with half the group taken costs nothing (owner question 4);
+  - the Supervisor took a talker in a silent player's room;
+  - a word 61% understood with no UNDERSTOOD line;
+  - "queues the lobby room" unexplained.
+  Session: r149/blind/s1.txt.
+Headline: the bots never strand a line (every capture of theirs leaves a free player for each line), so theirs cannot move, and did not: each persona's trace is byte-identical.
+- Rounds won 5/6/5 → 5/6/5; taken per round 2.5 (52 in 21) → 2.5 (52).
+- Supervisor calls per round 1.7 (35) → 1.7 (35); codewords replaced 7 → 7.
+- Natural chat naming a plain word 30/160 → 30/160; rounds that end 21/21 → 21/21.
+- Newly measured: harsh-soak strandings with someone free 0/28 → 31/34; unwinnable ticks with the old rule 3,240 → 0.
+- Unscripted, blind session (seed 53): won 9 of 9, taken 7 in 9 rounds (0.8), codes heard 7, all in round 1. R148's session (seed 52): won 7 of 7, taken 1 in 7.
+Market: no row moved. PT4's broken (1) is closed, but core loop depth was scored 1 for schemes that beat the listener, and the next playtest judges that. 18.7 unchanged; MARKET.md history row R149.
+Content: none.
+Coach: none new.
+Decisions: none.
+Next: R150 PLAYTEST (PT5), the one R148 postponed: three building rounds have passed since PT4 (R147-R149), and it judges R146's TRY. RETRO R151, which then has a playtest newer than R146. PT5's briefs are ready (r150/).
+  Backlog from this round's blind session, by gap value:
+  - letters with a word between them ("C then E") are never a pair, so R148's alphabet never settles (core loop, 12): the next EXPAND;
+  - the hum reads silence for the last 2 s before it arrives (three grabs, PT3 and PT4 too);
+  - a word understood with no UNDERSTOOD line.

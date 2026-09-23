@@ -410,8 +410,9 @@ function Objectives.reset(self: Board)
 	end
 end
 
--- Can anybody still finish an unsolved line? `able` is the players who can act:
--- present, and not on the line.
+-- Can the round still be won? `able` is the players who can act: present, and
+-- not on the line. Returns an unsolved line none of them may enter (each of them
+-- has read it), or nil.
 --
 -- The round's loss condition used to ask whether everyone had been TAKEN, and
 -- that is not the same question. R23 made the Operator take everyone in a room
@@ -425,18 +426,29 @@ end
 -- them as having seen it, so they can patch neither. With one player able to
 -- act the round is unwinnable however the cards fall, which is the owner's solo
 -- question. What is fixable here is that it should END.
-function Objectives.anyFinishable(self: Board, able: { number }): boolean
+--
+-- R149: EVERY line, not any. The way out opens only when every line is restored
+-- (R138), so one line nobody able may enter decides the round however many
+-- others are still open. Asking whether ANY line could be finished left PT4's
+-- critic with one free player, holding the only line nobody else could enter,
+-- restoring the others for 178 s until the Supervisor took him.
+function Objectives.stranded(self: Board, able: { number }): Objective?
 	for _, objective in self.list do
 		if objective.solved then
 			continue
 		end
+		local enterable = false
 		for _, userId in able do
 			if not objective.seenBy[userId] then
-				return true
+				enterable = true
+				break
 			end
 		end
+		if not enterable then
+			return objective
+		end
 	end
-	return false
+	return nil
 end
 
 function Objectives.allSolved(self: Board): boolean

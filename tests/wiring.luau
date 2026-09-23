@@ -1540,7 +1540,10 @@ check(
 	"...and everyone being taken still loses (control)",
 	string.find(loseBody, "line:allTaken(present)", 1, true) ~= nil
 )
-check("a round nobody can finish is also lost", string.find(loseBody, "board:anyFinishable(able)", 1, true) ~= nil)
+check(
+	"a round with a line nobody free may enter is also lost",
+	string.find(loseBody, "board:stranded(able) ~= nil", 1, true) ~= nil
+)
 check("...and a WON board is excluded from it", string.find(loseBody, "board:allSolved()", 1, true) ~= nil)
 check(
 	"...measured against the players who can still act",

@@ -83,25 +83,33 @@ export type Report = {
 	escapes: number,
 }
 
--- The soak's OWN answer to "can anybody still finish anything", computed from
--- the raw board rather than by calling `Objectives.anyFinishable`.
+-- The soak's OWN answer to "can every unsolved line still be entered", computed
+-- from the raw board rather than by calling `Objectives.stranded`.
 --
 -- The first version used the module. Planting R48's defect then passed, because
--- breaking `anyFinishable` blinded the game's check and this measurement at the
+-- breaking the module blinded the game's check and this measurement at the
 -- same time: the instrument and the thing it measures shared an implementation.
 -- A second opinion has to be a second implementation.
-local function anybodyCouldFinish(board, able: { number }): boolean
+--
+-- R149: EVERY line. This asked whether ANY line could be finished, the same
+-- question as the game's rule, so it could not see the round PT4 found: one line
+-- nobody free may enter, the round unwinnable while others stay open.
+local function everyLineEnterable(board, able: { number }): boolean
 	for _, objective in board.list do
 		if objective.solved then
 			continue
 		end
+		local someone = false
 		for _, userId in able do
 			if objective.seenBy[userId] == nil then
-				return true
+				someone = true
 			end
 		end
+		if not someone then
+			return false
+		end
 	end
-	return false
+	return true
 end
 
 -- R138: the group's run for the way out. This is the soak's model of PLAYERS,
@@ -380,7 +388,7 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 			-- losses became common: the count went from 0 to 28 with no change to
 			-- any rule, which is what a measurement that was never gated looks
 			-- like when the thing it forgot to exclude starts happening.
-			if round:isPlaying() and not anybodyCouldFinish(board, ableNow()) and not board:allSolved() then
+			if round:isPlaying() and not everyLineEnterable(board, ableNow()) and not board:allSolved() then
 				report.stuckRejoins += 1
 			end
 		end
@@ -442,7 +450,7 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 		end
 		report.worstLexicon = math.max(report.worstLexicon, #operator:snapshot())
 
-		if round:isPlaying() and not board:allSolved() and not anybodyCouldFinish(board, ableNow()) then
+		if round:isPlaying() and not board:allSolved() and not everyLineEnterable(board, ableNow()) then
 			report.unfinishableTicks += 1
 		end
 	end
@@ -843,17 +851,19 @@ print("the Operator takes everyone but one")
 local harsh = acrossSeeds(1200, 0, true)
 check(`(guard) the harsh soak played rounds ({harsh.rounds})`, harsh.rounds >= 3)
 -- R111: this guard was named "it really did strand people", but it counted
--- every loss. Measured: 0 of 28 harsh losses are strandings with anyone still
--- free. By the game's own rule that is correct -- a caught reader can still TALK,
--- so a survivor who has not seen the other line can still finish it -- and a
--- stranding needs the survivor to have seen every unsolved line, which this model
--- never produces (it solves on a 260-tick beat, longer than a round lasts).
--- Planting `nobodyCanWin`'s stranded clause to `false` left this file green;
--- that rule is carried by the behaviour checks in tests/lifecycle (R108).
+-- every loss. Measured then: 0 of 28 harsh losses were strandings with anyone
+-- still free, because the rule wanted the survivor to have seen EVERY unsolved
+-- line, which this model never produces. Planting `nobodyCanWin`'s stranded
+-- clause to `false` left this file green.
+-- R149: one line nobody free may enter is enough (the way out needs them all),
+-- and R48's survivor always holds one. Measured: 31 of 34, and the same seven
+-- sessions play 58 rounds instead of 28, because a stranded round no longer runs
+-- on until the last player is taken. So this is a guard again: without
+-- strandings this file could not see the rule.
 check(`(guard) the harsh soak loses rounds ({harsh.lost})`, harsh.lost >= 1)
 check(
-	`(recorded, R111) losses by stranding with someone free ({harsh.strandedLost} of {harsh.lost})`,
-	harsh.strandedLost >= 0
+	`(guard) the harsh soak strands rounds with someone still free ({harsh.strandedLost} of {harsh.lost})`,
+	harsh.strandedLost > 0
 )
 -- At most ONE tick of lag per stranded round: the capture strands it, and the
 -- next beat of the server clock ends it. That is the granularity of asking on a

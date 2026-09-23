@@ -731,6 +731,34 @@ do
 
 	b, _, l = setup({ 1 })
 	check("a solo server nobody has touched does not lose and loop", Lifecycle.nobodyCanWin({ 1 }, b, l) == false)
+
+	-- R149, PT4's shape: player 1 holds the latch, player 2 the board. With 2, 3
+	-- and 4 on the line, player 1 could still enter the board, but nobody free
+	-- may enter the latch, and the way out needs both. Before R149 this asked
+	-- whether ANY line could be entered, and the round ran on for 178 s.
+	local function twoLines()
+		local board = Objectives.new()
+		local latch = board:add("latch", "exit", "Night latch %s")
+		local jack = board:add("board", "jack_number", "Patch line to jack %s")
+		latch.holder, latch.seenBy[1] = 1, true
+		jack.holder, jack.seenBy[2] = 2, true
+		return board, Connected.new()
+	end
+	b, l = twoLines()
+	l:connect(2, 0)
+	l:connect(3, 0)
+	l:connect(4, 0)
+	check(
+		"a line nobody free may enter loses the round, though another could still be entered",
+		Lifecycle.nobodyCanWin({ 1, 2, 3, 4 }, b, l) == true
+	)
+	b, l = twoLines()
+	l:connect(3, 0)
+	l:connect(4, 0)
+	check(
+		"(control) with a free player for each line, play goes on",
+		Lifecycle.nobodyCanWin({ 1, 2, 3, 4 }, b, l) == false
+	)
 end
 
 print(`\n{checks - failures}/{checks} passed`)

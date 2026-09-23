@@ -88,9 +88,10 @@ function Lifecycle.restart(self: Round): boolean
 	return true
 end
 
--- Has the group lost? Everyone present taken, OR nobody left able to finish
--- anything (R48/R49; see the caller in init.server). `board` is an Objectives
--- board and `line` a Connected line -- both pure, so this runs headlessly.
+-- Has the group lost? Everyone present taken, OR a line that nobody left able
+-- may enter (R48/R49, and R149: one such line is enough, since the way out needs
+-- every line; see the caller in init.server). `board` is an Objectives board and
+-- `line` a Connected line -- both pure, so this runs headlessly.
 -- R138: with every line restored the round goes on (the escape), so the only
 -- way to lose it then is for everyone to be taken.
 -- `line:count() > 0` keeps a solo server from losing instantly and looping: a
@@ -111,7 +112,7 @@ function Lifecycle.nobodyCanWin(present: { number }, board: any, line: any): boo
 			table.insert(able, userId)
 		end
 	end
-	return line:count() > 0 and not board:anyFinishable(able)
+	return line:count() > 0 and board:stranded(able) ~= nil
 end
 
 return Lifecycle

@@ -120,6 +120,11 @@ Losing is being **connected** — it puts you on the line and you can only be
 heard, not spoken to, for the rest of the round. Your teammates hear you. You
 can still help them. You just can't be helped.
 
+> **As built (R149):** the round is lost the moment one unrestored line has
+> nobody free who may enter it (everyone free has read its code). The way out
+> needs every line, so that round cannot be won, and it ends there rather than
+> running on until the last free player is taken.
+
 That matters: death that removes a player from a horror game removes a player
 from the room. Here, dying makes you a voice — which is thematically exact and
 keeps everyone playing.

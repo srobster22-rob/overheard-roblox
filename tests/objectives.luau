@@ -683,42 +683,45 @@ end
 local four = { 1, 2, 3, 4 }
 stranding:deal(four)
 check(`(guard) the board dealt its lines ({#stranding.list})`, #stranding.list >= 2)
-check("with everybody able, something is finishable", stranding:anyFinishable(four) == true)
+check("with everybody able, no line is stranded", stranding:stranded(four) == nil)
 
 -- Everyone except one reader is taken.
 local strandedReader = stranding.list[1].holder :: number
 local onlyReaderLeft = { strandedReader }
+check("a survivor who has read a line strands it", stranding:stranded(onlyReaderLeft) == stranding.list[1])
+
+-- R149, PT4's shape: the survivor can still enter the OTHER lines, and the round
+-- is lost anyway, because the way out needs every line restored.
 check(
-	"a survivor who has read the only unsolved line can finish nothing",
-	stranding:anyFinishable(onlyReaderLeft)
-		== (function()
-			-- True only if some OTHER line exists that they have not read.
-			for _, objective in stranding.list do
-				if not objective.solved and not objective.seenBy[strandedReader] then
-					return true
-				end
-			end
-			return false
-		end)()
+	"(guard) the survivor has not read another line",
+	stranding.list[2].seenBy[strandedReader] == nil and not stranding.list[2].solved
 )
+check(
+	"one line nobody free may enter strands the round, however many others they could",
+	stranding:stranded(onlyReaderLeft) ~= nil
+)
+-- ...and restoring those others changes nothing: the held line is still there.
+stranding.list[2].solved = true
+check("...with the others restored too", stranding:stranded(onlyReaderLeft) == stranding.list[1])
+stranding.list[2].solved = false
 
 -- The exact shape the probe found: one line, its reader the only one able.
 local single = Objectives.new()
 local onlyLine = single:add("board", "jack_number", "jack %s")
 single:deal({ 7 })
 check(`(guard) player 7 read it`, onlyLine.seenBy[7] == true)
-check("nobody able means nothing finishable", single:anyFinishable({ 7 }) == false)
-check("...but somebody who never read it can", single:anyFinishable({ 7, 8 }) == true)
-check("an empty room finishes nothing", single:anyFinishable({}) == false)
+check("nobody able who has not read it strands it", single:stranded({ 7 }) == onlyLine)
+check("...but somebody who never read it can enter it", single:stranded({ 7, 8 }) == nil)
+check("an empty room can enter nothing", single:stranded({}) == onlyLine)
 
--- A solved board is not "unfinishable" in the sense that should lose the round:
--- there is nothing left to finish because it is WON.
+-- A solved board strands nothing: there is nothing left to enter because it is
+-- restored. The win (the way out) is checked first anyway.
 local won = Objectives.new()
 local wonLine = won:add("board", "jack_number", "jack %s")
 won:deal({ 1 })
 won:submit("board", 2, wonLine.answer, 1)
 check("(guard) the board is finished", won:allSolved())
-check("a finished board reports nothing finishable", won:anyFinishable({ 1, 2 }) == false)
+check("a finished board strands no line", won:stranded({ 1 }) == nil)
 check("...which is why the win is checked first", won:allSolved() == true)
 
 print("")
