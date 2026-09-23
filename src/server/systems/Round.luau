@@ -7,6 +7,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Layout = require(ReplicatedStorage.Shared.Layout)
 local Lexicon = require(ReplicatedStorage.Shared.Lexicon)
 local Types = require(ReplicatedStorage.Shared.Types)
 
@@ -270,6 +271,36 @@ function Round.leadsTo(concept: string): string?
 		end
 	end
 	return nil
+end
+
+-- Where the Operator is, as the Your Line panel tells it (R144):
+--   * waiting in a room: the label of that room's station, the name the wall's
+--     headers use;
+--   * in the way out's room, or walking to it: `wayOut`, so the way-out note
+--     does not send everyone there.
+-- Walking anywhere else it is nowhere the panel says: the hum is the tell. At
+-- its post between rounds, or walking back to it, it is in no room at all.
+--
+-- Until R144 nothing said where it had stopped, and the panel sent everyone to
+-- the lobby while it waited there (R143's blind group, all four taken walking
+-- in) or while it was on its way (R144's, taken 4.4 s after arriving).
+function Round.holding(state: string, room: string?, wayOutRoom: string): Types.Holding?
+	if room == nil or not (state == "arrived" or state == "approaching" or state == "closing") then
+		return nil
+	end
+	local label: string? = nil
+	if state == "arrived" then
+		for _, station in STATIONS do
+			if Layout.stationRoom(station.id) == room then
+				label = station.label
+			end
+		end
+	end
+	local wayOut = room == wayOutRoom
+	if label == nil and not wayOut then
+		return nil
+	end
+	return { label = label, wayOut = wayOut }
 end
 
 -- The wall's rows, each told where it leads. Copies, so the Operator's own

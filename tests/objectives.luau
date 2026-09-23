@@ -160,6 +160,39 @@ check(
 	bHolder:submit("board", HOLDER, "11", T0).reason == "someone else has to patch this"
 )
 
+-- R144 (PT3): every refusal said "patch", so the Cutoff told a player somebody
+-- else had to patch it. Each station refuses in its own prompt's verb.
+do
+	local RoundModule = rt.require(rt.systems.Round)
+	local ownVerb, otherVerb = 0, 0
+	for _, station in RoundModule.STATIONS do
+		local board = Objectives.new()
+		local line = board:add(station.id, station.concept, "p")
+		line.holder = HOLDER
+		line.answer = "47"
+		line.seenBy[ACTOR] = true
+		local verb = string.lower(station.actionText)
+		for _, reason in
+			{ board:submit(station.id, HOLDER, "47", T0).reason, board:submit(station.id, ACTOR, "47", T0).reason }
+		do
+			if string.find(reason, ` {verb} `, 1, true) then
+				ownVerb += 1
+			end
+			for _, other in RoundModule.STATIONS do
+				local theirs = string.lower(other.actionText)
+				if theirs ~= verb and string.find(reason, ` {theirs} `, 1, true) then
+					otherVerb += 1
+				end
+			end
+		end
+	end
+	check(
+		`each station's two refusals name its own verb ({ownVerb} of {2 * #RoundModule.STATIONS})`,
+		ownVerb == 2 * #RoundModule.STATIONS
+	)
+	check(`...and never another station's ({otherVerb})`, otherVerb == 0)
+end
+
 -- The whole claim, simulated: a guesser who waits out every jam and never
 -- speaks. Before this change 45 wrong answers cost 45 * 0.75 = 33.75 seconds.
 local bBrute = Objectives.new()

@@ -28,6 +28,14 @@ export type Coinage = {
 	leadsTo: string?,
 }
 
+-- Where the Operator is (R144), for every client's Your Line panel: the label
+-- of the station in the room it is WAITING in (nil while it walks), and whether
+-- the room it is in or walking to is the way out.
+export type Holding = {
+	label: string?,
+	wayOut: boolean,
+}
+
 export type Utterance = {
 	speaker: Player,
 	text: string,

@@ -276,6 +276,18 @@ function Objectives.viewFor(self: Board, userId: number): { any }
 	return out
 end
 
+-- What you do at a station, as its refusals say it: the prompt's own verb,
+-- lower case ("patch", "throw", "turn"). Every refusal said "patch" until R144,
+-- so the Cutoff told a player somebody else had to patch it (PT3).
+local function verbAt(id: string): string
+	for _, station in Round.STATIONS do
+		if station.id == id then
+			return string.lower(station.actionText)
+		end
+	end
+	return "do"
+end
+
 -- The actor submits a value. This is the only place an objective can be solved.
 --
 -- `now` is passed in rather than read from the clock, so the jam is testable
@@ -304,12 +316,16 @@ function Objectives.submit(self: Board, id: string, actorUserId: number, value: 
 	-- move the line off the person who had just read the number, after which
 	-- the keypad accepted it from them.
 	if objective.seenBy[actorUserId] then
-		return { ok = false, reason = "you were told this one - somebody else has to patch it", solved = false }
+		return {
+			ok = false,
+			reason = `you were told this one - somebody else has to {verbAt(id)} it`,
+			solved = false,
+		}
 	end
 
 	-- The invariant. The holder cannot solve their own objective.
 	if objective.holder == actorUserId then
-		return { ok = false, reason = "someone else has to patch this", solved = false, fault = true }
+		return { ok = false, reason = `someone else has to {verbAt(id)} this`, solved = false, fault = true }
 	end
 
 	-- Jammed. Checked AFTER the holder rule and BEFORE the answer is compared,

@@ -48,6 +48,7 @@ local connectedRemote = Remotes.get("Connected")
 -- Whether a round is being played, and how the last one ended. The client had
 -- no idea a round could END until R33.
 local phaseRemote = Remotes.get("Phase")
+local holdingRemote = Remotes.get("Holding")
 
 -- Stations are the source of truth: the board and the Operator's secrets are
 -- both derived from `Round.STATIONS`, so an objective can never exist for a
@@ -247,6 +248,20 @@ local function takeWhoeverIsHere()
 	-- is actually present, so a player leaving cannot strand the round.
 	if endTheRoundIfNobodyCanWin(presentUserIds()) then
 		endTheRound("lost")
+	end
+end
+
+-- R144: where the Operator is, to every Your Line panel (`Round.holding`).
+-- Asked every beat and sent when it changes, not from `onStateChanged`: a new
+-- destination at the same state (the outside call's `sendNow`) and `sendHome`
+-- from a room (arrived to arrived) change no state and fire nothing.
+local lastHolding = ""
+local function pushHolding(always: boolean?)
+	local holding = Round.holding(pursuit.state, pursuit.targetName, Escape.ROOM)
+	local key = if holding then `{holding.label or ""}|{holding.wayOut}` else ""
+	if always or key ~= lastHolding then
+		lastHolding = key
+		holdingRemote:FireAllClients(holding)
 	end
 end
 
@@ -493,6 +508,7 @@ Players.PlayerAdded:Connect(function(player: Player)
 	task.defer(function()
 		pushPhase(nil)
 		pushObjectives(nil)
+		pushHolding(true)
 		broadcastLexicon()
 	end)
 end)
@@ -639,6 +655,9 @@ task.spawn(function()
 			pursuit:withdrawTo(built.operatorStart)
 			heardRemote:FireAllClients(Round.LINES.givingUp, "", 0)
 		end
+
+		-- Last in the beat, after everything that can move it.
+		pushHolding()
 	end
 end)
 

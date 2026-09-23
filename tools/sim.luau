@@ -233,7 +233,9 @@ function Sim.tick(self: any, seconds: number)
 		local before = pursuit.state
 		pursuit:step(Config.TickSeconds)
 		if pursuit.state == "arrived" and before ~= "arrived" then
-			self:trace(`   >> it has ARRIVED. "{Round.LINES.taken}"`)
+			local where = Round.holding(pursuit.state, pursuit.targetName, Escape.ROOM)
+			local note = if where and where.label then ` It is waiting by the {where.label}.` else ""
+			self:trace(`   >> it has ARRIVED. "{Round.LINES.taken}"{note}`)
 		end
 		if pursuit.state == "arrived" then
 			local had = line:count()
@@ -340,7 +342,8 @@ function Sim.view(self: any, id: number): { string }
 	if self.line:isConnected(id) then
 		table.insert(out, "  You are ON THE LINE: you can still talk, but you cannot act.")
 	end
-	for _, row in Readout.lineRows(self.board:viewFor(id)) do
+	local holding = Round.holding(self.pursuit.state, self.pursuit.targetName, Escape.ROOM)
+	for _, row in Readout.lineRows(self.board:viewFor(id), holding) do
 		table.insert(out, `  panel: {row.text}`)
 	end
 	local band = self.supervisor:band(id, self.now)

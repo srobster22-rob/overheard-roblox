@@ -27,13 +27,27 @@ local RunService = game:GetService("RunService")
 -- held answer to every player in the server. `tests/wiring.luau` guards all
 -- four against ever being broadcast.
 --
+-- `Holding` (R144) is where the Operator is waiting, or nil while it walks. It
+-- is broadcast on purpose: the room it holds is the one thing every player
+-- needs, and a player walking in beside it was the loss nobody could read.
+--
 -- `Rejected` is deliberately separate from `Heard`. `Heard` is the Operator's
 -- voice and is broadcast; `Rejected` is why YOUR submit at THAT station failed
 -- and is only ever fired at one client. They were the same remote until R10,
 -- which meant one player speaking painted another player's keypad with a red
 -- concept id. See `Shared.Keypad`.
-local REMOTE_NAMES =
-	{ "Heard", "LexiconUpdated", "Objectives", "Submit", "OpenBoard", "Rejected", "Connected", "Phase", "Silence" }
+local REMOTE_NAMES = {
+	"Heard",
+	"LexiconUpdated",
+	"Objectives",
+	"Submit",
+	"OpenBoard",
+	"Rejected",
+	"Connected",
+	"Phase",
+	"Silence",
+	"Holding",
+}
 
 local Remotes = {}
 

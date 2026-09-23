@@ -8824,3 +8824,67 @@ Content: unchanged this slice (the swing's slice 1 moved Operator lines 11 → 1
 Coach: none new.
 Decisions: D10.
 Next: R144 is the swing's k=4 slot: a FIX for the blind session's round-1 loss (the Operator parked, silent, in the room the panel sends everyone to: #1-3) against swing slice 3, picked at Sync. Backlog from this round: stems on the wall (whole words need the save format), "listing" makes "the list" a directory word, filler filed at the first restore, player names learned, tools/play never shows station labels. PT4 in R145, RETRO R146.
+
+
+## R144 · FIX · you can see where it is waiting, and the way out does not walk you into it
+Pick: FIX in the k=4 slot, which this cycle's BIG SWING could also take: the last playtest (PT3) left two player-facing defects open, both reproduced on HEAD 3324b22 today, and R143's blind session added one that lost it a round. Hook & onboarding (gap 12): an unearned loss in a new group's first round. Impact planned 2/3/0.
+- Defects:
+  - (1) The Operator parked in a room is silent and named nowhere. The only tell is a hum that is quiet (PT3: "reads 'silence' while the Operator holds your room"). After the last restore the panel sends everyone to the lobby while it is waiting there: R143 blind round 1, all four were taken at 29.2 s with 3/3 restored ("the one loss felt unearned").
+  - (2) Every station's refusal says "patch" (PT3 broken #4, veteran/repro_refusal_text.txt: the Cutoff says "somebody else has to patch it").
+- Fix: the Your Line panel names where it is waiting, by the station label the wall already uses ("the Operator is waiting by the Night Latch"). When it is waiting in the lobby, the way-out note says to wait for it to walk off instead of "everyone to the lobby". Each refusal uses its own station's verb.
+- Not taken: PT3 broken #3 (one digit every 40 s keeps the Supervisor quiet; still true on HEAD). It changes Supervisor pressure, which OWNER.md parks (R54), so it goes to the backlog.
+- Sync: AGENT_LOOP v3.3 unchanged; OWNER.md `## Next` empty, no VETO; no new COACH notes. Studio MCP checked 23 Sep: the roblox-studio server now lists its instructions but still exposes no tools (OWNER.md question 1).
+
+Player notices: When the Operator stops in a room, everyone's Your Line panel says where it is waiting, using the station names the Lexicon wall uses ("the Operator is waiting by the Night Latch"). The line goes away once it moves again. If every line is restored while it is in the lobby, or on its way there, the panel says "every line is through - but the lobby is not safe yet: wait for it to walk off" instead of sending everyone in. A refused code at the Cutoff or the Night Latch now says "throw" or "turn", not "patch".
+Impact: planned 2/3/0 → shipped 2/3/0 (biggest file tests/wiring.luau 2,003→2,044; biggest function touched `Objectives.submit`, 80 lines)
+Built:
+- `Round.holding(state, room, wayOutRoom)` returns `Types.Holding`: the label of the station in the room it has arrived in, and whether the room it is in or walking to is the way out. Walking anywhere else, or home, it returns nil, so the hum stays the tell.
+- The server asks for it every beat, after everything that moves the Operator, and sends it on change over a new broadcast remote `Holding`. A joining player is always sent it. It is not driven from `onStateChanged`, because a new destination at the same state (the outside call's `sendNow`) and `sendHome` from a room change no state.
+- `Readout.lineRows(entries, holding)` adds a `holding` row (`Readout.WAITING`) when there is a label, and uses `Readout.ESCAPE_WAIT` instead of `ESCAPE_NOTE` when `wayOut` is set.
+- The client keeps the last board it drew and redraws on either message; the new row is amber. tools/sim shows the same row and names, in the trace, where the Operator arrived.
+- `Objectives.submit`'s two refusals use the station's own verb (`verbAt`).
+- Tests: readout +7, round +6, objectives +2, wiring +9. The server-reason leak scan now reads a templated refusal with every station's verb.
+Quality:
+- My review moved `verbAt` out from between `Objectives.submit` and its doc comment, and unfolded a trace string the formatter had split mid-interpolation.
+- The blind session below found that the first version's note only covered an Operator already waiting in the lobby. At 3/3 it was still walking there, the panel said "everyone to the lobby", and all four were taken 4.4 s after it arrived. `Round.holding` now flags the way out while it walks there. The push moved from `onStateChanged` to every beat, because a same-state retarget fires no change.
+- FIX round: no independent reviewer required.
+Verified:
+- test.cmd exit 0, selene 0/0/0, rojo build OK, stylua clean. 16 plants, each failing by name and restored by sha256 (r144/plants_out.txt).
+- Proven in the running build (tools/play, the sim running the real server modules):
+  - R143's blind round 1, with a `look` added after the last restore. At 22.0 s every panel reads "the Operator is waiting by the Night Latch" / "every line is through - but the lobby is not safe yet: wait for it to walk off". Before, it read "every line is through - everyone to the lobby", and all four were taken at 29.2 s. The same group, waiting as told: "it gives the room up" at 40.8 s, the note turns back to "everyone to the lobby", and at 49.2 s "ROUND WON: 4 of 4 still free got out" (r144/decide_look.txt, decide_wait.txt).
+  - R144's blind round 1, the Operator still walking to the lobby at 20.0 s. The panel reads "every line is through - but the lobby is not safe yet: wait for it to walk off", with no waiting row. Before, "everyone to the lobby", and all four were taken at 26.2 s. Waiting: it arrives at 21.8 s, gives the room up at 41.8 s, and at 51.2 s "ROUND WON: 4 of 4" (r144/bound_look.txt, bound_wait.txt).
+  - PT3's veteran/repro_refusal_text.txt: "somebody else has to patch it" → "somebody else has to throw it" at the Cutoff.
+- How often it matters, from bot traces over seeds 11-15 and three personas: of the 90 rounds that restored every line, the Operator was in the lobby then in 9 and on its way there in 5. The bots walked in anyway, since they never read the panel: 19 were taken after that moment, and 5 of those 14 rounds were lost.
+Blind tools/play session (subagent, never saw the change, 5 rounds, seed 31; played on the first version of this round's fix): lost, won with 2 of 4 out, lost, won 4/4, won 4/4. It found the gap fixed above (#8: "wait for it to walk off" came too late: at 3/3 the Operator was still walking to the lobby; they were taken 4.4 s after it arrived, "how are we supposed to know its coming"). Best: "your very first one from last time, plus one" -> Ana restores the latch line. 19 confusing items (R143: 16):
+  - #1-2: four names for each station (the panel's prompt, the command, the Lexicon's label, the trace's concept), and nothing saying which station is where.
+  - #3: "Secrets it listens for: 4" with three stations.
+  - #4: talking about the rule breaks it ("nobody say the numbers again" -> jack).
+  - #5: nothing shows which words mean the exit.
+  - #6-7: the hum goes quiet while it is still walking, and nothing shows where it is heading.
+  - #9: no countdown after 3/3.
+  - #10: the silence line never changes.
+  - #11: being on the line is a dead end, and your chat still counts.
+  - #12: "carton", used for all three stations, was never learned (a word said for every station is filler, D10).
+  - #13: the Lexicon is hard to read.
+  - #14: the trace says WON while screens say RESTORED.
+  - #15: a queued walk took longer.
+  - #16: no notice when your code is overheard and replaced.
+  - #17: unclear which trace lines a player would actually see.
+  - #18-19: two harness artefacts.
+  Caused here: #8, fixed above. r144/blind/session.txt.
+Headline:
+- The bots don't read the panel, so nothing they measure could move, and nothing did.
+  - Rounds won 5/6/6 → 5/6/6; taken per round 1.9 (40 in 21) → 1.9 (40); Supervisor calls per round 1.6 (33) → 1.6 (33); codewords replaced 4 → 4.
+  - Natural chat naming a plain word 30/160 → 30/160; rounds that end 21/21 → 21/21.
+- Newly measured, as the size of the fix: rounds where every line went through with the Operator in or bound for the lobby, 14 of 90 (seeds 11-15).
+- Unscripted, blind session (seed 31): won 3 of 5, taken 10 in 5 rounds (R143's session, seed 23: won 3 of 4, 5 taken in 4).
+Market: no row moved, and none was targeted (FIX). Hook & onboarding stays 1: an unearned round-1 loss is gone, but there is still no tutorial and plain speech in round 1 still costs nothing. UI/UX stays 1: one more row, no settings screen. Score 20.7 unchanged; MARKET.md history row R144.
+Content: unchanged (FIX); CONTENT.md history row R144 (`tools/inventory row R144`).
+Coach: none new.
+Decisions: none.
+Next: R145 PLAYTEST PT4, postponed from R143 (three building rounds since PT3: R142-R144). Personas: genre veteran, struggling players (rotated after PT2's returning group and PT3's min-maxer), and the critic; briefs in r145/. RETRO in R146. Backlog from this round:
+  - PT3 #3: one digit every 40 s keeps the Supervisor quiet. OWNER.md parks Supervisor pressure (R54).
+  - Four names for each station, and no map of which station is where.
+  - No notice when your code is overheard and replaced.
+  - No countdown after 3/3.
+  - "Secrets it listens for: 4".

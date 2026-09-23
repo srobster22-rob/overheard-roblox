@@ -1586,7 +1586,10 @@ check(
 	"the client requires Shared.Readout",
 	string.find(clientCode, "require(ReplicatedStorage.Shared.Readout)", 1, true) ~= nil
 )
-check("...and renders the rows it returns", string.find(clientCode, "Readout.lineRows(entries)", 1, true) ~= nil)
+check(
+	"...and renders the rows it returns, with where the Operator is waiting",
+	string.find(clientCode, "Readout.lineRows(entries, holding)", 1, true) ~= nil
+)
 
 local renderBody = string.match(clientCode, "local function renderObjectives%(.-" .. NL .. "end") or ""
 check("(guard) found renderObjectives", #renderBody > 0)
@@ -1757,6 +1760,7 @@ local sharedShown: { string } = {
 	ReadoutModule.PRIVATE_NOTE,
 	ReadoutModule.NOTHING_HELD,
 	ReadoutModule.ESCAPE_NOTE,
+	ReadoutModule.ESCAPE_WAIT,
 	ReadoutModule.TITLE_WON,
 	ReadoutModule.TITLE_LOST,
 	SilenceModule.note("clear"),
@@ -1767,6 +1771,10 @@ for _, spec in HudModule.panels() do
 	if not TITLE_NEVER_SHOWN[spec.name] then
 		table.insert(sharedShown, spec.name)
 	end
+end
+-- R144: the waiting row, as it reads for every station.
+for _, station in Round.STATIONS do
+	table.insert(sharedShown, string.format(ReadoutModule.WAITING, station.label))
 end
 local sharedLeaks: { string } = {}
 for _, text in sharedShown do
@@ -1848,6 +1856,12 @@ do
 	for text in string.gmatch(raw, 'reason = "([^"]+)"') do
 		serverSaid[text] = true
 	end
+	-- R144: a refusal in a station's own verb is a template; read it with each.
+	for text in string.gmatch(raw, "reason = `([^`]+)`") do
+		for _, station in Round.STATIONS do
+			serverSaid[(string.gsub(text, "{[^}]*}", string.lower(station.actionText)))] = true
+		end
+	end
 	for text in string.gmatch(raw, 'FireClient%([^,]+, [^,]+, "([^"]+)"') do
 		serverSaid[text] = true
 	end
@@ -1861,6 +1875,33 @@ for text in serverSaid do
 end
 check(`(guard) found the server's player-facing reasons ({serverCount})`, serverCount >= 7)
 check(`no server reason gives a concept away ({table.concat(serverLeaks, " | ")})`, #serverLeaks == 0)
+
+print("")
+print("where the Operator is waiting reaches every panel (R144)")
+local holdingBody = string.match(serverCode, "local function pushHolding%(.-" .. NL .. "end") or ""
+check("(guard) found pushHolding", #holdingBody > 0)
+check(
+	"the server tells everyone where it is, from the Operator's own state",
+	string.find(holdingBody, "Round.holding(pursuit.state, pursuit.targetName, Escape.ROOM)", 1, true) ~= nil
+		and string.find(holdingBody, "holdingRemote:FireAllClients(holding)", 1, true) ~= nil
+)
+check("...sent when it changes", string.find(holdingBody, "key ~= lastHolding", 1, true) ~= nil)
+-- Every beat, after everything that can move it: a new destination at the same
+-- state (`sendNow`) and `sendHome` from a room fire no change of state.
+local lastMove = string.find(serverCode, "pursuit:withdrawTo(built.operatorStart)", 1, true)
+local askedAfter = if lastMove then string.find(serverCode, "pushHolding()", lastMove, true) else nil
+check("...asked every beat, after the last thing in it that moves the Operator", askedAfter ~= nil)
+local joinBody = string.match(serverCode, "Players.PlayerAdded:Connect%(function%(.-" .. NL .. "end%)") or ""
+check("...and told to a player who joins, changed or not", string.find(joinBody, "pushHolding(true)", 1, true) ~= nil)
+check(
+	"the client redraws its panel when told",
+	string.find(clientCode, "holdingRemote.OnClientEvent:Connect(", 1, true) ~= nil
+		and string.find(clientCode, "renderObjectives(shownEntries)", 1, true) ~= nil
+)
+check(
+	"the sim's players see the same row",
+	string.find(botCode, "Readout.lineRows(self.board:viewFor(id), holding)", 1, true) ~= nil
+)
 
 print("")
 print("the Lexicon panel shows only filtered words")

@@ -174,6 +174,51 @@ for name in builtRooms do
 end
 
 print("")
+print("where it is waiting (R144)")
+do
+	local Escape = rt.require(rt.systems.Escape)
+	local named = 0
+	for _, station in Round.STATIONS do
+		local room = Layout.stationRoom(station.id)
+		local where = Round.holding("arrived", room, Escape.ROOM)
+		if
+			where
+			and where.label == station.label
+			and where.label == Round.leadsTo(station.concept)
+			and where.wayOut == (room == Escape.ROOM)
+		then
+			named += 1
+		end
+	end
+	check(
+		`each room it can wait in is named by its station, as the wall names it ({named} of {#Round.STATIONS})`,
+		named == #Round.STATIONS
+	)
+	local inLobby = Round.holding("arrived", Escape.ROOM, Escape.ROOM)
+	local inArchive = Round.holding("arrived", "archive", Escape.ROOM)
+	check(
+		"only the way out's room is the way out",
+		inLobby ~= nil and inLobby.wayOut and inArchive ~= nil and not inArchive.wayOut
+	)
+	local bound = Round.holding("approaching", Escape.ROOM, Escape.ROOM)
+	local near = Round.holding("closing", Escape.ROOM, Escape.ROOM)
+	check(
+		"walking to the way out, it names no station but flags the way out",
+		bound ~= nil and bound.label == nil and bound.wayOut and near ~= nil and near.label == nil and near.wayOut
+	)
+	check(
+		"walking anywhere else, it is nowhere the panel says (the hum is the tell)",
+		Round.holding("approaching", "archive", Escape.ROOM) == nil
+			and Round.holding("closing", "board", Escape.ROOM) == nil
+	)
+	check("walking back to its post, it is nowhere", Round.holding("leaving", Escape.ROOM, Escape.ROOM) == nil)
+	check(
+		"at its post between rounds it is waiting nowhere a player goes",
+		Round.holding("arrived", nil, Escape.ROOM) == nil
+	)
+end
+
+print("")
 print("a station's prompt gives no concept away, not even its own")
 
 -- R41. The prompts are free text and nothing checked them against the words the

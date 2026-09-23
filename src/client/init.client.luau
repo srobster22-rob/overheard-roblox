@@ -31,6 +31,7 @@ local rejectedRemote = Remotes.get("Rejected")
 local phaseRemote = Remotes.get("Phase")
 local connectedRemote = Remotes.get("Connected")
 local silenceRemote = Remotes.get("Silence")
+local holdingRemote = Remotes.get("Holding")
 
 local player = Players.LocalPlayer
 local gui = Instance.new("ScreenGui")
@@ -269,9 +270,17 @@ local ROW_STYLE: { [string]: { size: number, color: Color3 } } = {
 	empty = { size = 11, color = DIM },
 	-- R138: every line is restored; the way out is open. Loud on purpose.
 	escape = { size = 13, color = BRASS },
+	-- R144: where the Operator is waiting.
+	holding = { size = 11, color = AMBER },
 }
 
+-- R144: where the Operator is waiting (the server's `Holding`), and the board
+-- last drawn, so a change of either redraws the panel with both.
+local holding: any = nil
+local shownEntries: { any } = {}
+
 local function renderObjectives(entries: { any })
+	shownEntries = entries
 	for _, child in lineList:GetChildren() do
 		if child:IsA("TextLabel") then
 			child:Destroy()
@@ -282,7 +291,7 @@ local function renderObjectives(entries: { any })
 	-- from two number series -- `i` for a line and `i + 100` for its note --
 	-- which put every note below every line once a player held two of them, so
 	-- "only you can see this" sat under a line it was not about.
-	for index, row in Readout.lineRows(entries) do
+	for index, row in Readout.lineRows(entries, holding) do
 		local style = ROW_STYLE[row.kind] or ROW_STYLE.note
 		label(lineList, row.text, style.size, style.color).LayoutOrder = index
 	end
@@ -497,6 +506,11 @@ local function onObjectives(entries: { any })
 	end
 end
 objectivesRemote.OnClientEvent:Connect(onObjectives)
+
+holdingRemote.OnClientEvent:Connect(function(where: any)
+	holding = where
+	renderObjectives(shownEntries)
+end)
 
 -- Why YOUR submit at THAT station failed. Private, and dropped unless the
 -- player is still looking at the keypad it is about — `Keypad.accepts` owns

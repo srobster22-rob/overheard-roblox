@@ -109,6 +109,50 @@ end
 check("a panel with no lines at all shows no way out", emptyEscape == 0)
 
 print("")
+print("where the Operator is waiting (R144)")
+do
+	local function rowOf(rows: { any }, kind: string): any
+		for _, row in rows do
+			if row.kind == kind then
+				return row
+			end
+		end
+		return nil
+	end
+	local lobby = { label = "Night Latch", wayOut = true }
+	local archive = { label = "Cutoff", wayOut = false }
+	local working = { { id = "board", solved = false, holding = false } }
+	local waiting = rowOf(Readout.lineRows(working, archive), "holding")
+	check(
+		"the panel says where it is waiting, by the station's label",
+		waiting ~= nil and waiting.text == "the Operator is waiting by the Cutoff"
+	)
+	check("(control) while it walks there is no such row", rowOf(Readout.lineRows(working, nil), "holding") == nil)
+	local done = { { id = "board", solved = true, holding = false } }
+	check(
+		"every line through, with it waiting in the lobby: wait for it to walk off",
+		rowOf(Readout.lineRows(done, lobby), "escape").text == Readout.ESCAPE_WAIT
+	)
+	check(
+		"...and with it waiting anywhere else: everyone to the lobby",
+		rowOf(Readout.lineRows(done, archive), "escape").text == Readout.ESCAPE_NOTE
+	)
+	check("...as with it nowhere", rowOf(Readout.lineRows(done, nil), "escape").text == Readout.ESCAPE_NOTE)
+	-- R144's blind session: every line went through while it was still walking
+	-- to the lobby, and four players walked in behind it.
+	local onItsWay = { label = nil, wayOut = true }
+	check(
+		"on its way to the lobby: no waiting row, but the way-out note still waits",
+		rowOf(Readout.lineRows(done, onItsWay), "holding") == nil
+			and rowOf(Readout.lineRows(done, onItsWay), "escape").text == Readout.ESCAPE_WAIT
+	)
+	check(
+		"the waiting row comes before the way-out note",
+		kinds(Readout.lineRows(done, lobby)) == "count,holding,escape"
+	)
+end
+
+print("")
 print("against the real Objectives payload, not a hand-made one")
 -- The shape comes from `viewFor`, so a change there cannot leave this file
 -- testing a payload the game no longer sends.
