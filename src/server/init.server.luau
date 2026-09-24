@@ -9,6 +9,7 @@ local TextService = game:GetService("TextService")
 local Players = game:GetService("Players")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Guard = require(ReplicatedStorage.Shared.Guard)
 local Layout = require(ReplicatedStorage.Shared.Layout)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Silence = require(ReplicatedStorage.Shared.Silence)
@@ -80,9 +81,9 @@ for _, station in Round.STATIONS do
 end
 -- The codes are secrets too: the Operator asks the board for the live ones each
 -- time it hears something.
-operator.liveCodes = function()
+operator.liveCodes = Guard.wrap("server.liveCodes", function()
 	return board:liveCodes()
-end
+end)
 
 local built = World.build()
 
@@ -146,7 +147,9 @@ local broadcastLexicon = Censor.new(filterForEveryone):sender(function()
 	return Round.wallRows(operator:snapshot(), operator:countingRows())
 end, function(visible)
 	lexiconRemote:FireAllClients(visible)
-end, task.spawn)
+end, function(work)
+	return task.spawn(Guard.wrap("server.lexiconBroadcast", work))
+end)
 
 -- Everyone in the server right now, by user id.
 local function presentUserIds(): { number }
@@ -265,13 +268,13 @@ local function pushHolding(always: boolean?)
 	end
 end
 
-pursuit.onStateChanged = function(state: string, targetName: string?)
+pursuit.onStateChanged = Guard.wrap("server.onStateChanged", function(state: string, targetName: string?)
 	print(`[operator] {state}{if targetName then ` -> {targetName}` else ""}`)
 	if state == "arrived" then
 		heardRemote:FireAllClients(Round.LINES.taken, targetName or "", 1)
 		takeWhoeverIsHere()
 	end
-end
+end)
 
 -- THE SUPERVISOR'S CALL. Runs on the tick, like capture and the loss check.
 --
@@ -331,46 +334,49 @@ end
 
 -- Rate limiting: Station.tryPace (R116).
 
-operator.onUnderstood = function(concept: string, payload: string, confidence: number, heard: string?)
-	print(`[operator] understood '{concept}' ({string.format("%.2f", confidence)}) -> {payload}`)
-	-- A code that moved it is read back (Round.readBack).
-	heardRemote:FireAllClients(Round.readBack(heard), concept, confidence)
-	-- Understanding is what moves it. An unknown payload is refused inside
-	-- Pursuit rather than sending it somewhere arbitrary.
-	pursuit:sendTo(payload)
-end
+operator.onUnderstood = Guard.wrap(
+	"server.onUnderstood",
+	function(concept: string, payload: string, confidence: number, heard: string?)
+		print(`[operator] understood '{concept}' ({string.format("%.2f", confidence)}) -> {payload}`)
+		-- A code that moved it is read back (Round.readBack).
+		heardRemote:FireAllClients(Round.readBack(heard), concept, confidence)
+		-- Understanding is what moves it. An unknown payload is refused inside
+		-- Pursuit rather than sending it somewhere arbitrary.
+		pursuit:sendTo(payload)
+	end
+)
 
 -- R147: a word the group uses as a number is understood. Said to everyone,
 -- and the wall shows the word under "counts as a number".
-operator.onCounted = function(key: string, value: number)
+operator.onCounted = Guard.wrap("server.onCounted", function(key: string, value: number)
 	print(`[operator] counts '{key}' as {value}`)
 	heardRemote:FireAllClients(Round.LINES.counted, "", 1)
 	broadcastLexicon()
-end
+end)
 
 -- R148: the group's letters are understood.
-operator.onLettered = function()
+operator.onLettered = Guard.wrap("server.onLettered", function()
 	print("[operator] reads the group's letters")
 	heardRemote:FireAllClients(Round.LINES.lettered, "", 1)
 	broadcastLexicon()
-end
+end)
 
 -- A code said aloud is spent: its holder gets a new one on their panel.
-operator.onCodeHeard = function(concept: string)
+operator.onCodeHeard = Guard.wrap("server.onCodeHeard", function(concept: string)
 	if board:reroll(concept) then
 		pushObjectives(nil)
 	end
-end
+end)
 
-operator.onBurned = function(coinage)
+operator.onBurned = Guard.wrap("server.onBurned", function(coinage)
 	print(`[operator] BURNED '{coinage.phrase}' = {coinage.concept}`)
 	heardRemote:FireAllClients(Round.LINES.connecting, coinage.concept, 1)
 	broadcastLexicon()
-end
+end)
 
 -- Success is what teaches the Operator. Solving an objective credits whatever
 -- unfamiliar phrases were said just beforehand.
-board.onSolved = function(objective, _actor: number)
+board.onSolved = Guard.wrap("server.onSolved", function(objective, _actor: number)
 	print(`[objective] {objective.id} restored`)
 	operator:credit(objective.concept, os.clock())
 	-- R147: and whatever was said that works out as the code just entered.
@@ -383,7 +389,7 @@ board.onSolved = function(objective, _actor: number)
 	if board:allSolved() and escape:open(os.clock()) then
 		heardRemote:FireAllClients(Round.LINES.ringing, "", 1)
 	end
-end
+end)
 
 -- Everything a player says is evidence, heard on the server through ChatFeed
 -- (`Player.Chatted`). Until R139 this was `TextChatService.OnIncomingMessage`,
@@ -412,13 +418,13 @@ local function hearChat(player: Player, text: string)
 		at = os.clock(),
 	})
 end
-ChatFeed.new(hearChat):follow(Players)
+ChatFeed.new(Guard.wrap("server.hearChat", hearChat)):follow(Players)
 
-built.readerPrompt.Triggered:Connect(function(player: Player)
+built.readerPrompt.Triggered:Connect(Guard.wrap("server.readerPrompt", function(player: Player)
 	-- Reading is private. The holder sees their own line; nobody else does.
 	pushObjectives(player)
 	heardRemote:FireClient(player, Round.LINES.greeting, "", 0)
-end)
+end))
 
 for _, station in Round.STATIONS do
 	local prompt = built.stations[station.id]
@@ -428,7 +434,7 @@ for _, station in Round.STATIONS do
 		-- round that cannot end.
 		error(`World built no prompt for station '{station.id}'`)
 	end
-	prompt.Triggered:Connect(function(player: Player)
+	prompt.Triggered:Connect(Guard.wrap("server.stationPrompt", function(player: Player)
 		-- Record it FIRST. This is the server's own copy of which station this
 		-- player reached, and `submit` is gated on it -- the client's
 		-- `openStation` is now a view, not the authority.
@@ -436,10 +442,10 @@ for _, station in Round.STATIONS do
 		-- The client needs to know WHICH keypad it opened, or it submits every
 		-- answer against the switchboard.
 		openBoardRemote:FireClient(player, station.id, station.actionText)
-	end)
+	end))
 end
 
-submitRemote.OnServerEvent:Connect(function(player: Player, id: unknown, value: unknown)
+submitRemote.OnServerEvent:Connect(Guard.wrap("server.submit", function(player: Player, id: unknown, value: unknown)
 	-- Never trust the client.
 	-- R109: types and lengths, in Shared.Keypad where the suite runs them.
 	if not Keypad.validSubmission(id, value) then
@@ -508,9 +514,9 @@ submitRemote.OnServerEvent:Connect(function(player: Player, id: unknown, value: 
 		end
 		rejectedRemote:FireClient(player, id :: string, result.reason)
 	end
-end)
+end))
 
-Players.PlayerAdded:Connect(function(player: Player)
+Players.PlayerAdded:Connect(Guard.wrap("server.playerAdded", function(player: Player)
 	print(`[server] {player.Name} connected to the exchange`)
 	-- From NOW, not from the start of the round: somebody who has just loaded
 	-- in has not been silent, and a clock starting at zero would call them
@@ -522,15 +528,15 @@ Players.PlayerAdded:Connect(function(player: Player)
 		table.insert(userIds, p.UserId)
 	end
 	board:deal(userIds)
-	task.defer(function()
+	task.defer(Guard.wrap("server.playerAddedPush", function()
 		pushPhase(nil)
 		pushObjectives(nil)
 		pushHolding(true)
 		broadcastLexicon()
-	end)
-end)
+	end))
+end))
 
-Players.PlayerRemoving:Connect(function(player: Player)
+Players.PlayerRemoving:Connect(Guard.wrap("server.playerRemoving", function(player: Player)
 	-- Per-player slots. `lastSubmit` and the desk are session state and go;
 	-- `misses`/`jammedUntil` deliberately DO NOT (see Objectives), because a jam
 	-- a player can shed by reconnecting is not a jam.
@@ -551,7 +557,7 @@ Players.PlayerRemoving:Connect(function(player: Player)
 	if board:redealOrphans(userIds) > 0 then
 		pushObjectives(nil)
 	end
-end)
+end))
 
 -- THE WAY OUT (R138). Asked on the tick, AFTER capture and the loss, like
 -- them: one beat of `Escape.step`, the rule the soak and the bots also run.
@@ -621,67 +627,72 @@ local function beginRound()
 	print(`[server] round {round.number} begins`)
 end
 
+-- One beat of the server's clock: capture, the restart, the loss, the silent
+-- line, the way out, a queued room, the linger, the panels.
+local function beat()
+	-- A finished round is not a hunting ground. Without this the Operator
+	-- keeps taking people during the intermission, after the line that told
+	-- them it was over.
+	if round:isPlaying() and pursuit.state == "arrived" then
+		takeWhoeverIsHere()
+	end
+
+	if round:readyToRestart(os.clock(), Config.IntermissionSeconds) and round:restart() then
+		beginRound()
+	end
+
+	-- ...but not forever. Nothing except the loss ever released it before
+	-- R25, so a single plain word parked it on an objective for the rest of
+	-- the round and nobody could ever finish that station.
+	-- Losing is checked every beat, not only when the Operator arrives: a
+	-- round stranded by a capture stayed live until it came back.
+	if round:isPlaying() and endTheRoundIfNobodyCanWin(presentUserIds()) then
+		endTheRound("lost")
+	end
+
+	-- Silence, which is the one thing the Operator cannot hear. Asked every
+	-- beat for the same reason capture is: it is a continuous fact, not an
+	-- event, and R24 is the round that learned what asking once costs.
+	if round:isPlaying() then
+		showEveryoneTheirClock()
+		putThroughTheSilentLine()
+	end
+
+	workTheWayOut()
+
+	-- A room it heard about while it was busy. Taken up only once it is idle
+	-- again, so it finishes one call before answering the next -- see
+	-- Pursuit.sendTo, and the livelock that made commitment necessary.
+	pursuit:takePending()
+
+	if pursuit:shouldLeave(Config.LingerSeconds) then
+		-- It WALKS out, audibly, rather than switching off where it stands.
+		-- `stop()` released the room in silence with the body motionless, so
+		-- nothing told players it was safe -- and a monster whose rule cannot
+		-- be learned reads as unfair. It also says so, in its own register.
+		pursuit:withdrawTo(built.operatorStart)
+		heardRemote:FireAllClients(Round.LINES.givingUp, "", 0)
+	end
+
+	-- Last in the beat, after everything that can move it.
+	pushHolding()
+end
+
 local running = true
-task.spawn(function()
+task.spawn(Guard.wrap("server.loop", function()
 	while running do
 		task.wait(Config.TickSeconds)
 		if not running then
 			break
 		end
-
-		-- A finished round is not a hunting ground. Without this the Operator
-		-- keeps taking people during the intermission, after the line that told
-		-- them it was over.
-		if round:isPlaying() and pursuit.state == "arrived" then
-			takeWhoeverIsHere()
-		end
-
-		if round:readyToRestart(os.clock(), Config.IntermissionSeconds) and round:restart() then
-			beginRound()
-		end
-
-		-- ...but not forever. Nothing except the loss ever released it before
-		-- R25, so a single plain word parked it on an objective for the rest of
-		-- the round and nobody could ever finish that station.
-		-- Losing is checked every beat, not only when the Operator arrives: a
-		-- round stranded by a capture stayed live until it came back.
-		if round:isPlaying() and endTheRoundIfNobodyCanWin(presentUserIds()) then
-			endTheRound("lost")
-		end
-
-		-- Silence, which is the one thing the Operator cannot hear. Asked every
-		-- beat for the same reason capture is: it is a continuous fact, not an
-		-- event, and R24 is the round that learned what asking once costs.
-		if round:isPlaying() then
-			showEveryoneTheirClock()
-			putThroughTheSilentLine()
-		end
-
-		workTheWayOut()
-
-		-- A room it heard about while it was busy. Taken up only once it is idle
-		-- again, so it finishes one call before answering the next -- see
-		-- Pursuit.sendTo, and the livelock that made commitment necessary.
-		pursuit:takePending()
-
-		if pursuit:shouldLeave(Config.LingerSeconds) then
-			-- It WALKS out, audibly, rather than switching off where it stands.
-			-- `stop()` released the room in silence with the body motionless, so
-			-- nothing told players it was safe -- and a monster whose rule cannot
-			-- be learned reads as unfair. It also says so, in its own register.
-			pursuit:withdrawTo(built.operatorStart)
-			heardRemote:FireAllClients(Round.LINES.givingUp, "", 0)
-		end
-
-		-- Last in the beat, after everything that can move it.
-		pushHolding()
+		Guard.run("server.beat", beat)
 	end
-end)
+end))
 
-game:BindToClose(function()
+game:BindToClose(Guard.wrap("server.close", function()
 	running = false
 	body.stop()
-end)
+end))
 
 print(`[server] {Config.GameName} - {#secrets} secrets this round`)
 for _, secret in secrets do

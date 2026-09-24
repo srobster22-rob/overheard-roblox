@@ -290,7 +290,7 @@ print("the leave path is actually wired")
 -- board:redealOrphans(...)` is still code to it and would pass. Telling live
 -- code from dead code is the open item R7 filed and R8 did not close.
 local serverSource = stripNonCode(fs.readFile("src/server/init.server.luau"))
-local removingBody = string.match(serverSource, "Players%.PlayerRemoving:Connect%(function.-\nend%)")
+local removingBody = string.match(serverSource, "Players%.PlayerRemoving:Connect%(Guard%.wrap%( , function.-\nend%)%)")
 check("init.server has a PlayerRemoving handler", removingBody ~= nil)
 check(
 	"the PlayerRemoving handler re-deals orphaned lines",

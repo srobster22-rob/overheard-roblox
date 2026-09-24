@@ -40,6 +40,8 @@ local function gates(): { Gate }
 	-- MARKET.md's totals and gap values must be the ones its matrix computes.
 	table.insert(list, { name = "market", program = lune, args = { "run", "tools/market", "check" } })
 	table.insert(list, { name = "selene", program = tool("selene"), args = { "src" } })
+	-- Every connection and task in src goes through Guard.wrap.
+	table.insert(list, { name = "guards", program = lune, args = { "run", "tools/guards" } })
 	table.insert(list, { name = "stylua", program = tool("stylua"), args = { "--check", "src", "tests", "tools" } })
 	local built = `{process.env.TEMP or "."}\\overheard-check.rbxlx`
 	table.insert(list, { name = "rojo", program = tool("rojo"), args = { "build", "-o", built } })
@@ -72,6 +74,10 @@ local READERS: { Reader } = {
 	-- A suite's failed check, which carries its place already (tests/kit).
 	function(lines, i)
 		return string.match(lines[i], "^%s*(FAIL%s+.+)$")
+	end,
+	-- A failure a guard caught during a bot or session run (tools/sim).
+	function(lines, i)
+		return string.match(lines[i], "^(GUARD: .+)$")
 	end,
 	-- A runtime error: `path:line: message`.
 	function(lines, i)

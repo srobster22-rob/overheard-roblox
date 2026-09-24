@@ -13,6 +13,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Guard = require(ReplicatedStorage.Shared.Guard)
 local Heat = require(ReplicatedStorage.Shared.Heat)
 local Hud = require(ReplicatedStorage.Shared.Hud)
 local Readout = require(ReplicatedStorage.Shared.Readout)
@@ -238,25 +239,27 @@ local lastPressure = 0
 local lastSecondsLeft = 0
 local lastPushAt = os.clock()
 
-silenceRemote.OnClientEvent:Connect(function(band: string, pressure: number, note: string, secondsLeft: number)
-	silencePanel.Visible = true
-	silenceNote.Text = note
-	lastPressure = pressure
-	lastSecondsLeft = secondsLeft or 0
-	lastPushAt = os.clock()
-	silenceBar.Size = UDim2.fromScale(math.clamp(pressure, 0, 1), 1)
-	silenceBar.BackgroundColor3 = BAND_COLOUR[band] or BAND_COLOUR.clear
-	silenceNote.TextColor3 = BAND_COLOUR[band] or silenceNote.TextColor3
-end)
+silenceRemote.OnClientEvent:Connect(
+	Guard.wrap("client.silence", function(band: string, pressure: number, note: string, secondsLeft: number)
+		silencePanel.Visible = true
+		silenceNote.Text = note
+		lastPressure = pressure
+		lastSecondsLeft = secondsLeft or 0
+		lastPushAt = os.clock()
+		silenceBar.Size = UDim2.fromScale(math.clamp(pressure, 0, 1), 1)
+		silenceBar.BackgroundColor3 = BAND_COLOUR[band] or BAND_COLOUR.clear
+		silenceNote.TextColor3 = BAND_COLOUR[band] or silenceNote.TextColor3
+	end)
+)
 
 -- The COLOUR is not touched here: it belongs to the band, and the band only
 -- changes when the server says so. Only the fill moves between pushes.
-RunService.RenderStepped:Connect(function()
+RunService.RenderStepped:Connect(Guard.wrap("client.frame", function()
 	if not silencePanel.Visible then
 		return
 	end
 	silenceBar.Size = UDim2.fromScale(Silence.fill(lastPressure, lastSecondsLeft, os.clock() - lastPushAt), 1)
-end)
+end))
 
 -- YOUR LINE ----------------------------------------------------------------
 
@@ -335,7 +338,7 @@ local function closeBoard()
 	status.Text = ""
 end
 
-input.FocusLost:Connect(function(enterPressed: boolean)
+input.FocusLost:Connect(Guard.wrap("client.keypadInput", function(enterPressed: boolean)
 	if not enterPressed then
 		return
 	end
@@ -347,7 +350,7 @@ input.FocusLost:Connect(function(enterPressed: boolean)
 	end
 	submitRemote:FireServer(openStation, value)
 	input.Text = ""
-end)
+end))
 
 local function onOpenBoard(stationId: string, actionText: string?)
 	openStation = stationId
@@ -366,7 +369,7 @@ local function onOpenBoard(stationId: string, actionText: string?)
 	status.Text = ""
 	input:CaptureFocus()
 end
-openBoardRemote.OnClientEvent:Connect(onOpenBoard)
+openBoardRemote.OnClientEvent:Connect(Guard.wrap("client.openBoard", onOpenBoard))
 
 -- ON THE LINE ---------------------------------------------------------------
 -- Being caught does not remove you. It removes your ability to ACT, and says so
@@ -381,7 +384,7 @@ local onLineBody = label(onLine, "you can still be heard. you cannot patch.", 12
 onLineBody.Position = UDim2.fromOffset(8, 34)
 onLineBody.Size = UDim2.new(1, -16, 0, 32)
 
-connectedRemote.OnClientEvent:Connect(function(caught: boolean)
+connectedRemote.OnClientEvent:Connect(Guard.wrap("client.connected", function(caught: boolean)
 	onLine.Visible = caught == true
 	if caught then
 		closeBoard()
@@ -395,7 +398,7 @@ connectedRemote.OnClientEvent:Connect(function(caught: boolean)
 		-- longer happen to you. CLAUDE.md: the monster must be legible.
 		silencePanel.Visible = false
 	end
-end)
+end))
 
 -- BETWEEN ROUNDS -------------------------------------------------------------
 --
@@ -464,7 +467,7 @@ local function onPhase(state: { playing: boolean, outcome: string?, number: numb
 	closeBoard()
 end
 
-phaseRemote.OnClientEvent:Connect(onPhase)
+phaseRemote.OnClientEvent:Connect(Guard.wrap("client.phase", onPhase))
 
 -- THE OPERATOR'S VOICE -----------------------------------------------------
 
@@ -487,13 +490,16 @@ said.Parent = gui
 local function onHeard(line: string)
 	said.Text = line
 	said.TextTransparency = 0
-	task.delay(2.5, function()
-		if said.Text == line then
-			said.TextTransparency = 1
-		end
-	end)
+	task.delay(
+		2.5,
+		Guard.wrap("client.voiceFade", function()
+			if said.Text == line then
+				said.TextTransparency = 1
+			end
+		end)
+	)
 end
-heardRemote.OnClientEvent:Connect(onHeard)
+heardRemote.OnClientEvent:Connect(Guard.wrap("client.heard", onHeard))
 
 local function onObjectives(entries: { any })
 	renderObjectives(entries)
@@ -505,12 +511,12 @@ local function onObjectives(entries: { any })
 		closeBoard()
 	end
 end
-objectivesRemote.OnClientEvent:Connect(onObjectives)
+objectivesRemote.OnClientEvent:Connect(Guard.wrap("client.objectives", onObjectives))
 
-holdingRemote.OnClientEvent:Connect(function(where: any)
+holdingRemote.OnClientEvent:Connect(Guard.wrap("client.holding", function(where: any)
 	holding = where
 	renderObjectives(shownEntries)
-end)
+end))
 
 -- Why YOUR submit at THAT station failed. Private, and dropped unless the
 -- player is still looking at the keypad it is about — `Keypad.accepts` owns
@@ -520,9 +526,9 @@ local function onRejected(stationId: string, reason: string)
 		status.Text = reason
 	end
 end
-rejectedRemote.OnClientEvent:Connect(onRejected)
+rejectedRemote.OnClientEvent:Connect(Guard.wrap("client.rejected", onRejected))
 
-lexiconRemote.OnClientEvent:Connect(renderLexicon)
+lexiconRemote.OnClientEvent:Connect(Guard.wrap("client.lexicon", renderLexicon))
 
 renderLexicon({})
 renderObjectives({})

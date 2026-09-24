@@ -14,6 +14,8 @@
 -- connection is disconnected). `follow` does both for a whole Players service,
 -- so the server's part is one call and the rest is tested with fake players.
 
+local Guard = require(game:GetService("ReplicatedStorage").Shared.Guard)
+
 local ChatFeed = {}
 ChatFeed.__index = ChatFeed
 
@@ -48,9 +50,9 @@ function ChatFeed.listen(self: Feed, speaker: Speaker)
 	if self.connections[speaker.UserId] ~= nil then
 		return
 	end
-	self.connections[speaker.UserId] = speaker.Chatted:Connect(function(text: string)
+	self.connections[speaker.UserId] = speaker.Chatted:Connect(Guard.wrap("ChatFeed.chatted", function(text: string)
 		self.onChat(speaker, text)
-	end)
+	end))
 end
 
 -- Stop hearing a player who has left.
@@ -69,12 +71,12 @@ function ChatFeed.follow(self: Feed, roster: Roster)
 	for _, player in roster:GetPlayers() do
 		self:listen(player)
 	end
-	roster.PlayerAdded:Connect(function(player: any)
+	roster.PlayerAdded:Connect(Guard.wrap("ChatFeed.playerAdded", function(player: any)
 		self:listen(player)
-	end)
-	roster.PlayerRemoving:Connect(function(player: any)
+	end))
+	roster.PlayerRemoving:Connect(Guard.wrap("ChatFeed.playerRemoving", function(player: any)
 		self:forget(player.UserId)
-	end)
+	end))
 end
 
 return ChatFeed

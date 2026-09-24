@@ -53,6 +53,7 @@ harness can load; the entry scripts only run inside Roblox.
 | Silence | what a player's silence means, band by band | 115 |
 | Hum | what the Operator sounds like in each state | 71 |
 | Keypad | who may write on the keypad, and a valid submission | 89 |
+| Guard | runs every handler, loop and callback under xpcall and keeps each failure (tag, message, traceback) | 62 |
 | LexiconSave | the Lexicon's save format (no DataStore call yet) | 159 |
 
 ### Tests (`tests`) and tools (`tools`)
@@ -69,7 +70,8 @@ harness can load; the entry scripts only run inside Roblox.
   clock; `tools/playtest.luau` the three bot personas; `tools/play.luau` a
   session player for unscripted testers (its language is at the top of the
   file); `tools/market.luau` MARKET.md's totals; `tools/inventory.luau`
-  CONTENT.md.
+  CONTENT.md; `tools/guards.luau` the lint that every connection and task
+  in src goes through `Guard.wrap`.
 
 ## One round, on the server
 1. **Deal.** `Round.dealSecrets` picks the secret concepts; `Objectives.deal`
@@ -121,8 +123,8 @@ or either in `src/shared`. Server only: `Chatted`, `FilterStringAsync`,
 ## The check command
 `test.cmd` (= `lune run tools/check`) runs every SHIP gate in turn: each
 suite in `tests/`, a 2-round bot run (`gate`: fails if the bots win none),
-the smoke session, the market check, `selene src`, `stylua --check`, and a
-rojo build to %TEMP%. It prints one line per passing gate and the whole output
+the smoke session, the market check, `selene src`, the guards lint,
+`stylua --check`, and a rojo build to %TEMP%. It prints one line per passing gate and the whole output
 of a failing one, then a summary: each failing gate, its first failure and
 its `file:line`. `test.cmd heuristic` runs only the gates whose names contain
 `heuristic`; `test.cmd verbose` prints every gate's output.
@@ -137,7 +139,13 @@ its `file:line`. `test.cmd heuristic` runs only the gates whose names contain
   deterministic, so append and re-run. Bot runs: `lune run tools/playtest
   <firsttimer|returning|quiet> <rounds> <seed>`.
 - In Studio, the server prints `[operator]`, `[objective]` and round lines to
-  the output window.
+  the output window. Every handler, loop and callback runs under `Guard`, so
+  an error warns `[<tag>] <message>` with its traceback there (the tag names
+  the handler, e.g. `server.submit`, `client.heard`, `Presence.heartbeat`)
+  and is kept in `Guard.failures()`.
+- Headless, the sim guards the same callbacks and each beat; `tools/play`
+  and `tools/playtest` print `GUARD: [<tag>] <message>` and exit 1 if
+  anything was caught, so the check's bot and smoke gates fail on it.
 
 ## Known traps
 - Chat is heard on the server only through `Player.Chatted`;
@@ -157,8 +165,6 @@ its `file:line`. `test.cmd heuristic` runs only the gates whose names contain
 - About 240 checks read source text instead of exported values, mostly in
   `tests/wiring.luau`, because the entry scripts hold handler bodies that
   cannot run headlessly.
-- Handlers, loops and callbacks do not run under `xpcall`; an error in one
-  is not recorded with its module.
 - Tests do not all mirror modules: `wiring.luau` (2,017 lines) covers many.
 - `soak()` in tests/soak.luau is 290 lines (limit 150).
 - `TestOperator` is test code shipped in the place.

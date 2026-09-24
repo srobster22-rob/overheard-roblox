@@ -324,13 +324,13 @@ check(`the sweep accepted exactly one station per player (guard, {seated})`, sea
 
 print("")
 print("Station is wired, and Submit is gated on it")
-local triggeredBody = string.match(serverCode, "prompt%.Triggered:Connect%(function.-\n\tend%)")
+local triggeredBody = string.match(serverCode, "prompt%.Triggered:Connect%(Guard%.wrap%( , function.-\n\tend%)%)")
 check("init.server has a station prompt handler", triggeredBody ~= nil)
 check(
 	"reaching a station records it server-side",
 	triggeredBody ~= nil and string.find(triggeredBody :: string, "desk:open", 1, true) ~= nil
 )
-local submitBody = string.match(serverCode, "submitRemote%.OnServerEvent:Connect%(function.-\nend%)")
+local submitBody = string.match(serverCode, "submitRemote%.OnServerEvent:Connect%(Guard%.wrap%( , function.-\nend%)%)")
 check("init.server has a Submit handler", submitBody ~= nil)
 check(
 	"the Submit handler checks the player is at that station",
@@ -349,7 +349,7 @@ check(
 )
 -- The leaver's seat is given up; the jam tables deliberately are not (see
 -- tests/objectives.luau).
-local removing = string.match(serverCode, "Players%.PlayerRemoving:Connect%(function.-\nend%)")
+local removing = string.match(serverCode, "Players%.PlayerRemoving:Connect%(Guard%.wrap%( , function.-\nend%)%)")
 check("init.server has a PlayerRemoving handler", removing ~= nil)
 check(
 	"a departing player gives up their station",
@@ -362,7 +362,7 @@ print("")
 print("winning and being found are different lines")
 check("the server announces arrival with LINES.taken", string.find(serverCode, "LINES.taken", 1, true) ~= nil)
 check("and a won round with LINES.completed", string.find(serverCode, "LINES.completed", 1, true) ~= nil)
-local solvedBody = string.match(serverCode, "board%.onSolved = function.-\nend")
+local solvedBody = string.match(serverCode, "board%.onSolved = Guard%.wrap%( , function.-\nend%)")
 check("the onSolved handler was found (guard)", solvedBody ~= nil)
 check(
 	"the won-round announcement is not LINES.taken",
@@ -569,16 +569,18 @@ end
 -- One is the declaration, so two call sites means three occurrences.
 check(`capture is reachable from more than one place ({captureCalls} occurrences)`, captureCalls >= 3)
 
-local tickBody = string.match(serverCode, "task.spawn%(function%(%).-" .. string.char(10) .. "end%)") or ""
+local tickBody = (string.match(serverCode, "local function beat%(%).-\nend") or "")
+	.. (string.match(serverCode, "task.spawn%(Guard.wrap%( , function%(%).-\nend%)%)") or "")
 check("(guard) found the server tick loop", #tickBody > 0)
 -- `pursuit.state` is CODE; the literal "arrived" is a string body the lexer
 -- strips, so asking the stripped tick for it always fails. Same trap R18 hit
 -- reading the Operator's lines out of stripped source.
 check("the tick asks the Operator's state", string.find(tickBody, "pursuit.state", 1, true) ~= nil)
-local rawTick = string.match(serverSource, "task.spawn%(function%(%).-" .. string.char(10) .. "end%)") or ""
+local rawTick = string.match(serverSource, "local function beat%(%).-\nend") or ""
 check("(guard) found the tick in raw source too", #rawTick > 0)
 check("and compares it against arrived", string.find(rawTick, "arrived", 1, true) ~= nil)
 check("the tick runs capture", string.find(tickBody, "takeWhoeverIsHere()", 1, true) ~= nil)
+check("each beat runs under a guard", string.find(tickBody, "Guard.run( , beat)", 1, true) ~= nil)
 check("the tick is paced by a dial, not a literal", string.find(tickBody, "Config.TickSeconds", 1, true) ~= nil)
 -- R131: forgetting left this clock. It is charged once per round in beginRound,
 -- and a second, per-second clock here would cool everything twice.
@@ -627,7 +629,7 @@ check("the Operator only listens while a round is live", string.find(chatBody, "
 -- and this check REQUIRED that hook. PLATFORM.md now decides the side (below).
 check(
 	"every player's chat reaches the handler through ChatFeed",
-	string.find(serverCode, "ChatFeed.new(hearChat):follow(Players)", 1, true) ~= nil
+	string.find(serverCode, "ChatFeed.new(Guard.wrap( , hearChat)):follow(Players)", 1, true) ~= nil
 )
 
 -- R42. The Operator's OWN lines once contained plain giveaways -- its greeting
@@ -656,8 +658,10 @@ check("...and that one call is inside the chat handler", string.find(chatBody, "
 -- the game still drew, and it vanished into a round that was over.
 -- Named apart from the `submitBody` extracted earlier in this file; two locals
 -- of the same name in one scope is legal Luau and reads like a bug.
-local submitPhaseBody = string.match(serverCode, "submitRemote.OnServerEvent:Connect%(function.-" .. NL .. "end%)")
-	or ""
+local submitPhaseBody = string.match(
+	serverCode,
+	"submitRemote.OnServerEvent:Connect%(Guard.wrap%( , function.-" .. NL .. "end%)%)"
+) or ""
 check("(guard) found the submit handler", #submitPhaseBody > 0)
 check(
 	"...and it is the one that scores answers (control)",
@@ -1291,7 +1295,7 @@ print("a captured player's silence panel is hidden, not left stale")
 
 local connectedBody = string.match(
 	clientCode,
-	"connectedRemote%.OnClientEvent:Connect%(function%(caught: boolean%).-" .. NL .. "end%)"
+	"connectedRemote%.OnClientEvent:Connect%(Guard%.wrap%( , function%(caught: boolean%).-" .. NL .. "end%)%)"
 ) or ""
 check("(guard) found the client's Connected handler", #connectedBody > 0)
 local ifCaughtAt = string.find(connectedBody, "if caught then", 1, true)
@@ -1578,7 +1582,7 @@ check(`no panel is placed with numbers typed in the client ({strayGeometry})`, s
 
 check(
 	"...and actually subscribes to it",
-	string.find(clientCode, "phaseRemote.OnClientEvent:Connect(onPhase)", 1, true) ~= nil
+	string.find(clientCode, "phaseRemote.OnClientEvent:Connect(Guard.wrap( , onPhase))", 1, true) ~= nil
 )
 check("the release is announced", string.find(tickBody, "LINES.givingUp", 1, true) ~= nil)
 
@@ -1851,7 +1855,8 @@ check("...sent when it changes", string.find(holdingBody, "key ~= lastHolding", 
 local lastMove = string.find(serverCode, "pursuit:withdrawTo(built.operatorStart)", 1, true)
 local askedAfter = if lastMove then string.find(serverCode, "pushHolding()", lastMove, true) else nil
 check("...asked every beat, after the last thing in it that moves the Operator", askedAfter ~= nil)
-local joinBody = string.match(serverCode, "Players.PlayerAdded:Connect%(function%(.-" .. NL .. "end%)") or ""
+local joinBody = string.match(serverCode, "Players.PlayerAdded:Connect%(Guard.wrap%( , function%(.-" .. NL .. "end%)%)")
+	or ""
 check("...and told to a player who joins, changed or not", string.find(joinBody, "pushHolding(true)", 1, true) ~= nil)
 check(
 	"the client redraws its panel when told",
@@ -1963,7 +1968,9 @@ print("the codes are secrets: the server asks for them, spends them, and rings w
 -- code here; tests/codes.luau proves the behaviour on the sim, which must be
 -- wired the same way.
 local function handler(code: string, name: string): string
-	return string.match(code, `\n{name} = function%(.-\nend`) or ""
+	return string.match(code, `\n{name} = Guard%.wrap%( , function%(.-\nend%)`)
+		or string.match(code, `\n{name} = Guard%.wrap%(\n.-\n%)`)
+		or ""
 end
 local asksCodes = handler(serverCode, "operator%.liveCodes")
 check("the Operator asks the board for the live codes", string.find(asksCodes, "board:liveCodes()", 1, true) ~= nil)
@@ -1974,7 +1981,10 @@ check(
 	"what it says when it understood is the read-back",
 	string.find(handler(serverCode, "operator%.onUnderstood"), "Round.readBack(heard)", 1, true) ~= nil
 )
-local submitHandler = string.match(serverCode, "submitRemote%.OnServerEvent:Connect%(function.-\nend%)") or ""
+local submitHandler = string.match(
+	serverCode,
+	"submitRemote%.OnServerEvent:Connect%(Guard%.wrap%( , function.-\nend%)%)"
+) or ""
 check("(guard) the submit handler was found", #submitHandler > 0)
 check(
 	"a wrong code that rings through is said to everyone",
@@ -2003,7 +2013,7 @@ check(
 
 print("")
 print("a restore teaches the counting learner, on the server and in the sim (R147)")
-local solvedBody = string.match(serverCode, "board.onSolved = function%(.-" .. NL .. "end") or ""
+local solvedBody = string.match(serverCode, "board.onSolved = Guard.wrap%( , function%(.-" .. NL .. "end%)") or ""
 check("(guard) found board.onSolved", #solvedBody > 0)
 check(
 	"the server credits the code just entered",

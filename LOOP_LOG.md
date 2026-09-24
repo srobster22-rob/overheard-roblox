@@ -9310,3 +9310,29 @@ Verified:
 Headline: unchanged; src is untouched and the seeded runs are byte-identical.
 Market: unchanged. Content: unchanged. Coach: none new. Decisions: none.
 Next: R153 ORGANIZE 2: every server and client handler, loop and callback under xpcall with a module tag, recorded where the checks can see it; the smoke run fails on any recorded error.
+
+
+## R153 · ORGANIZE · every handler, loop and callback under a guard that records what failed and where
+Pick: ORGANIZE 2 of at most 6 — owner order 2026-09-24 (AGENT_LOOP v3.4 §3a, checklist item 6: "every RemoteEvent handler, loop and callback runs under xpcall, with a traceback and a module tag"; "the check command's smoke run fails if any error is recorded") · impact planned 0/0/+1.
+- `Guard` (src/shared): `run` and `wrap` put a function under xpcall and keep each failure (tag, message, traceback) in a ring the checks can read, and warn it to the output. On the server: every remote and prompt handler, player event, Operator, board and pursuit callback, the Lexicon broadcast, and each beat of the loop. On the client: every remote listener, the frame and input handlers. ChatFeed and Presence guard their own connections.
+- The headless sim guards the same callbacks and each beat; the bot and session runs fail if any failure was recorded. A lint gate in the check command fails on a connection or spawn in src that is not guarded.
+- Behaviour-preserving: a guard changes nothing unless something throws. Proof: the seven seeded runs byte-identical, the check green before and after.
+Sync: AGENT_LOOP v3.4 unchanged since R152; OWNER.md `## Next` empty; COACH.md no new notes. Studio MCP: no tools. HEAD b4628f0 green.
+
+Player notices: nothing (ORGANIZE: no behaviour changes unless something throws, and then the rest of the beat or handler goes on).
+Impact: planned 0/0/+1 → shipped 0/0/+1 (biggest file tests/wiring.luau 2,036→2,046)
+Built:
+- src/shared/Guard.luau (62 lines): `run` and `wrap` put a function under xpcall; a failure is kept (tag, message, traceback; the newest 50) and warned `[tag] message` with its traceback.
+- Guarded, with a tag each: the server's 5 connections, 8 Operator/board/pursuit callbacks, the Lexicon broadcast and the join push, the loop and each beat (its body moved verbatim into `beat()`) and BindToClose; the client's 11 listeners and its voice fade; ChatFeed's 3 connections; Presence's heartbeat.
+- tools/sim guards its 6 callbacks and each beat (`Sim.beat`); tools/play and tools/playtest print `GUARD: [tag] message` and exit 1 if anything was caught, so the bot and smoke gates fail on it. The check summary reads that line first.
+- tools/guards.luau, a lint gate: every Connect and task.spawn/defer/delay in src has `Guard.wrap(` among its arguments (code only, not comments or strings).
+- tests/guard.luau (17 checks); the harness gives modules `xpcall`, `debug` and `warn`; 15 wiring and objectives pins follow the guarded headers; ARCHITECTURE.md: Guard, the lint, where errors appear.
+Quality: the lint's first version looked one line ahead and flagged a guarded call that stylua had split over three lines; it now reads the call's own argument list.
+Verified:
+- Check green before (32 gates) and after: 34 gates, 2,107 checks, 7.2 s at 9% load.
+- Equivalence: the seven seeded runs byte-identical to R152's.
+- 6 plants fail the check with the expected summary line, restored by sha256 (r153/plants_out.txt): an unguarded connection (the lint, with its line), a beat outside the guard, a guard that keeps nothing, a ring that never forgets, an unguarded sim callback, a sim that reports nothing.
+- Files: src 30 / 7,796 → 31 / 7,878; tests 29 / 12,246 → 30 / 12,358; tools 7 / 1,328 → 8 / 1,446. Largest function soak() 290; in src Heuristic.conveyed 113.
+Headline: unchanged; the seeded runs are byte-identical.
+Market: unchanged. Content: unchanged. Coach: none new. Decisions: none.
+Next: R154 ORGANIZE 3: pure moves. wiring.luau split into suites named for the module each part checks; TestOperator out of the shipped place; soak() split by phase; the harness reads the module folders instead of hand lists.

@@ -9,6 +9,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Hum = require(game:GetService("ReplicatedStorage").Shared.Hum)
+local Guard = require(game:GetService("ReplicatedStorage").Shared.Guard)
 local Pursuit = require(script.Parent.Pursuit)
 
 local Presence = {}
@@ -58,7 +59,7 @@ function Presence.spawn(tracker: Pursuit.Tracker): Body
 	hum:Play()
 
 	local connection: RBXScriptConnection
-	connection = RunService.Heartbeat:Connect(function(dt: number)
+	connection = RunService.Heartbeat:Connect(Guard.wrap("Presence.heartbeat", function(dt: number)
 		tracker:step(dt)
 		part.CFrame = CFrame.new(tracker.position.x, HEIGHT / 2, tracker.position.z)
 
@@ -75,7 +76,7 @@ function Presence.spawn(tracker: Pursuit.Tracker): Body
 		-- Pitch snaps rather than slides: a retreat should announce itself, not
 		-- ease into being a different sound.
 		hum.PlaybackSpeed = voice.pitch
-	end)
+	end))
 
 	return {
 		part = part,

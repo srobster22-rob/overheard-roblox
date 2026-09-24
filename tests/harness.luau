@@ -78,6 +78,7 @@ function Harness.build()
 			"Silence",
 			"LexiconSave",
 			"Numerals",
+			"Guard",
 		}
 	do
 		adopt(shared, handle(name, `src/shared/{name}.luau`))
@@ -155,6 +156,9 @@ function Harness.build()
 			rawget = rawget,
 			rawset = rawset,
 			pcall = pcall,
+			xpcall = xpcall,
+			debug = debug,
+			warn = warn,
 			unpack = table.unpack,
 		}
 		local chunk = luau.load(source, {

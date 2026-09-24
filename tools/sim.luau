@@ -24,6 +24,7 @@ local Layout = rt.require(rt.shared.Layout)
 local Config = rt.require(rt.shared.Config)
 local Readout = rt.require(rt.shared.Readout)
 local Silence = rt.require(rt.shared.Silence)
+local Guard = rt.require(rt.shared.Guard)
 
 local Sim = {}
 Sim.__index = Sim
@@ -33,6 +34,7 @@ Sim.Round = Round
 Sim.Config = Config
 Sim.Layout = Layout
 Sim.Escape = Escape
+Sim.Guard = Guard
 Sim.NAMES = { [1] = "Ana", [2] = "Bo", [3] = "Cy", [4] = "Dee" }
 -- Where the group stands when a round begins: two in each work room.
 Sim.START = { [1] = "board", [2] = "board", [3] = "archive", [4] = "archive" }
@@ -63,38 +65,41 @@ function Sim.new(seed: number): any
 	for _, station in Round.STATIONS do
 		self.board:add(station.id, station.concept, station.prompt)
 	end
-	self.operator.liveCodes = function()
+	self.operator.liveCodes = Guard.wrap("sim.liveCodes", function()
 		return self.board:liveCodes()
-	end
-	self.operator.onUnderstood = function(concept: string, payload: string, confidence: number, heard: string?)
-		self.stats.understood += 1
-		local _, onItsWay = self.pursuit:sendTo(payload)
-		self:trace(
-			`   >> THE OPERATOR UNDERSTOOD '{concept}' ({math.floor(confidence * 100)}%) and {if onItsWay
-				then "is walking to"
-				else "queues"} the {payload} room. "{Round.readBack(heard)}"`
-		)
-		if self.onUnderstood then
-			self.onUnderstood(concept, confidence)
+	end)
+	self.operator.onUnderstood = Guard.wrap(
+		"sim.onUnderstood",
+		function(concept: string, payload: string, confidence: number, heard: string?)
+			self.stats.understood += 1
+			local _, onItsWay = self.pursuit:sendTo(payload)
+			self:trace(
+				`   >> THE OPERATOR UNDERSTOOD '{concept}' ({math.floor(confidence * 100)}%) and {if onItsWay
+					then "is walking to"
+					else "queues"} the {payload} room. "{Round.readBack(heard)}"`
+			)
+			if self.onUnderstood then
+				self.onUnderstood(concept, confidence)
+			end
 		end
-	end
-	self.operator.onCodeHeard = function(concept: string)
+	)
+	self.operator.onCodeHeard = Guard.wrap("sim.onCodeHeard", function(concept: string)
 		local line = self.board:reroll(concept)
 		if line then
 			self.stats.codesHeard += 1
 			self:trace(`   >> the {line.id} code was heard, so it is spent: its holder has a new one.`)
 		end
-	end
-	self.operator.onBurned = function(coinage)
+	end)
+	self.operator.onBurned = Guard.wrap("sim.onBurned", function(coinage)
 		self:trace(`   >> BURNED: "{coinage.phrase}" now means {coinage.concept}. "{Round.LINES.connecting}"`)
-	end
+	end)
 	-- R147: the server's `onCounted`, as the trace reads it.
-	self.operator.onCounted = function(key: string, value: number)
+	self.operator.onCounted = Guard.wrap("sim.onCounted", function(key: string, value: number)
 		self:trace(`   >> it counts "{key}" as {value} now. "{Round.LINES.counted}"`)
-	end
-	self.operator.onLettered = function()
+	end)
+	self.operator.onLettered = Guard.wrap("sim.onLettered", function()
 		self:trace(`   >> it reads the group's letters now. "{Round.LINES.lettered}"`)
-	end
+	end)
 	self:place()
 	return self
 end
@@ -237,71 +242,75 @@ function Sim.tick(self: any, seconds: number)
 		if not self.round:isPlaying() then
 			continue
 		end
-		local pursuit, line = self.pursuit, self.line
-		local before = pursuit.state
-		pursuit:step(Config.TickSeconds)
-		if pursuit.state == "arrived" and before ~= "arrived" then
-			local where = Round.holding(pursuit.state, pursuit.targetName, Escape.ROOM)
-			local note = if where and where.label then ` It is waiting by the {where.label}.` else ""
-			self:trace(`   >> it has ARRIVED. "{Round.LINES.taken}"{note}`)
-		end
-		if pursuit.state == "arrived" then
-			local had = line:count()
-			line:takeInRoom(pursuit.position, self.standing, Layout.halfRoom(), self.now, self.supervisor)
-			if line:count() > had then
-				self.stats.captures += line:count() - had
-				local taken = {}
-				for _, id in self.present do
-					if line:isConnected(id) then
-						table.insert(taken, Sim.NAMES[id])
-					end
+		Guard.run("sim.beat", Sim.beat, self)
+	end
+end
+
+-- One beat of a round being played, in the server's order.
+function Sim.beat(self: any)
+	local pursuit, line = self.pursuit, self.line
+	local before = pursuit.state
+	pursuit:step(Config.TickSeconds)
+	if pursuit.state == "arrived" and before ~= "arrived" then
+		local where = Round.holding(pursuit.state, pursuit.targetName, Escape.ROOM)
+		local note = if where and where.label then ` It is waiting by the {where.label}.` else ""
+		self:trace(`   >> it has ARRIVED. "{Round.LINES.taken}"{note}`)
+	end
+	if pursuit.state == "arrived" then
+		local had = line:count()
+		line:takeInRoom(pursuit.position, self.standing, Layout.halfRoom(), self.now, self.supervisor)
+		if line:count() > had then
+			self.stats.captures += line:count() - had
+			local taken = {}
+			for _, id in self.present do
+				if line:isConnected(id) then
+					table.insert(taken, Sim.NAMES[id])
 				end
-				self:trace(`   >> "{Round.LINES.onTheLine}" On the line now: {table.concat(taken, ", ")}`)
+			end
+			self:trace(`   >> "{Round.LINES.onTheLine}" On the line now: {table.concat(taken, ", ")}`)
+		end
+	end
+	if Lifecycle.nobodyCanWin(self.present, self.board, line) and self.round:finish("lost", self.now) then
+		self.stats.lost += 1
+		pursuit:stop()
+		self:trace(`   ROUND LOST. "{Round.LINES.lost}"`)
+	end
+	if self.round:isPlaying() then
+		local called, announce = self.supervisor:putThrough(pursuit, self.rooms, Config.Rooms, self.standing, self.now)
+		if called then
+			self.stats.calls += 1
+			if announce then
+				self:trace(`   >> THE SUPERVISOR put a call through to a silent player. "{Round.LINES.traced}"`)
 			end
 		end
-		if Lifecycle.nobodyCanWin(self.present, self.board, line) and self.round:finish("lost", self.now) then
-			self.stats.lost += 1
+	end
+	if self.round:isPlaying() and self.escape:isOpen() then
+		local outcome, sent = self.escape:step(self.now, pursuit, self.present, line, self.standing, self.rooms)
+		if sent then
+			self:trace(`   >> the call has rung. The door is open and it is coming for the {Escape.ROOM}.`)
+		end
+		if outcome and self.round:finish(outcome, self.now) then
 			pursuit:stop()
-			self:trace(`   ROUND LOST. "{Round.LINES.lost}"`)
-		end
-		if self.round:isPlaying() then
-			local called, announce =
-				self.supervisor:putThrough(pursuit, self.rooms, Config.Rooms, self.standing, self.now)
-			if called then
-				self.stats.calls += 1
-				if announce then
-					self:trace(`   >> THE SUPERVISOR put a call through to a silent player. "{Round.LINES.traced}"`)
+			local out, free = 0, 0
+			for _, id in self.present do
+				if not line:isConnected(id) then
+					free += 1
+					out += if self.roomOf[id] == Escape.ROOM then 1 else 0
 				end
 			end
-		end
-		if self.round:isPlaying() and self.escape:isOpen() then
-			local outcome, sent = self.escape:step(self.now, pursuit, self.present, line, self.standing, self.rooms)
-			if sent then
-				self:trace(`   >> the call has rung. The door is open and it is coming for the {Escape.ROOM}.`)
-			end
-			if outcome and self.round:finish(outcome, self.now) then
-				pursuit:stop()
-				local out, free = 0, 0
-				for _, id in self.present do
-					if not line:isConnected(id) then
-						free += 1
-						out += if self.roomOf[id] == Escape.ROOM then 1 else 0
-					end
-				end
-				if outcome == "won" then
-					self.stats.won += 1
-					self:trace(`   ROUND WON: {out} of {free} still free got out. "{Round.LINES.completed}"`)
-				else
-					self.stats.lost += 1
-					self:trace(`   ROUND LOST: the door was open {Config.EscapeSeconds}s and nobody got out.`)
-				end
+			if outcome == "won" then
+				self.stats.won += 1
+				self:trace(`   ROUND WON: {out} of {free} still free got out. "{Round.LINES.completed}"`)
+			else
+				self.stats.lost += 1
+				self:trace(`   ROUND LOST: the door was open {Config.EscapeSeconds}s and nobody got out.`)
 			end
 		end
-		pursuit:takePending()
-		if pursuit:shouldLeave(Config.LingerSeconds) then
-			pursuit:withdrawTo(Layout.operatorPost())
-			self:trace(`   >> it gives the room up. "{Round.LINES.givingUp}"`)
-		end
+	end
+	pursuit:takePending()
+	if pursuit:shouldLeave(Config.LingerSeconds) then
+		pursuit:withdrawTo(Layout.operatorPost())
+		self:trace(`   >> it gives the room up. "{Round.LINES.givingUp}"`)
 	end
 end
 
@@ -369,6 +378,18 @@ function Sim.lexicon(self: any): { string }
 		table.insert(out, row.text)
 	end
 	return out
+end
+
+-- Whatever the guard caught in this run, printed; true if anything was. A
+-- driver that ends with a failure recorded fails, because a callback that threw
+-- shows in the trace only as a line that is missing.
+function Sim.reportFailures(): boolean
+	local recorded = Guard.failures()
+	for _, failure in recorded do
+		print(`GUARD: [{failure.tag}] {failure.message}`)
+		print(failure.traceback)
+	end
+	return #recorded > 0
 end
 
 return Sim

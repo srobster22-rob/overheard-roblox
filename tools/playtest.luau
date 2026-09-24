@@ -242,6 +242,9 @@ print(
 		sim.now / 60
 	)}`
 )
+if Sim.reportFailures() then
+	process.exit(1)
+end
 if process.args[4] == "gate" and stats.won == 0 then
 	print(`GATE: the bots won none of {played} rounds`)
 	process.exit(1)

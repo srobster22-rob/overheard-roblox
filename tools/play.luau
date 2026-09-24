@@ -141,3 +141,6 @@ for number = first, #lines do
 end
 
 look()
+if Sim.reportFailures() then
+	process.exit(1)
+end
