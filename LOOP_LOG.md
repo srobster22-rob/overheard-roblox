@@ -9344,3 +9344,19 @@ Pick: ORGANIZE 3 of at most 6 — owner order 2026-09-24 (AGENT_LOOP v3.4 §3a, 
 - A fake host (tests/exchange.luau) runs the moved flow headlessly: players join, chat moves the Operator, a code restores a line, beats capture and end rounds. This is what lets R155 replace the server's source pins with behaviour checks.
 - The wiring pins follow the code to Exchange.luau this round (they read init.server and Exchange together); R155 replaces them.
 Sync: AGENT_LOOP v3.4 unchanged; OWNER.md `## Next` empty; COACH.md no new notes. Studio MCP: no tools. HEAD 685164a green.
+
+Player notices: nothing (ORGANIZE: the same flow, moved).
+Impact: planned 0/0/+1 → shipped 0/0/+1 (biggest file tests/wiring.luau 2,046→2,051; init.server 700→120)
+Built, in two commits:
+- Move (90dfcf7): every function body of init.server moves unchanged, indented one level, into `Exchange.build(host)` (src/server/systems/Exchange.luau). The guarded Connect bodies become named functions (readerPrompt, openStation, submit, playerAdded, playerRemoving). init.server keeps the glue: the world, the remotes, the host, the guarded connections, the loop. A move report lists 24 code lines only in the old file and 116 only in the new files: headers, requires, host bindings and glue (r154/move_report.txt).
+- Cleanup: the host also gives the clock (`clock()` for the flow's 15 `os.clock()`), so a test steps time; tests/exchange.luau runs the flow on a fake host: joins deal lines, the card index greets privately, a prompt opens its keypad, a right code restores, a code from elsewhere is refused privately, plain talk sends the Operator, 40 beats run, a leaver's lines move on, nothing throws (14 checks).
+- tests/sources.luau gives the source checks the entry script plus Exchange; ordering now checks Exchange's build body; the harness knows Exchange; ARCHITECTURE.md maps it.
+Quality: a first "forty beats run" check could not fail (`check(..., true)`); it now runs the beats under pcall. Exchange.build is a 635-line factory of closures (largest inner function `submit`, 70): recorded as organization debt.
+Verified:
+- The move's proof: the server's source checks in wiring, objectives, lifecycle and ordering (749 checks) pass against the moved code, and the seven seeded runs are byte-identical to R152's.
+- Check green before and after: 35 gates, 2,123 checks, 13.5 s at 60% load; selene 0/0/0, the rojo build OK, the guards lint clean.
+- 5 plants fail the check by name, restored by sha256 (r154/plants_out.txt): a line dropped from a moved body (wiring still sees it), a host binding to the wrong remote, a refusal broadcast to everyone, a beat that throws, a local function called before it is declared in Exchange.
+- Files: src 31 / 7,878 → 32 / 7,994; tests 30 / 12,358 → 32 / 12,602; tools 8 / 1,446 unchanged.
+Headline: unchanged; the seeded runs are byte-identical.
+Market: unchanged. Content: unchanged. Coach: none new. Decisions: none.
+Next: R155 ORGANIZE 4: the server's source checks become behaviour checks on the fake host (tests/exchange), and are deleted from wiring, objectives and lifecycle.

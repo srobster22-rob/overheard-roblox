@@ -1450,7 +1450,7 @@ check(
 	"...asked about everyone present, where they really stand",
 	string.find(
 		winBlock,
-		"escape:step(os.clock(), pursuit, presentUserIds(), line, livePositions(), built.rooms)",
+		"escape:step(clock(), pursuit, presentUserIds(), line, livePositions(), built.rooms)",
 		1,
 		true
 	) ~= nil
@@ -2016,7 +2016,7 @@ local solvedBody = string.match(serverCode, "board.onSolved = Guard.wrap%( , fun
 check("(guard) found board.onSolved", #solvedBody > 0)
 check(
 	"the server credits the code just entered",
-	string.find(solvedBody, "operator:creditCode(objective.answer, os.clock(), objective.holder)", 1, true) ~= nil
+	string.find(solvedBody, "operator:creditCode(objective.answer, clock(), objective.holder)", 1, true) ~= nil
 )
 check(
 	"...and so does the sim",

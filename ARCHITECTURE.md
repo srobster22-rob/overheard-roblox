@@ -22,7 +22,7 @@ harness can load; the entry scripts only run inside Roblox.
 ### Server systems (`src/server/systems`)
 | Module | Owns | Size |
 |---|---|---|
-| Exchange | the server's game flow: chat, restores, capture, the Supervisor, the way out, a round's start and end; built from a host so tests can run it | 693 |
+| Exchange | the server's game flow: chat, restores, capture, the Supervisor, the way out, a round's start and end; built from a host so tests can run it | 696 |
 | Operator | the listener: hears chat, learns coinages, number words and a group's alphabet, credits restores | 708 |
 | Heuristic | what one line conveys: plain words, learned coinages, live codes | 344 |
 | Objectives | the board: lines, holders, who has seen a code, submissions, the stranded-line rule | 463 |
@@ -142,6 +142,9 @@ its `file:line`. `test.cmd heuristic` runs only the gates whose names contain
   is the failing check's own line; a crash reads
   `<message>  (tests/heat.luau:27)`.
 - Re-run one gate: `test.cmd <name>` or `lune run tests/<name>`.
+- A server-side bug: `tests/exchange.luau` runs the server's flow on a fake
+  host (players you place, remotes that record what was sent, a clock you
+  step), so a handler's behaviour can be reproduced without Studio.
 - Reproduce a round: write a session file (`seed <n>`, then chat and moves;
   see the top of `tools/play.luau`) and `lune run tools/play <file>`; it is
   deterministic, so append and re-run. Bot runs: `lune run tools/playtest
@@ -175,6 +178,9 @@ its `file:line`. `test.cmd heuristic` runs only the gates whose names contain
   its checks can become behaviour tests; the client's still read source.
 - Tests do not all mirror modules: `wiring.luau` (2,017 lines) covers many.
 - `soak()` in tests/soak.luau is 290 lines (limit 150).
+- `Exchange.build` is a 635-line factory of closures (its largest inner
+  function, `submit`, is 70 lines). Methods on a flow object would bring
+  it under the 150-line limit.
 - `TestOperator` is test code shipped in the place.
 - About 270 comment lines in src, and 370 in tests, narrate round history
   (R-numbers, playtests) rather than say why.

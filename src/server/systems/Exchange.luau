@@ -33,6 +33,8 @@ export type Host = {
 	built: any,
 	spawnTask: (work: () -> ()) -> any,
 	deferTask: (work: () -> ()) -> any,
+	-- Seconds, rising: os.clock on the server, a stepped clock in tests.
+	clock: () -> number,
 }
 
 -- What a host connects, and the state tests read.
@@ -61,6 +63,7 @@ function Exchange.build(host: Host): Flow
 	local built = host.built
 	local spawnTask = host.spawnTask
 	local deferTask = host.deferTask
+	local clock = host.clock
 	local heardRemote = host.remotes.Heard
 	local lexiconRemote = host.remotes.LexiconUpdated
 	local objectivesRemote = host.remotes.Objectives
@@ -211,7 +214,7 @@ function Exchange.build(host: Host): Flow
 	-- monster that had no idea the round was over, and a loss that left it
 	-- travelling kept the hum going over a finished round.
 	local function endTheRound(outcome: Lifecycle.Outcome)
-		if not round:finish(outcome, os.clock()) then
+		if not round:finish(outcome, clock()) then
 			return
 		end
 		heardRemote:FireAllClients(if outcome == "won" then Round.LINES.completed else Round.LINES.lost, "", 1)
@@ -225,8 +228,7 @@ function Exchange.build(host: Host): Flow
 		-- outside every wall, so running out of the door did not save you.
 		-- R112: connect-and-forget lives in Connected.takeInRoom (RUN by the
 		-- suite, and called by the soak); only the telling is left here.
-		local caught, newly =
-			line:takeInRoom(pursuit.position, livePositions(), Layout.halfRoom(), os.clock(), supervisor)
+		local caught, newly = line:takeInRoom(pursuit.position, livePositions(), Layout.halfRoom(), clock(), supervisor)
 		for _, userId in newly do
 			-- A caught player cannot act -- Objectives.submit refuses anyone
 			-- isConnected -- and nothing in this round releases them again, so
@@ -296,7 +298,7 @@ function Exchange.build(host: Host): Flow
 		-- R110: the dispatch lives in Supervisor.putThrough, where the suite RUNS
 		-- it and the soak calls the same function. All that is left here is the
 		-- one thing the module cannot do: say the line.
-		local called, announce = supervisor:putThrough(pursuit, built.rooms, Config.Rooms, livePositions(), os.clock())
+		local called, announce = supervisor:putThrough(pursuit, built.rooms, Config.Rooms, livePositions(), clock())
 		if called and announce then
 			heardRemote:FireAllClients(Round.LINES.traced, "", 1)
 		end
@@ -310,7 +312,7 @@ function Exchange.build(host: Host): Flow
 	-- announcing itself continuously is its own bug, and this one would also
 	-- replicate to every client on every tick.
 	local function showEveryoneTheirClock()
-		local now = os.clock()
+		local now = clock()
 		for _, player in Players:GetPlayers() do
 			-- R115: "on change" is remembered by the Supervisor, which forgets it on
 			-- reset and on leave by construction.
@@ -382,15 +384,15 @@ function Exchange.build(host: Host): Flow
 	-- unfamiliar phrases were said just beforehand.
 	board.onSolved = Guard.wrap("server.onSolved", function(objective, _actor: number)
 		print(`[objective] {objective.id} restored`)
-		operator:credit(objective.concept, os.clock())
+		operator:credit(objective.concept, clock())
 		-- R147: and whatever was said that works out as the code just entered.
-		operator:creditCode(objective.answer, os.clock(), objective.holder)
+		operator:creditCode(objective.answer, clock(), objective.holder)
 		pushObjectives(nil)
 		broadcastLexicon()
 		-- R138: the last line opens the way out rather than winning. The outside
 		-- call rings, and once it has the Operator comes for the lobby; see
 		-- `workTheWayOut`, which the tick asks.
-		if board:allSolved() and escape:open(os.clock()) then
+		if board:allSolved() and escape:open(clock()) then
 			heardRemote:FireAllClients(Round.LINES.ringing, "", 1)
 		end
 	end)
@@ -415,11 +417,11 @@ function Exchange.build(host: Host): Flow
 		-- WHAT was said -- its demand is that you speak, and the trap is that
 		-- everything you say to satisfy it is still heard by the Operator.
 		-- `GAME.md`: babble continuously, convey nothing.
-		supervisor:hear(player.UserId, os.clock())
+		supervisor:hear(player.UserId, clock())
 		operator:hear({
 			speaker = player,
 			text = text,
-			at = os.clock(),
+			at = clock(),
 		})
 	end
 	local function readerPrompt(player: Player)
@@ -445,7 +447,7 @@ function Exchange.build(host: Host): Flow
 			return
 		end
 
-		local now = os.clock()
+		local now = clock()
 		if not desk:tryPace(player.UserId, now) then
 			return
 		end
@@ -514,7 +516,7 @@ function Exchange.build(host: Host): Flow
 		-- From NOW, not from the start of the round: somebody who has just loaded
 		-- in has not been silent, and a clock starting at zero would call them
 		-- before they could type.
-		supervisor:watch(player.UserId, os.clock())
+		supervisor:watch(player.UserId, clock())
 		-- Re-deal across everyone present, so holders stay spread as people join.
 		local userIds: { number } = {}
 		for _, p in Players:GetPlayers() do
@@ -561,7 +563,7 @@ function Exchange.build(host: Host): Flow
 		if not (round:isPlaying() and escape:isOpen()) then
 			return
 		end
-		local outcome = escape:step(os.clock(), pursuit, presentUserIds(), line, livePositions(), built.rooms)
+		local outcome = escape:step(clock(), pursuit, presentUserIds(), line, livePositions(), built.rooms)
 		if outcome then
 			endTheRound(outcome)
 		end
@@ -598,13 +600,13 @@ function Exchange.build(host: Host): Flow
 		escape:reset()
 		-- Every clock starts again. R31: a player quiet through the eight-second
 		-- intermission must not be called in the first seconds of the round.
-		supervisor:reset(os.clock())
+		supervisor:reset(clock())
 		-- (R115: `supervisor:reset` above also clears what each panel was last told.)
 
 		local userIds: { number } = {}
 		for _, p in Players:GetPlayers() do
 			table.insert(userIds, p.UserId)
-			supervisor:watch(p.UserId, os.clock())
+			supervisor:watch(p.UserId, clock())
 			connectedRemote:FireClient(p, false)
 		end
 		board:deal(userIds)
@@ -630,7 +632,7 @@ function Exchange.build(host: Host): Flow
 			takeWhoeverIsHere()
 		end
 
-		if round:readyToRestart(os.clock(), Config.IntermissionSeconds) and round:restart() then
+		if round:readyToRestart(clock(), Config.IntermissionSeconds) and round:restart() then
 			beginRound()
 		end
 

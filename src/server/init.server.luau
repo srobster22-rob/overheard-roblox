@@ -73,6 +73,7 @@ local exchange = Exchange.build({
 	built = built,
 	spawnTask = task.spawn,
 	deferTask = task.defer,
+	clock = os.clock,
 })
 local body = Presence.spawn(exchange.pursuit)
 
