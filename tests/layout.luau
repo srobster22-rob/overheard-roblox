@@ -13,8 +13,6 @@
 -- dimensions were unreachable from every test. `Shared.Layout` exists to put
 -- them back in reach.
 
-local process = require("@lune/process")
-
 local fs = require("@lune/fs")
 
 local Harness = require("./harness")
@@ -25,17 +23,8 @@ local Layout = rt.require(rt.shared.Layout)
 local Config = rt.require(rt.shared.Config)
 local Connected = rt.require(rt.systems.Connected)
 
-local failures = 0
-local checks = 0
-local function check(name: string, condition: boolean)
-	checks += 1
-	if not condition then
-		failures += 1
-		print(`  FAIL  {name}`)
-	else
-		print(`  ok    {name}`)
-	end
-end
+local Kit = require("./kit")
+local check = Kit.check
 
 print("the dimensions are sane")
 check(`(guard) the room has a size ({Layout.Room})`, Layout.Room > 0)
@@ -972,7 +961,4 @@ check(
 	called and lobbyCaller.targetName == "lobby"
 )
 
-print(`\n{checks - failures}/{checks} passed`)
-if failures > 0 then
-	process.exit(1)
-end
+Kit.finish()

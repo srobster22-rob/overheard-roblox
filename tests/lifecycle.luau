@@ -8,8 +8,6 @@
 -- and either ending left the server a dead lobby with the objectives still
 -- solved and the connected still connected.
 
-local process = require("@lune/process")
-
 local Harness = require("./harness")
 
 local rt = Harness.build()
@@ -18,17 +16,8 @@ type Lifecycle_Round = Lifecycle.Round
 local Objectives = rt.require(rt.systems.Objectives)
 local Connected = rt.require(rt.systems.Connected)
 
-local failures = 0
-local checks = 0
-local function check(name: string, condition: boolean)
-	checks += 1
-	if not condition then
-		failures += 1
-		print(`  FAIL  {name}`)
-	else
-		print(`  ok    {name}`)
-	end
-end
+local Kit = require("./kit")
+local check = Kit.check
 
 print("a round starts playable")
 local round = Lifecycle.new()
@@ -761,7 +750,4 @@ do
 	)
 end
 
-print(`\n{checks - failures}/{checks} passed`)
-if failures > 0 then
-	process.exit(1)
-end
+Kit.finish()

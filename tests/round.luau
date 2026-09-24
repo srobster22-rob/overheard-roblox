@@ -6,7 +6,6 @@
 -- Lune does not expose `process` as a global; without this require the
 -- FAILURE path of this file crashes instead of reporting, which hides the
 -- real assertion behind "attempt to index nil with .exit".
-local process = require("@lune/process")
 
 local Harness = require("./harness")
 
@@ -15,17 +14,8 @@ local Round = rt.require(rt.systems.Round)
 local Config = rt.require(rt.shared.Config)
 local Layout = rt.require(rt.shared.Layout)
 
-local failures = 0
-local checks = 0
-local function check(name: string, condition: boolean)
-	checks += 1
-	if not condition then
-		failures += 1
-		print(`  FAIL  {name}`)
-	else
-		print(`  ok    {name}`)
-	end
-end
+local Kit = require("./kit")
+local check = Kit.check
 
 local known: { [string]: boolean } = {}
 for _, name in Config.Rooms do
@@ -408,7 +398,4 @@ check(
 	#Heuristic.conveyed({ speaker = { UserId = 1 }, text = "Number, please.", at = 0 } :: any, all, {}) > 0
 )
 
-print(`\n{checks - failures}/{checks} passed`)
-if failures > 0 then
-	process.exit(1)
-end
+Kit.finish()

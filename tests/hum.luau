@@ -15,8 +15,6 @@
 -- This is R50's lesson in its purest form: a boolean answering "is it making
 -- noise" cannot distinguish two events that both make noise.
 
-local process = require("@lune/process")
-
 local Harness = require("./harness")
 
 local rt = Harness.build()
@@ -24,17 +22,8 @@ local Hum = rt.require(rt.shared.Hum)
 local Pursuit = rt.require(rt.systems.Pursuit)
 local Layout = rt.require(rt.shared.Layout)
 
-local failures = 0
-local checks = 0
-local function check(name: string, condition: boolean)
-	checks += 1
-	if not condition then
-		failures += 1
-		print(`  FAIL  {name}`)
-	else
-		print(`  ok    {name}`)
-	end
-end
+local Kit = require("./kit")
+local check = Kit.check
 
 print("coming and going are different sounds")
 local approaching = Hum.forState("approaching")
@@ -170,7 +159,4 @@ check(
 	not Hum.distinguishable({ volume = 0.2, pitch = 1 } :: any, { volume = 0.2, pitch = 1.05 } :: any)
 )
 
-print(`\n{checks - failures}/{checks} passed`)
-if failures > 0 then
-	process.exit(1)
-end
+Kit.finish()

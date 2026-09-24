@@ -9285,3 +9285,28 @@ Vision and market check: ten rounds (R142-R151) did not move the market score up
 - R153's PLAYTEST swaps to EXPAND (only one building round since PT5); it takes the swing's second slice or PT5's alerts on line 1.
 - R154 FIX: PT5 broken (1) (credit the holder's lines to the holder's line) and (2) (player names are not station words). Both damage what the swing learns, so the swing's panel may pull them into its first slice.
 Next: R152 BIG SWING slice 1 (k=2 slot), by a 3-draft design panel on PT5 #1.
+
+
+## R152 · ORGANIZE · one check command that names what failed and where, and a map of the code
+Pick: ORGANIZE 1 of at most 6 — owner order 2026-09-24 (AGENT_LOOP v3.4 §3a: "organize code properly in every project for maximum efficiency, so it's easier in the future to determine errors"), which outranks the cycle · impact planned 0/0/+1 (code health only; no player-facing change).
+- Displaced: this cycle's BIG SWING slice (R152, k=2). Its design panel was cut off by the session restart before any draft returned; it resumes at the first EXPAND after the phase, with the scheme corpus probe (r152/schemes_probe.luau: HEAD reads 5 of 10 winning schemes) as its yardstick.
+- This round, checklist items 1 and 2: `test.cmd` becomes one check command that runs every SHIP gate (all suites, the bot and smoke runs, the market check, selene, stylua, the rojo build) and ends with a summary naming each failing gate, its first failing assertion and file:line. Every suite's copy of `check()` moves to one shared checker that records where a check failed. ARCHITECTURE.md, the map of the code.
+- Next rounds, in order: every handler, loop and callback under xpcall with a module tag; pure-move splits (wiring.luau by module, TestOperator out of the shipped place, soak() by phase); gates that read exported values instead of source text; round-history comments.
+Sync: AGENT_LOOP v3.4 (changed: re-read in full; §3a ORGANIZE, the round card, ARCHITECTURE.md); OWNER.md `## Next` empty, no VETO; COACH.md has no new notes. A peer session relayed the owner order and roblox-game's priorities. Studio MCP: no tools. HEAD 4f3608c green.
+
+Player notices: nothing (ORGANIZE: src is untouched).
+Impact: planned 0/0/+1 → shipped 0/0/+1 (biggest file tests/wiring.luau 2,063→2,036)
+Built:
+- tests/kit.luau: the one `check`/`finish` every suite uses (25 private copies removed); a failing check prints its own file:line.
+- tools/check.luau and tools/suites.luau, run by test.cmd: every suite in tests/ (any file no test requires), the bot gate, the smoke session, the market check, selene, stylua and the rojo build, then a summary of each failing gate's first failure with file:line. `test.cmd <gate>` runs one gate; `test.cmd verbose` prints everything.
+- ARCHITECTURE.md (167 lines): module map, one round's flow, registries, side-restricted APIs, the check command, how to find an error, traps, organization debt. tests/wiring fails if a module is missing from it.
+- tests/wiring reads the suite list from tools/suites, not test.cmd's text, and names the only helpers (a suite another test required would stop being run).
+Quality: self-review removed an unused `Kit.counts`. No independent reviewer: §4 names EXPAND, BIG SWING and POLISH.
+Verified:
+- Green before (old test.cmd: 6.9 s on a quiet machine, and no selene, stylua or rojo) and after (32 gates, 2,086 checks, 17.0 s at 72% load). Back to back at 100% load: old 53.8 s, new 27 s.
+- Equivalence: seven seeded runs byte-identical before and after (the three bot personas at seed 11, the smoke session, PT5 critic s1, phone s1, veteran s42).
+- 6 plants fail the check command with the expected summary line, restored by sha256 (r152/plants_out.txt): a failed check, a crashing suite, a suite another test requires, a selene warning, an unformatted file, a module missing from the map.
+- Files: src 30 / 7,796 lines unchanged; tests 28 / 12,550 → 29 / 12,246; tools 5 / 1,083 → 7 / 1,328. Largest function soak() 290 (split in R154).
+Headline: unchanged; src is untouched and the seeded runs are byte-identical.
+Market: unchanged. Content: unchanged. Coach: none new. Decisions: none.
+Next: R153 ORGANIZE 2: every server and client handler, loop and callback under xpcall with a module tag, recorded where the checks can see it; the smoke run fails on any recorded error.

@@ -8,24 +8,13 @@
 -- validate every field itself and drop what it cannot trust, never assume the
 -- shape is right because a caller says it came from a trustworthy place.
 
-local process = require("@lune/process")
-
 local Harness = require("./harness")
 
 local rt = Harness.build()
 local LexiconSave = rt.require(rt.shared.LexiconSave)
 
-local failures = 0
-local checks = 0
-local function check(name: string, condition: boolean)
-	checks += 1
-	if not condition then
-		failures += 1
-		print(`  FAIL  {name}`)
-	else
-		print(`  ok    {name}`)
-	end
-end
+local Kit = require("./kit")
+local check = Kit.check
 
 local function coinage(phrase: string, concept: string, heat: number, sightings: number, coinedBy: number?)
 	return { phrase = phrase, concept = concept, heat = heat, sightings = sightings, coinedBy = coinedBy }
@@ -199,7 +188,4 @@ check(
 	#LexiconSave.decode({ v = LexiconSave.VERSION, coinages = many }) == LexiconSave.MAX_SAVED
 )
 
-print(`\n{checks - failures}/{checks} passed`)
-if failures > 0 then
-	process.exit(1)
-end
+Kit.finish()

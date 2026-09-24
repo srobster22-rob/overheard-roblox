@@ -19,8 +19,6 @@
 -- calls `operator:credit`; the Lexicon stayed empty for 1500 simulated seconds
 -- and it looked like a finding. It was the harness.
 
-local process = require("@lune/process")
-
 local Harness = require("./harness")
 
 local rt = Harness.build()
@@ -36,17 +34,8 @@ local Layout = rt.require(rt.shared.Layout)
 local Config = rt.require(rt.shared.Config)
 local Escape = rt.require(rt.systems.Escape)
 
-local failures = 0
-local checks = 0
-local function check(name: string, condition: boolean)
-	checks += 1
-	if not condition then
-		failures += 1
-		print(`  FAIL  {name}`)
-	else
-		print(`  ok    {name}`)
-	end
-end
+local Kit = require("./kit")
+local check = Kit.check
 
 export type Report = {
 	rounds: number,
@@ -952,7 +941,4 @@ local afterBoard, afterArchive = chaseScenario(true)
 check(`forgetting on capture stops the wasted dispatches ({afterBoard} to the caught player)`, afterBoard == 0)
 check(`...and every dispatch instead reaches the silent player ({afterArchive})`, afterArchive > 0)
 
-print(`\n{checks - failures}/{checks} passed`)
-if failures > 0 then
-	process.exit(1)
-end
+Kit.finish()

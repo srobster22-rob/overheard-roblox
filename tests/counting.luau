@@ -16,7 +16,6 @@
 -- knownValues/countingRows, Heuristic.conveyed, Round.wallRows, Readout.
 
 local fs = require("@lune/fs")
-local process = require("@lune/process")
 
 local Harness = require("./harness")
 
@@ -28,17 +27,8 @@ local Round = rt.require(rt.systems.Round)
 local Readout = rt.require(rt.shared.Readout)
 local Config = rt.require(rt.shared.Config)
 
-local failures = 0
-local checks = 0
-local function check(name: string, condition: boolean)
-	checks += 1
-	if not condition then
-		failures += 1
-		print(`  FAIL  {name}`)
-	else
-		print(`  ok    {name}`)
-	end
-end
+local Kit = require("./kit")
+local check = Kit.check
 
 math.randomseed(147)
 
@@ -501,7 +491,4 @@ do
 	check(`...and with a whole alphabet learned, in {lettered} of {deals} lines`, lettered * 100 < deals)
 end
 
-print(`\n{checks - failures}/{checks} passed`)
-if failures > 0 then
-	process.exit(1)
-end
+Kit.finish()

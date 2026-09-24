@@ -18,8 +18,6 @@
 -- Heuristic.conveyed, Operator.hear, the Objectives board, Round.readBack, and
 -- tools/sim.luau (the real server modules in the server's order).
 
-local process = require("@lune/process")
-
 local Harness = require("./harness")
 local Sim = require("../tools/sim")
 
@@ -31,17 +29,8 @@ local Objectives = rt.require(rt.systems.Objectives)
 local Round = rt.require(rt.systems.Round)
 local Config = rt.require(rt.shared.Config)
 
-local failures = 0
-local checks = 0
-local function check(name: string, condition: boolean)
-	checks += 1
-	if not condition then
-		failures += 1
-		print(`  FAIL  {name}`)
-	else
-		print(`  ok    {name}`)
-	end
-end
+local Kit = require("./kit")
+local check = Kit.check
 
 math.randomseed(142)
 
@@ -467,7 +456,4 @@ check(
 	rang.ringsThrough == true and guess.pursuit.targetName == "lobby"
 )
 
-print(`\n{checks - failures}/{checks} passed`)
-if failures > 0 then
-	process.exit(1)
-end
+Kit.finish()

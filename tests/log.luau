@@ -22,17 +22,8 @@
 local fs = require("@lune/fs")
 local process = require("@lune/process")
 
-local failures = 0
-local checks = 0
-local function check(name: string, condition: boolean)
-	checks += 1
-	if not condition then
-		failures += 1
-		print(`  FAIL  {name}`)
-	else
-		print(`  ok    {name}`)
-	end
-end
+local Kit = require("./kit")
+local check = Kit.check
 
 -- Pure, so the control below can hand it a log it wrote itself.
 local function roundsIn(text: string): { [number]: boolean }
@@ -200,7 +191,4 @@ end
 local lines = select(2, string.gsub(log, "\n", "")) + 1
 check(`the log is the length {highest} rounds implies ({lines} lines)`, lines > highest * 40)
 
-print(`\n{checks - failures}/{checks} passed`)
-if failures > 0 then
-	process.exit(1)
-end
+Kit.finish()

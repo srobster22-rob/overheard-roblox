@@ -18,7 +18,6 @@
 -- directly can be correct while the caller stops using it.
 
 local fs = require("@lune/fs")
-local process = require("@lune/process")
 
 local Harness = require("./harness")
 
@@ -27,17 +26,8 @@ local Heuristic = rt.require(rt.systems.Heuristic)
 local Round = rt.require(rt.systems.Round)
 local Lexicon = rt.require(rt.shared.Lexicon)
 
-local failures = 0
-local checks = 0
-local function check(name: string, condition: boolean)
-	checks += 1
-	if not condition then
-		failures += 1
-		print(`  FAIL  {name}`)
-	else
-		print(`  ok    {name}`)
-	end
-end
+local Kit = require("./kit")
+local check = Kit.check
 
 -- One secret, taken from the real pool rather than invented, so a change to
 -- `plain` cannot leave this file testing a concept the game no longer deals.
@@ -923,7 +913,4 @@ for _, c in burnOp:snapshot() do
 end
 check(`a codeword on a phrase word still burns: 'the red line' x4 before a solve ({redLine})`, redLine == 1)
 
-print(`\n{checks - failures}/{checks} passed`)
-if failures > 0 then
-	process.exit(1)
-end
+Kit.finish()

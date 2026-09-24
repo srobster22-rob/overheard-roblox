@@ -2,24 +2,13 @@
 -- Being connected is the only real consequence in the game, so its rules get
 -- asserted rather than assumed.
 
-local process = require("@lune/process")
-
 local Harness = require("./harness")
 
 local rt = Harness.build()
 local Connected = rt.require(rt.systems.Connected)
 
-local failures = 0
-local checks = 0
-local function check(name: string, condition: boolean)
-	checks += 1
-	if not condition then
-		failures += 1
-		print(`  FAIL  {name}`)
-	else
-		print(`  ok    {name}`)
-	end
-end
+local Kit = require("./kit")
+local check = Kit.check
 
 local A, B, C = 1, 2, 3
 
@@ -217,7 +206,4 @@ do
 	check("taking the room again takes and tells nobody twice", #again == 0 and #newAgain == 0)
 end
 
-print(`\n{checks - failures}/{checks} passed`)
-if failures > 0 then
-	process.exit(1)
-end
+Kit.finish()

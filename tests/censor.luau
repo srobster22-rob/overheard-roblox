@@ -6,8 +6,6 @@
 -- they leave the server (tests/wiring.luau holds the server to that); this file
 -- holds `Censor.rows` to never letting a raw phrase through.
 
-local process = require("@lune/process")
-
 local Harness = require("./harness")
 
 local rt = Harness.build()
@@ -15,17 +13,8 @@ local Censor = rt.require(rt.systems.Censor)
 local Operator = rt.require(rt.systems.Operator)
 local Round = rt.require(rt.systems.Round)
 
-local failures = 0
-local checks = 0
-local function check(name: string, condition: boolean)
-	checks += 1
-	if not condition then
-		failures += 1
-		print(`  FAIL  {name}`)
-	else
-		print(`  ok    {name}`)
-	end
-end
+local Kit = require("./kit")
+local check = Kit.check
 
 -- A fake filter that marks what it was given and for whom, so a test can tell
 -- a filtered phrase from a raw one and see the author was passed.
@@ -167,7 +156,4 @@ check(`every learned phrase is sent ({#sent} of {#learned})`, #sent == #learned)
 check("...each one filtered for player 5", sent[1] ~= nil and string.sub(sent[1].phrase, 1, 2) == "5|")
 check("...and none of them raw", not leaks(sent, raw))
 
-print(`\n{checks - failures}/{checks} passed`)
-if failures > 0 then
-	process.exit(1)
-end
+Kit.finish()

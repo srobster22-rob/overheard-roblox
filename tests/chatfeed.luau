@@ -9,24 +9,13 @@
 -- the real signals on the server: connections that can be dropped, a Players
 -- service that announces who joins and who leaves.
 
-local process = require("@lune/process")
-
 local Harness = require("./harness")
 
 local rt = Harness.build()
 local ChatFeed = rt.require(rt.systems.ChatFeed)
 
-local failures = 0
-local checks = 0
-local function check(name: string, condition: boolean)
-	checks += 1
-	if not condition then
-		failures += 1
-		print(`  FAIL  {name}`)
-	else
-		print(`  ok    {name}`)
-	end
-end
+local Kit = require("./kit")
+local check = Kit.check
 
 -- A signal like RBXScriptSignal: `Connect` returns a connection with
 -- `Disconnect`; `fire` calls every connection still live; `live` counts them.
@@ -114,7 +103,4 @@ check("...and their connection is dropped", early.Chatted.live() == 0)
 late.Chatted.fire("still here")
 check("...while everyone else still is", heard[3] == "20:still here")
 
-print(`\n{checks - failures}/{checks} passed`)
-if failures > 0 then
-	process.exit(1)
-end
+Kit.finish()

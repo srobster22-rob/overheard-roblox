@@ -14,21 +14,11 @@
 -- Lune does not expose `process` as a global; without this require the
 -- FAILURE path of this file crashes instead of reporting, which hides the
 -- real assertion behind "attempt to index nil with .exit".
-local process = require("@lune/process")
 
 local fs = require("@lune/fs")
 
-local failures = 0
-local checks = 0
-local function check(name: string, condition: boolean)
-	checks += 1
-	if not condition then
-		failures += 1
-		print(`  FAIL  {name}`)
-	else
-		print(`  ok    {name}`)
-	end
-end
+local Kit = require("./kit")
+local check = Kit.check
 
 local CONFIG_PATH = "src/shared/Config.luau"
 local REMOTES_PATH = "src/shared/Remotes.luau"
@@ -193,8 +183,4 @@ for name in declared do
 	check(`created remote '{name}' is fetched somewhere`, fetched[name] == true)
 end
 
-print("")
-print(`{checks - failures}/{checks} passed`)
-if failures > 0 then
-	process.exit(1)
-end
+Kit.finish()

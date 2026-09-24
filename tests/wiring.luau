@@ -16,7 +16,6 @@
 -- than a hand-kept list, through the same lexer `tests/config.luau` uses so a
 -- comment or a string that mentions a name cannot satisfy them.
 
-local process = require("@lune/process")
 local fs = require("@lune/fs")
 
 local Harness = require("./harness")
@@ -24,17 +23,8 @@ local LuauCode = require("./luaucode")
 
 local rt = Harness.build()
 
-local failures = 0
-local checks = 0
-local function check(name: string, condition: boolean)
-	checks += 1
-	if not condition then
-		failures += 1
-		print(`  FAIL  {name}`)
-	else
-		print(`  ok    {name}`)
-	end
-end
+local Kit = require("./kit")
+local check = Kit.check
 
 local clientSource = fs.readFile("src/client/init.client.luau")
 local serverSource = fs.readFile("src/server/init.server.luau")
@@ -58,8 +48,7 @@ check("Shared.Keypad loads (the harness adopts it)", loaded == true)
 if not loaded then
 	print(`  (require said: {Keypad})`)
 
-	print(`\n{checks - failures}/{checks} passed`)
-	process.exit(1)
+	Kit.finish()
 end
 
 check("a rejection for the open station is shown", Keypad.accepts("board", "board") == true)
@@ -287,8 +276,7 @@ end)
 check("Server.systems.Station loads (the harness adopts it)", sLoaded == true)
 if not sLoaded then
 	print(`  (require said: {Station})`)
-	print(`\n{checks - failures}/{checks} passed`)
-	process.exit(1)
+	Kit.finish()
 end
 
 local A, B = 100, 200
@@ -459,60 +447,29 @@ check(
 	movedBranch ~= nil and string.find(movedBranch :: string, "table.remove", 1, true) == nil
 )
 
--- A SUITE FILE THAT IS NEVER RUN. `test.cmd` hand-keeps the list of suites, so
--- a new test file that never reaches that line ships unrun and the suite still
--- prints `suite passed` -- this project's oldest shape (a thing written and
--- wired to nothing) aimed at the guard rig itself. R15 added
--- `tests/heuristic.luau`, and this is what stops the next one being forgotten.
---
--- Both lists are DERIVED: the suites from the `for %%T in (...)` line, and the
--- helper files from the fact that another test requires them. Nothing here is
--- hand-kept, so it cannot drift the way `test.cmd` did.
+-- A suite file that is never run ships unchecked while the check still passes.
+-- tools/check runs every file in tests/ that no other test requires, so the one
+-- way left to lose a suite is for another test to require it, which files it
+-- as a helper. The helpers are therefore named here.
 print("every test file is actually run")
-local testCmd = fs.readFile("test.cmd")
-local suiteList = string.match(testCmd, "for %%%%T in %(([^)]*)%)")
-check("test.cmd's suite list was found (guard)", suiteList ~= nil)
-
-local declared: { [string]: boolean } = {}
-local declaredCount = 0
-if suiteList then
-	for name in string.gmatch(suiteList :: string, "%S+") do
-		declared[name] = true
-		declaredCount += 1
-	end
+local Suites = require("../tools/suites")
+local suites = Suites.list()
+local helpers = Suites.helpers()
+check(`the check command finds the suites (guard: {#suites})`, #suites > 20)
+local helperNames = {}
+for name in helpers do
+	table.insert(helperNames, name)
 end
-check("and it names more than one suite (guard)", declaredCount > 1)
-
--- Anything another test requires as `./name` is a helper, not a suite.
-local helpers: { [string]: boolean } = {}
-local testFiles: { string } = {}
+table.sort(helperNames)
+check(
+	`the only helpers are the harness, the checker and luaucode ({table.concat(helperNames, ", ")})`,
+	table.concat(helperNames, ",") == "harness,kit,luaucode"
+)
 for _, entry in fs.readDir("tests") do
 	local stem = string.match(entry, "^(.+)%.luau$")
-	if stem then
-		table.insert(testFiles, stem)
-		for required in string.gmatch(fs.readFile(`tests/{entry}`), 'require%("%./([%w_]+)"%)') do
-			helpers[required] = true
-		end
+	if stem and not helpers[stem] then
+		check(`tests/{stem}.luau is run by tools/check`, table.find(suites, stem) ~= nil)
 	end
-end
-check("tests/ was read and holds files (guard)", #testFiles > 1)
-check("and helper files were detected (guard)", helpers.harness == true)
-
-table.sort(testFiles)
-for _, stem in testFiles do
-	if not helpers[stem] then
-		check(`tests/{stem}.luau is listed in test.cmd`, declared[stem] == true)
-	end
-end
--- The other direction: a suite renamed or deleted leaves test.cmd invoking a
--- file that is not there.
-local declaredSorted: { string } = {}
-for name in declared do
-	table.insert(declaredSorted, name)
-end
-table.sort(declaredSorted)
-for _, name in declaredSorted do
-	check(`test.cmd's '{name}' exists as tests/{name}.luau`, fs.isFile(`tests/{name}.luau`))
 end
 
 print("")
@@ -2057,7 +2014,23 @@ check(
 	string.find(botCode, "self.operator:creditCode(objective.answer, self.now, objective.holder)", 1, true) ~= nil
 )
 
-print(`\n{checks - failures}/{checks} passed`)
-if failures > 0 then
-	process.exit(1)
+print("")
+print("ARCHITECTURE.md maps every module")
+-- The map is how a reader finds the module that owns a concern, so a module
+-- added, moved or split without its line there is a map that lies.
+local architecture = fs.readFile("ARCHITECTURE.md")
+local function mapped(dir: string, prefix: string)
+	for _, entry in fs.readDir(dir) do
+		local stem = string.match(entry, "^(.+)%.luau$")
+		if stem and not string.find(stem, "%.") then
+			check(`ARCHITECTURE.md lists {prefix}{stem}`, string.find(architecture, `| {stem} |`, 1, true) ~= nil)
+		end
+	end
 end
+mapped("src/server/systems", "src/server/systems/")
+mapped("src/shared", "src/shared/")
+for _, entry in { "src/server/init.server.luau", "src/client/init.client.luau" } do
+	check(`ARCHITECTURE.md lists {entry}`, string.find(architecture, entry, 1, true) ~= nil)
+end
+
+Kit.finish()

@@ -6,25 +6,14 @@
 -- Lune does not expose `process` as a global; without this require the
 -- FAILURE path of this file crashes instead of reporting, which hides the
 -- real assertion behind "attempt to index nil with .exit".
-local process = require("@lune/process")
 
 local fs = require("@lune/fs")
 
 local Lexicon = require("../src/shared/Lexicon")
 local Harness = require("./harness")
 
-local failures = 0
-local checks = 0
-
-local function check(name: string, condition: boolean)
-	checks += 1
-	if not condition then
-		failures += 1
-		print(`  FAIL  {name}`)
-	else
-		print(`  ok    {name}`)
-	end
-end
+local Kit = require("./kit")
+local check = Kit.check
 
 local function same(a: { string }, b: { string }): boolean
 	if #a ~= #b then
@@ -328,7 +317,4 @@ check(
 )
 check("(control) 'shell' is not 'shelf'", not Lexicon.sameWord(Lexicon.stem("shell"), Lexicon.stem("shelf")))
 
-print(`\n{checks - failures}/{checks} passed`)
-if failures > 0 then
-	process.exit(1)
-end
+Kit.finish()

@@ -9,8 +9,6 @@
 -- one beat the server, the soak and the bots all call -- with a real Pursuit on
 -- the real building.
 
-local process = require("@lune/process")
-
 local Harness = require("./harness")
 
 local rt = Harness.build()
@@ -25,17 +23,8 @@ local Readout = rt.require(rt.shared.Readout)
 local Round = rt.require(rt.systems.Round)
 local Supervisor = rt.require(rt.systems.Supervisor)
 
-local failures = 0
-local checks = 0
-local function check(name: string, condition: boolean)
-	checks += 1
-	if not condition then
-		failures += 1
-		print(`  FAIL  {name}`)
-	else
-		print(`  ok    {name}`)
-	end
-end
+local Kit = require("./kit")
+local check = Kit.check
 
 local rooms = Layout.rooms()
 local exit = rooms[Escape.ROOM]
@@ -349,7 +338,4 @@ check(
 	stranded.outcome == "lost" and stranded.taken == 3
 )
 
-print(`\n{checks - failures}/{checks} passed`)
-if failures > 0 then
-	process.exit(1)
-end
+Kit.finish()

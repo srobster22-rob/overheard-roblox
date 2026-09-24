@@ -15,8 +15,6 @@
 -- Through the public surface: Operator.hear/credit/coolRound/snapshot,
 -- Round.leadsTo and withLeads, Readout.lexiconRows, Hud, and the real Heuristic.
 
-local process = require("@lune/process")
-
 local Harness = require("./harness")
 
 local rt = Harness.build()
@@ -27,17 +25,8 @@ local Readout = rt.require(rt.shared.Readout)
 local Config = rt.require(rt.shared.Config)
 local Hud = rt.require(rt.shared.Hud)
 
-local failures = 0
-local checks = 0
-local function check(name: string, condition: boolean)
-	checks += 1
-	if not condition then
-		failures += 1
-		print(`  FAIL  {name}`)
-	else
-		print(`  ok    {name}`)
-	end
-end
+local Kit = require("./kit")
+local check = Kit.check
 
 math.randomseed(143)
 local pool = Round.dealSecrets(99)
@@ -321,7 +310,4 @@ do
 	check(`an understood two-word row fits the panel ({widest} of {fits} characters)`, widest <= fits)
 end
 
-print(`\n{checks - failures}/{checks} passed`)
-if failures > 0 then
-	process.exit(1)
-end
+Kit.finish()

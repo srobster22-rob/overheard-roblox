@@ -11,25 +11,14 @@
 -- Two held lines happen in ordinary multiplayer: two players hold one each, one
 -- leaves, `redealOrphans` gives the orphan to the survivor.
 
-local process = require("@lune/process")
-
 local Harness = require("./harness")
 
 local rt = Harness.build()
 local Readout = rt.require(rt.shared.Readout)
 local Objectives = rt.require(rt.systems.Objectives)
 
-local failures = 0
-local checks = 0
-local function check(name: string, condition: boolean)
-	checks += 1
-	if not condition then
-		failures += 1
-		print(`  FAIL  {name}`)
-	else
-		print(`  ok    {name}`)
-	end
-end
+local Kit = require("./kit")
+local check = Kit.check
 
 local function kinds(rows: { Readout.Row }): string
 	local out = {}
@@ -323,7 +312,4 @@ do
 	check("(control) the two titles differ", Readout.TITLE_WON ~= Readout.TITLE_LOST)
 end
 
-print(`\n{checks - failures}/{checks} passed`)
-if failures > 0 then
-	process.exit(1)
-end
+Kit.finish()

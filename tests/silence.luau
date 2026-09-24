@@ -19,8 +19,6 @@
 -- out, and only a whole session shows it. `tests/soak.luau` now holds the
 -- measurement permanently.
 
-local process = require("@lune/process")
-
 local Harness = require("./harness")
 
 local rt = Harness.build()
@@ -28,17 +26,8 @@ local Silence = rt.require(rt.shared.Silence)
 local Config = rt.require(rt.shared.Config)
 local Supervisor = rt.require(rt.systems.Supervisor)
 
-local failures = 0
-local checks = 0
-local function check(name: string, condition: boolean)
-	checks += 1
-	if not condition then
-		failures += 1
-		print(`  FAIL  {name}`)
-	else
-		print(`  ok    {name}`)
-	end
-end
+local Kit = require("./kit")
+local check = Kit.check
 
 print("the rule, tied to the dial rather than to a number")
 
@@ -474,7 +463,4 @@ do
 	check("...and is told afresh when watched again", s:bandNews(1, 104) == "clear")
 end
 
-print(`\n{checks - failures}/{checks} passed`)
-if failures > 0 then
-	process.exit(1)
-end
+Kit.finish()

@@ -9,24 +9,13 @@
 -- each other. Roblox skews mobile, and the Lexicon is the instrument the game
 -- asks players to read.
 
-local process = require("@lune/process")
-
 local Harness = require("./harness")
 
 local rt = Harness.build()
 local Hud = rt.require(rt.shared.Hud)
 
-local failures = 0
-local checks = 0
-local function check(name: string, condition: boolean)
-	checks += 1
-	if not condition then
-		failures += 1
-		print(`  FAIL  {name}`)
-	else
-		print(`  ok    {name}`)
-	end
-end
+local Kit = require("./kit")
+local check = Kit.check
 
 -- Real shapes, from phones in landscape up to desktop.
 local VIEWPORTS = {
@@ -176,7 +165,4 @@ check("(control) a real gap does not overlap", not Hud.overlaps(left, gap))
 local overlapping = { left = 9, top = 0, right = 19, bottom = 10 }
 check("(control) real overlap is still caught", Hud.overlaps(left, overlapping))
 
-print(`\n{checks - failures}/{checks} passed`)
-if failures > 0 then
-	process.exit(1)
-end
+Kit.finish()
