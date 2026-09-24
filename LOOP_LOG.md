@@ -9360,3 +9360,21 @@ Verified:
 Headline: unchanged; the seeded runs are byte-identical.
 Market: unchanged. Content: unchanged. Coach: none new. Decisions: none.
 Next: R155 ORGANIZE 4: the server's source checks become behaviour checks on the fake host (tests/exchange), and are deleted from wiring, objectives and lifecycle.
+
+
+## R155 · ORGANIZE · the server's rules are checked by running them, not by reading its text
+Pick: ORGANIZE 4 of at most 6 — owner order 2026-09-24 (AGENT_LOOP v3.4 §3a item 8: gates read exported values, never a regex over source text) · impact planned 0/0/+1. This contract line was written after the build had started, not before it (a slip against §6 step 1).
+Player notices: nothing (ORGANIZE: src is untouched this round).
+Impact: planned 0/0/+1 → shipped 0/0/+1 (biggest file tests/wiring.luau 2,045→1,549; tests/exchange.luau 212→835)
+Built:
+- tests/exchange.luau runs the server's flow on a fake host and checks its rules by behaviour: submissions (a malformed one, a keypad never opened, a player who walked away, a wrong code, the cooldown, the ring-through, the jam and the clock that lifts it, "already restored", a finished round), prompts, credit and counting credit (spied), the way out and the win, capture and every way to lose, the beat (linger, the queue, the intermission, what a new round resets), chat, silence, codes said aloud, where the Operator waits, the Lexicon filter, a player leaving, and a runtime sweep that no private remote is ever broadcast. 14 → 111 checks.
+- Deleted the source pins those replace: 125 checks from wiring, 6 from objectives, 4 from lifecycle. Kept, still reading source: the client (it cannot run headlessly), module-order checks (Supervisor, Connected, Station, Lifecycle, Presence), the soak-mirrors-server check, the derived per-round and per-player guards, and three facts about the entry script's glue. The Round.LINES distinctness checks now read `Round.LINES`, not Round.luau's text.
+Quality: two test mistakes caught on the first run: `Supervisor.quietFor` needs the time, and `sendTo` queues only while the Operator closes on a room. Stale comments where sections were trimmed were rewritten.
+Verified:
+- Check green before (35 gates, 2,123 checks) and after (35 gates, 2,085 checks, 8.3 s at 16% load). wiring's source-reading lines 211 → 109; checks reading the server script 55 → 4.
+- Equivalence: src untouched; the seven seeded runs byte-identical.
+- 10 plants in the flow, each once caught by a deleted pin, now fail a behaviour check by name, restored by sha256 (r155/plants_out.txt): the payload check skipped, every refusal accused, the station gate ignored, capture ignoring the phase, a new round not cooling, a heard code not pushed, the silence clock broadcast, the panel never told where it waits, the filter skipped, a leaver's lines kept.
+- Files: tests 32 / 12,602 → 32 / 12,652.
+Headline: unchanged; the seeded runs are byte-identical.
+Market: unchanged. Content: unchanged. Coach: none new. Decisions: none.
+Next: R156 ORGANIZE 5: TestOperator out of the shipped place (a Studio-only test), soak() split by phase under the 150-line limit, and the harness reading its module folders.

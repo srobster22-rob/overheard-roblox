@@ -273,46 +273,6 @@ settled.holder = ACTOR
 check("with every holder present, nothing moves", b8:redealOrphans({ ACTOR, THIRD }) == 0)
 check("and the holder is unchanged", settled.holder == ACTOR)
 
-print("the leave path is actually wired")
--- Everything above tests the MODULE. The defect was in the WIRING: the method
--- can be perfect and the round still unwinnable if nothing calls it when a
--- player leaves. `init.server.luau` needs a real Roblox runtime, so this reads
--- its source and checks the handler body instead of loading it. A capability
--- written and never wired is the shape this project keeps shipping.
---
--- It reads the handler as CODE, not as text. The first draft searched raw
--- source, which meant the explanatory comment sitting directly above the call
--- would have certified the wiring all by itself. `stripNonCode` is the same
--- scanner the dead-dial guard uses (`tests/luaucode.luau`), so a mention can no
--- longer stand in for a call.
---
--- KNOWN LIMIT, inherited: the scanner is a lexer, so `if false and
--- board:redealOrphans(...)` is still code to it and would pass. Telling live
--- code from dead code is the open item R7 filed and R8 did not close.
-local serverSource = stripNonCode(require("./sources").server())
-local removingBody = string.match(serverSource, "local function playerRemoving%(.-\nend")
-check("the server has a PlayerRemoving handler", removingBody ~= nil)
-check(
-	"the PlayerRemoving handler re-deals orphaned lines",
-	removingBody ~= nil and string.find(removingBody :: string, "redealOrphans", 1, true) ~= nil
-)
-check(
-	"and it excludes the leaving player from the re-deal",
-	removingBody ~= nil and string.find(removingBody :: string, "~= player", 1, true) ~= nil
-)
-
--- Same shape of guard for the jam: the module can refuse every guess and the
--- keypad still be free if the ONE call site forgets to pass a clock. `now` is a
--- required parameter, but Luau's type error is not a test failure, and a nil
--- `now` only explodes on the first comparison -- i.e. after a jam is set, in
--- production, and never in the happy path anyone would notice.
-local submitCall = string.match(serverSource, "board:submit%b()")
-check("the server calls board:submit", submitCall ~= nil)
-check(
-	"and passes it a clock, or nothing can ever be jammed",
-	submitCall ~= nil and string.find(submitCall :: string, "now", 1, true) ~= nil
-)
-
 -- The jam must survive a rejoin. R10 corrected R9 on this and found the game
 -- was better than believed: UserId is stable and the Board lives for the life of
 -- the SERVER, so a guesser cannot reconnect their way out. R10 then filed
@@ -339,11 +299,6 @@ check(
 )
 check("and the line is still unsolved", rejoinLine.solved == false)
 check("the miss count did not reset either", (rejoinLine.misses[ACTOR] or 0) == 3)
-local removingCode = removingBody or ""
-check(
-	"PlayerRemoving does not clear the jam tables",
-	string.find(removingCode, "misses", 1, true) == nil and string.find(removingCode, "jammedUntil", 1, true) == nil
-)
 
 -- FAULT, AND TWO PLAYERS ACTING AT ONCE ------------------------------------
 --

@@ -408,39 +408,12 @@ print("the learning loop, measured (R46, closed in R131)")
 -- What is asserted is the rule; what is only RECORDED is how it depends on how
 -- often the holder says the codeword, which is the group's choice, not a dial.
 
-local serverSource = require("./sources").server()
-local serverCode = LuauCode.stripNonCode(serverSource)
-
-local function sitesOf(call: string): number
-	local sites, from = 0, 1
-	while true do
-		local first, last = string.find(serverCode, call, from, true)
-		if not first then
-			break
-		end
-		from = last + 1
-		sites += 1
-	end
-	return sites
-end
-local creditSites = sitesOf("operator:credit(")
-check(`(pinned) the Operator is credited from exactly one place ({creditSites})`, creditSites == 1)
--- R147: the counting learner is taught from the same restore, and only there.
-local countSites = sitesOf("operator:creditCode(")
-check(`(pinned) ...and taught what a code was said as from exactly one place ({countSites})`, countSites == 1)
-
 local stations = 0
 for _ in RoundModule.STATIONS do
 	stations += 1
 end
 -- R137 added the third (the night latch).
 check(`(pinned) a round offers one credit per station ({stations} stations)`, stations == 3)
-
-check(
-	"the server forgets once per round, in beginRound",
-	string.find(serverCode, "operator:coolRound(Config.CoolPerRound)", 1, true) ~= nil
-)
-check("...and no longer on a per-second clock", string.find(serverCode, "operator:decay", 1, true) == nil)
 
 local gapSecrets = { { concept = "exit", plain = { "exit" }, payload = "archive" } }
 local gapTalker = { UserId = 1 } :: any

@@ -69,7 +69,6 @@ check(
 )
 check("(control) an id AT the cap is valid", Keypad.validSubmission(string.rep("b", Keypad.MAX_ID), "42"))
 check("an empty id is refused", not Keypad.validSubmission("", "42"))
-check("the server gates Submit on it", string.find(serverCode, "Keypad.validSubmission(id, value)", 1, true) ~= nil)
 
 -- R120: the client's two keypad decisions, run rather than grepped.
 local solvedHere = { { id = "board", solved = true }, { id = "breaker", solved = false } }
@@ -216,26 +215,6 @@ end
 check("keypad writes were found to sweep (guard)", writes >= 3)
 check(`every write to the keypad status sits in an allowed handler ({writes} found)`, strays == 0)
 
-print("")
-print("Rejected is private")
--- The whole point of the new remote is that it is never broadcast. Sweep every
--- broadcast in the server and require none of them to be this one.
-local broadcasts = 0
-local leaks = 0
-for target in string.gmatch(serverCode, "([%a][%w_]*):FireAllClients") do
-	broadcasts += 1
-	if target == "rejectedRemote" then
-		leaks += 1
-	end
-end
-check("broadcasts were found to sweep (guard)", broadcasts >= 3)
-check(`no broadcast is on the Rejected remote ({broadcasts} swept)`, leaks == 0)
-check("the server fires Rejected at ONE client", string.find(serverCode, "rejectedRemote:FireClient", 1, true) ~= nil)
--- And the reason must travel on that channel, not stuffed back into the voice.
-local submitReply = string.match(serverCode, "board:submit(.-)\nend") or ""
-check("the submit reply block was found", #submitReply > 0)
-check("the submit failure path fires Rejected", string.find(submitReply, "rejectedRemote", 1, true) ~= nil)
-
 -- Shared modules -----------------------------------------------------------
 -- A shared module the harness does not adopt cannot be required by any test.
 
@@ -323,90 +302,6 @@ for i, uid in players do
 end
 check(`the sweep accepted exactly one station per player (guard, {seated})`, seated == #players)
 
-print("")
-print("Station is wired, and Submit is gated on it")
-local triggeredBody = string.match(serverCode, "local function openStation%(.-\nend")
-check("the server has a station prompt handler", triggeredBody ~= nil)
-check(
-	"reaching a station records it server-side",
-	triggeredBody ~= nil and string.find(triggeredBody :: string, "desk:open", 1, true) ~= nil
-)
-local submitBody = string.match(serverCode, "local function submit%(.-\nend")
-check("the server has a Submit handler", submitBody ~= nil)
-check(
-	"the Submit handler checks the player is at that station",
-	submitBody ~= nil and string.find(submitBody :: string, "desk:gate(", 1, true) ~= nil
-)
--- Order matters. If the station gate ran AFTER board:submit the answer would
--- already have been compared and a miss already counted, so a made-up station id
--- could burn the honest actor's jam allowance from across the map.
--- R114: the gates are Station.gate (run in tests/objectives).
-local gateAt = submitBody and string.find(submitBody :: string, "desk:gate(", 1, true)
-local submitAt = submitBody and string.find(submitBody :: string, "board:submit", 1, true)
-check("the station gate exists before board:submit is reached", gateAt ~= nil and submitAt ~= nil and gateAt < submitAt)
-check(
-	"a refused station replies on the private keypad channel, not the broadcast",
-	submitBody ~= nil and string.find(submitBody :: string, "rejectedRemote:FireClient", 1, true) ~= nil
-)
--- The leaver's seat is given up; the jam tables deliberately are not (see
--- tests/objectives.luau).
-local removing = string.match(serverCode, "local function playerRemoving%(.-\nend")
-check("the server has a PlayerRemoving handler", removing ~= nil)
-check(
-	"a departing player gives up their station",
-	removing ~= nil and string.find(removing :: string, "desk:forget", 1, true) ~= nil
-)
-
--- The two opposite Operator lines. `taken` is the monster arriving; the round
--- being won must not fire the same string.
-print("")
-print("winning and being found are different lines")
-check("the server announces arrival with LINES.taken", string.find(serverCode, "LINES.taken", 1, true) ~= nil)
-check("and a won round with LINES.completed", string.find(serverCode, "LINES.completed", 1, true) ~= nil)
-local solvedBody = string.match(serverCode, "board%.onSolved = Guard%.wrap%( , function.-\nend%)")
-check("the onSolved handler was found (guard)", solvedBody ~= nil)
-check(
-	"the won-round announcement is not LINES.taken",
-	solvedBody ~= nil and string.find(solvedBody :: string, "LINES.taken", 1, true) == nil
-)
-
--- WHO THE OPERATOR IS ALLOWED TO ACCUSE ------------------------------------
---
--- Same family as the keypad channels above, one layer up. `Rejected` is
--- private and station-tagged, so R10's fan-out cannot happen -- but the
--- Operator's `busy` line was still fired for EVERY `not ok`, and one of those
--- refusals ("already restored") is nobody's doing. Two players at one keypad
--- both enter the number they were told; the loser of the frame was told the
--- line was busy for typing the right answer, in the same tick as the win line.
--- The voice is now gated on `result.fault`; the keypad note is not.
-print("")
-print("the Operator only accuses a player at fault")
-
-local faultGate = submitBody and string.match(submitBody :: string, "if result%.fault then.-\n\t\tend")
-check("the Submit handler gates on result.fault", faultGate ~= nil)
-check(
-	"the Operator's line is inside that gate",
-	faultGate ~= nil and string.find(faultGate :: string, "heardRemote:FireClient", 1, true) ~= nil
-)
--- The other half, and the one a careless fix would break: the keypad note is
--- information, not an accusation, so gating it too would leave a blameless
--- player staring at a keypad that said nothing at all.
-check(
-	"but the station-tagged keypad note is NOT",
-	faultGate ~= nil and string.find(faultGate :: string, "rejectedRemote:FireClient", 1, true) == nil
-)
-check(
-	"and the Submit handler still sends one",
-	submitBody ~= nil and string.find(submitBody :: string, "rejectedRemote:FireClient", 1, true) ~= nil
-)
--- Guard: the gate must be the only `heardRemote` in the submit path, or a
--- second unguarded call would say `busy` anyway and every check above would
--- still pass. The station refusal earlier in the handler is the actor's fault
--- by construction (they submitted an id for a keypad they never reached), so it
--- keeps its voice line -- that is one, and the gated one is two.
-local heardInSubmit = submitBody and select(2, string.gsub(submitBody :: string, "heardRemote:FireClient", ""))
-check(`the submit path speaks in exactly two places, both deliberate ({tostring(heardInSubmit)})`, heardInSubmit == 2)
-
 -- WHAT THE OPERATOR STILL HAS ON FILE --------------------------------------
 --
 -- Third of the same family, and the one that reached the player's eyes rather
@@ -486,30 +381,10 @@ print("the round can be LOST, not only won")
 local serverSource = Sources.server()
 local serverCode = LuauCode.stripNonCode(serverSource)
 
--- R108: via Lifecycle.nobodyCanWin, which the server's losing rule calls (checked
--- beside the rule below).
-local lifecycleSource = LuauCode.stripNonCode(fs.readFile("src/server/systems/Lifecycle.luau"))
-check(
-	"`allTaken` is actually called in the server",
-	string.find(serverCode, "allTaken(", 1, true) ~= nil
-		or (
-			string.find(lifecycleSource, "line:allTaken(", 1, true) ~= nil
-			and string.find(serverCode, "Lifecycle.nobodyCanWin(", 1, true) ~= nil
-		)
-)
-check("the loss says its own line", string.find(serverCode, "LINES.lost", 1, true) ~= nil)
-
 -- Three opposite events must not share one sentence. `completed` and `taken`
 -- were already split for exactly this reason; `lost` must not undo it.
--- RAW source, not stripped. These lines ARE string bodies, and the lexer
--- removes string bodies -- reading them from stripped code finds nothing and
--- every comparison below then passes vacuously on nil. Same reasoning as the
--- remote-names block above.
-local roundCode = fs.readFile("src/server/systems/Round.luau")
-local said: { [string]: string } = {}
-for key, text in string.gmatch(roundCode, '(%w+) = "([^"]+)",') do
-	said[key] = text
-end
+-- Read from Round.LINES, the table the server says them from.
+local said: { [string]: string } = rt.require(rt.systems.Round).LINES
 check("`lost` exists as a line", said.lost ~= nil and #said.lost > 0)
 check("`lost` is not the same sentence as `completed`", said.lost ~= said.completed)
 check("`lost` is not the same sentence as `taken`", said.lost ~= said.taken)
@@ -522,176 +397,26 @@ for _, other in { "busy", "taken", "completed", "lost", "onTheLine", "understood
 	check(`\`givingUp\` is not the same sentence as \`{other}\``, said.givingUp ~= said[other])
 end
 
--- It must stop hunting once there is nobody left, or the hum runs over a
--- finished round.
 -- Newline built with string.char rather than an escape: this repo's tooling has
 -- twice collapsed a backslash in a patch and turned "\n" inside a Luau string
 -- into a real line break, producing "Malformed string".
 local NL = string.char(10)
-local capture = string.match(serverCode, "local function takeWhoeverIsHere%(.-" .. NL .. "end") or ""
-check("(guard) found the capture function", #capture > 0)
--- R138: every ending goes through `endTheRound`, which finishes the round, says
--- so, pushes the phase and stops the Operator, so no path can do three of four.
-local ending = string.match(serverCode, "local function endTheRound%(.-" .. NL .. "end") or ""
-check("(guard) found the round's one ending", #ending > 0)
-check("the ending goes through the lifecycle", string.find(ending, "round:finish(outcome", 1, true) ~= nil)
-check("the ending stops the Operator", string.find(ending, "pursuit:stop()", 1, true) ~= nil)
-check("the ending pushes the phase", string.find(ending, "pushPhase(nil)", 1, true) ~= nil)
-check(
-	"the ending says the win and the loss in their own lines",
-	string.find(ending, "LINES.completed", 1, true) ~= nil and string.find(ending, "LINES.lost", 1, true) ~= nil
-)
-check("the loss ends the round that way", string.find(capture, "endTheRound(", 1, true) ~= nil)
--- R49 moved the losing rule into `endTheRoundIfNobodyCanWin`, which the capture
--- path and the tick both ask, so the capture path no longer calls `allTaken`
--- directly. The rule's own checks are further down; this one only has to say
--- that capture still asks SOMETHING about losing.
-check("the capture path still decides losses", string.find(capture, "endTheRoundIfNobodyCanWin", 1, true) ~= nil)
 
 print("")
-print("capture runs on the clock, not only on arrival")
+print("the entry script's glue, and what a new round resets")
 
--- R24. `tests/connected.luau` proves the RULE; this proves the SERVER runs it.
--- Capture used to be reachable from exactly one place — the `arrived`
--- transition — and `Pursuit.setState` returns early when the state has not
--- changed, so the Operator took whoever stood in the room at that one instant
--- and was harmless afterwards. A player could walk in and stay a minute.
-
-local captureCalls = 0
-local from = 1
-while true do
-	local first, last = string.find(serverCode, "takeWhoeverIsHere()", from, true)
-	if not first then
-		break
-	end
-	from = last + 1
-	captureCalls += 1
-end
--- One is the declaration, so two call sites means three occurrences.
-check(`capture is reachable from more than one place ({captureCalls} occurrences)`, captureCalls >= 3)
-
-local tickBody = (string.match(serverCode, "local function beat%(%).-\nend") or "")
-	.. (string.match(serverCode, "task.spawn%(Guard.wrap%( , function%(%).-\nend%)%)") or "")
-check("(guard) found the server tick loop", #tickBody > 0)
--- `pursuit.state` is CODE; the literal "arrived" is a string body the lexer
--- strips, so asking the stripped tick for it always fails. Same trap R18 hit
--- reading the Operator's lines out of stripped source.
-check("the tick asks the Operator's state", string.find(tickBody, "pursuit.state", 1, true) ~= nil)
-local rawTick = string.match(serverSource, "local function beat%(%).-\nend") or ""
-check("(guard) found the tick in raw source too", #rawTick > 0)
-check("and compares it against arrived", string.find(rawTick, "arrived", 1, true) ~= nil)
-check("the tick runs capture", string.find(tickBody, "takeWhoeverIsHere()", 1, true) ~= nil)
-check("each beat runs under a guard", string.find(tickBody, "Guard.run( , exchange.beat)", 1, true) ~= nil)
-check("the tick is paced by a dial, not a literal", string.find(tickBody, "Config.TickSeconds", 1, true) ~= nil)
--- R131: forgetting left this clock. It is charged once per round in beginRound,
--- and a second, per-second clock here would cool everything twice.
-check("the tick no longer forgets on its own clock", string.find(tickBody, "operator:decay", 1, true) == nil)
+-- The entry script's glue cannot run headlessly (tests/exchange runs the flow
+-- it connects), so these facts about it are read from its source.
+local entry = LuauCode.stripNonCode(fs.readFile("src/server/init.server.luau"))
+check("each beat runs under a guard", string.find(entry, "Guard.run( , exchange.beat)", 1, true) ~= nil)
+check("the tick is paced by a dial, not a literal", string.find(entry, "task.wait(Config.TickSeconds)", 1, true) ~= nil)
 check(
-	"forgetting is charged once per round instead",
-	string.find(serverCode, "operator:coolRound(Config.CoolPerRound)", 1, true) ~= nil
+	"every player's chat reaches the flow through ChatFeed",
+	string.find(entry, "ChatFeed.new(Guard.wrap( , exchange.hearChat)):follow(Players)", 1, true) ~= nil
 )
 
--- R25. The room must be RELEASED, or capture-while-arrived (R24) becomes a
--- permanent softlock: one plain word parks the Operator on an objective and
--- nobody can ever finish that station.
--- R36. A queued room is only taken up when the Operator is idle, so the server
--- has to ask. Without this the queue fills and nothing ever drains it.
-check("the tick takes up a queued room", string.find(tickBody, "pursuit:takePending()", 1, true) ~= nil)
-
--- R49. Losing is asked on every beat, not only when the Operator arrives. R48
--- put it in the capture path alone and the soak measured the cost: 134 ticks of
--- a stranded round still running after the Operator had walked away.
-check(
-	"the tick asks whether the round is already lost",
-	string.find(tickBody, "endTheRoundIfNobodyCanWin", 1, true) ~= nil
-)
-
-check("the tick asks whether it should leave", string.find(tickBody, "shouldLeave", 1, true) ~= nil)
-check("the linger is a dial, not a literal", string.find(tickBody, "Config.LingerSeconds", 1, true) ~= nil)
--- R26: it WALKS out rather than switching off in place, and says so. `stop()`
--- released the room silently with the body motionless -- nothing told players
--- it was safe.
-check("and the tick actually releases it", string.find(tickBody, "pursuit:withdrawTo", 1, true) ~= nil)
-
--- R29. A finished round is not a hunting ground, and there has to BE a next one.
-check("capture is gated on the round still being played", string.find(tickBody, "round:isPlaying()", 1, true) ~= nil)
-
--- R32. Gating capture alone left the Operator announcing itself and walking
--- audibly through an intermission it could take nobody in. The FEED has to be
--- gated too, or the hum means nothing some of the time -- which is worse than
--- no hum, because the hum is the game.
-local chatBody = string.match(serverCode, "local function hearChat%(.-" .. NL .. "end") or ""
-check("(guard) found the chat handler", #chatBody > 0)
-check("...and it is the one that feeds the Operator (control)", string.find(chatBody, "operator:hear", 1, true) ~= nil)
-check("the Operator only listens while a round is live", string.find(chatBody, "round:isPlaying()", 1, true) ~= nil)
--- R139 (COACH.md C1): the handler is fed on the SERVER, through ChatFeed, which
--- tests/chatfeed.luau drives with fake players. Until R139 it was fed by
--- `TextChatService.OnIncomingMessage`, which Roblox runs only on the client,
--- and this check REQUIRED that hook. PLATFORM.md now decides the side (below).
-check(
-	"every player's chat reaches the handler through ChatFeed",
-	string.find(serverCode, "ChatFeed.new(Guard.wrap( , exchange.hearChat)):follow(Players)", 1, true) ~= nil
-)
-
--- R42. The Operator's OWN lines once contained plain giveaways -- its greeting
--- was "Number, please." until R129, and `number` is plain language for
--- `jack_number`. Its speech must never be routed back through `hear` anyway,
--- or any future line could summon it. That has to be proven rather than
--- believed, so: chat is the only thing that feeds it.
-local fedFrom = 0
-local at = 1
-while true do
-	local first, last = string.find(serverCode, "operator:hear", at, true)
-	if not first then
-		break
-	end
-	at = last + 1
-	fedFrom += 1
-end
-check(`(guard) the Operator is fed at all ({fedFrom})`, fedFrom >= 1)
-check("nothing but the chat handler feeds the Operator", fedFrom == 1)
-check("...and that one call is inside the chat handler", string.find(chatBody, "operator:hear", 1, true) ~= nil)
-
--- R33, applying R32's lesson: enumerate EVERY behaviour the phase suppresses,
--- not the one that motivated the gate. Submit is the last place that takes
--- player input, and it checked isConnected, the station gate and the jam --
--- never the phase. So a player typed the number they were told into a keypad
--- the game still drew, and it vanished into a round that was over.
--- Named apart from the `submitBody` extracted earlier in this file; two locals
--- of the same name in one scope is legal Luau and reads like a bug.
-local submitPhaseBody = string.match(serverCode, "local function submit%(.-" .. NL .. "end") or ""
-check("(guard) found the submit handler", #submitPhaseBody > 0)
-check(
-	"...and it is the one that scores answers (control)",
-	string.find(submitPhaseBody, "board:submit", 1, true) ~= nil
-)
-check("a finished round takes no more answers", string.find(submitPhaseBody, "round:isPlaying()", 1, true) ~= nil)
-
--- R39. Being AT a station is a place, not a memory of a trigger. Without a
--- position check here a player primes the Switchboard, walks 104 studs to the
--- room where the number is being read out, and patches from beside the reader.
-check("submit reads where the player actually is", string.find(submitPhaseBody, "livePositions()", 1, true) ~= nil)
--- R114: measured inside Station.gate, which the handler must call.
-local stationCode = LuauCode.stripNonCode(fs.readFile("src/server/systems/Station.luau"))
-check(
-	"...and measures it against the station",
-	string.find(stationCode, "Layout.within", 1, true) ~= nil
-		and string.find(submitPhaseBody, "desk:gate(", 1, true) ~= nil
-)
-check("...using the dial, not a literal", string.find(stationCode, "Config.StationReach", 1, true) ~= nil)
-check("...against the position World built", string.find(submitPhaseBody, "built.stationAt", 1, true) ~= nil)
-
-check("the tick waits out an intermission", string.find(tickBody, "Config.IntermissionSeconds", 1, true) ~= nil)
-check("and starts the next round", string.find(tickBody, "beginRound()", 1, true) ~= nil)
-
--- R30. A new round must PLACE the Operator back at its post, not merely stop it:
--- `stop()` leaves the position where the last round ended, so round two began
--- with it standing inside a room and the next understanding arrived instantly
--- and silently.
 local beginBody = string.match(serverCode, "local function beginRound%(%).-" .. NL .. "end") or ""
 check("(guard) found beginRound", #beginBody > 0)
-check("a new round sends the Operator home", string.find(beginBody, "pursuit:sendHome", 1, true) ~= nil)
-check("...to the post World built, not a literal", string.find(beginBody, "built.operatorStart", 1, true) ~= nil)
 
 -- R31, and this is the CLASS rather than the instances. `beginRound` reset
 -- `board`, `line` and `pursuit` and nothing else, so two pieces of per-round
@@ -743,9 +468,6 @@ end
 print("")
 print("every per-player table is cleaned when a player leaves")
 
-local leavingBody = string.match(serverCode, "local function playerRemoving%(.-" .. NL .. "end") or ""
-check("(guard) found the PlayerRemoving handler", #leavingBody > 0)
-
 -- Read from the comment-stripped source, line by line. `stripNonCode` blanks
 -- table braces, so the declaration reads `local warned:   [number]: boolean`
 -- there. Anchored at the start of a line so locals INSIDE a function -- the
@@ -761,9 +483,10 @@ end
 -- R115: `shown` moved into the Supervisor (its forget clears it; run in
 -- tests/silence); R116 moved `lastSubmit` into the Station desk. The server
 -- now keeps NO per-player table of its own -- that state lives in modules whose
--- `forget` clears it (run in tests/silence and tests/objectives). The loop below
--- still demands that any table added later is cleared on leave, and the
--- parser is proven on a synthetic line so an empty list cannot mean "blind".
+-- `forget` clears it (run in tests/silence and tests/objectives; tests/exchange
+-- runs the leave path). A per-player table added to the flow fails the check
+-- below, and the parser is proven on a synthetic line so an empty list cannot
+-- mean "blind".
 check(
 	"(guard) the per-player table reader recognises one",
 	string.match(
@@ -772,26 +495,6 @@ check(
 	) == "probe"
 )
 check(`the server keeps no per-player table of its own ({table.concat(perPlayer, ", ")})`, #perPlayer == 0)
-for _, owner in { "supervisor", "line", "desk" } do
-	check(
-		`a player who leaves is forgotten by '{owner}'`,
-		string.find(leavingBody, owner .. ":forget(player.UserId)", 1, true) ~= nil
-	)
-end
-
-for _, name in perPlayer do
-	check(
-		`a player who leaves is cleared from '{name}'`,
-		string.find(leavingBody, name .. "[player.UserId] = nil", 1, true) ~= nil
-	)
-end
-
--- (control) the reader must actually be able to fail. A table name that is not
--- cleared anywhere must not be reported as clean.
-check(
-	"(control) a table nobody clears would be caught",
-	string.find(leavingBody, "notATable[player.UserId] = nil", 1, true) == nil
-)
 
 -- R55's fix, checked in the PRODUCT rather than in the module.
 --
@@ -810,16 +513,7 @@ print("the Supervisor only speaks when the call really went through")
 -- the order is still read there, and the line is still said by the server.
 local supervisorCode = LuauCode.stripNonCode(fs.readFile("src/server/systems/Supervisor.luau"))
 local dispatchBody = string.match(supervisorCode, "function Supervisor.putThrough%(.-" .. NL .. "end") or ""
-local dispatchWrapper = string.match(serverCode, "local function putThroughTheSilentLine%(%).-" .. NL .. "end") or ""
 check("(guard) found the dispatch", #dispatchBody > 0)
-check(
-	"the server's dispatch is Supervisor.putThrough",
-	string.find(dispatchWrapper, "supervisor:putThrough(", 1, true) ~= nil
-)
-check(
-	"...and says the line only for a call that is news",
-	string.find(dispatchWrapper, "if called and announce then", 1, true) ~= nil
-)
 
 local askedAt = string.find(dispatchBody, "onItsWay = pursuit:sendTo", 1, true)
 check("it asks whether the call went through", askedAt ~= nil)
@@ -971,26 +665,12 @@ check("...and listens on it", string.find(clientCode, "silenceRemote.OnClientEve
 -- one, and that is worth stating rather than leaving to a runtime assert.
 check("...and draws the panel Hud names", string.find(clientSource, 'panel("Supervisor")', 1, true) ~= nil)
 check("(guard) ...which Hud really reserves", rt.require(rt.shared.Hud).get("Supervisor") ~= nil)
-check(
-	"the server fires it at ONE client, never everyone",
-	string.find(serverCode, "silenceRemote:FireClient", 1, true) ~= nil
-)
-check(
-	"...and never broadcasts a player's own clock",
-	string.find(serverCode, "silenceRemote:FireAllClients", 1, true) == nil
-)
--- The words and the fill come from Shared.Silence, so the client cannot restate
--- a threshold the server does not use -- R20's defect, in a new panel.
-check("the client is sent the words from Shared.Silence", string.find(serverCode, "Silence.note(", 1, true) ~= nil)
-check("...and the fill from Shared.Silence", string.find(serverCode, "Silence.pressure(", 1, true) ~= nil)
-
 -- R58. The server speaks only on a band change, so a client that draws only what
 -- it was told shows three bar positions in a whole countdown. The fill between
 -- pushes must come from `Shared.Silence`, not from arithmetic restated here --
 -- R20's defect, and the thing this client's own comment already claimed.
 check("the client fills the bar from Shared.Silence", string.find(clientCode, "Silence.fill(", 1, true) ~= nil)
 check("...every frame, not only on a push", string.find(clientCode, "RunService.RenderStepped", 1, true) ~= nil)
-check("the server sends how long is left", string.find(serverCode, "Silence.secondsLeft(", 1, true) ~= nil)
 -- The client must not work the deadline out for itself: that is the dial the
 -- push exists to keep out of this file.
 check("the client never reads the speaking deadline", string.find(clientCode, "Config.SpeakEvery", 1, true) == nil)
@@ -1102,14 +782,6 @@ check("(control) the reader does not invent outcomes", said["abandoned"] == nil)
 print("")
 print("a captured player stops being chased for silence")
 
-local captureBody = string.match(serverCode, "local function takeWhoeverIsHere%(%).-" .. NL .. "end") or ""
-check("(guard) found the capture path", #captureBody > 0)
--- R112: connect-and-forget moved to Connected.takeInRoom (RUN in tests/connected);
--- the order is read there, and the capture path must call it.
-check(
-	"the capture path takes the room through Connected.takeInRoom",
-	string.find(captureBody, "line:takeInRoom(", 1, true) ~= nil
-)
 local connectedCode = LuauCode.stripNonCode(fs.readFile("src/server/systems/Connected.luau"))
 local takeBody = string.match(connectedCode, "function Connected.takeInRoom%(.-" .. NL .. "end") or ""
 local connectAt = string.find(takeBody, "self:connect(userId, now)", 1, true)
@@ -1314,30 +986,6 @@ end
 -- The local variable each remote is bound to is DERIVED from the source
 -- (`local xRemote = Remotes.get("Name")`), never typed here, so a rename does
 -- not silently blind the sweep.
-print("")
-print("private remotes are never broadcast")
-
-local PRIVATE_REMOTES = { "Objectives", "OpenBoard", "Rejected", "Connected" }
-for _, name in PRIVATE_REMOTES do
-	local var = string.match(serverSource, `local ([%a][%w_]*) = Remotes%.get%("{name}"%)`)
-	check(`(guard) found the local '{name}' is bound to`, var ~= nil)
-	if var then
-		check(
-			`'{name}' (as {var}) never fires FireAllClients`,
-			string.find(serverCode, var .. ":FireAllClients", 1, true) == nil
-		)
-	end
-end
-
--- (control) a remote that DOES broadcast (Phase, meant for everyone) must not
--- be reported as private-and-clean by a reader that is not actually looking.
-local phaseVar = string.match(serverSource, 'local ([%a][%w_]*) = Remotes%.get%("Phase"%)')
-check("(guard) found Phase's local", phaseVar ~= nil)
-check(
-	"(control) Phase really does broadcast, so the sweep is not vacuous",
-	phaseVar ~= nil and string.find(serverCode, phaseVar .. ":FireAllClients", 1, true) ~= nil
-)
-
 -- R57, and this is the CLASS. `Hud.EXCLUSIVE` is a list of promises about what
 -- the CLIENT will do, held in a shared module the client does not have to obey.
 -- R56 added `{ "Round over", "Supervisor" }` and used it to justify placing the
@@ -1418,50 +1066,6 @@ check(
 	select(2, string.gsub(clientCode, "neverWrittenPanel.Visible =", "")) == 0
 )
 
--- Winning must stop the monster. Until R29 it did not, so a group finished the
--- board and was then taken by something that had no idea the round was over.
--- NL built with string.char, never an escape: this repo's patching has turned
--- "\n" inside a Luau string into a real line break three times now (R22, R24,
--- and again this round).
--- R138 moved the win out of `board.onSolved`: the last line OPENS the way out,
--- and the round is won on the tick, in `workTheWayOut`, once everyone still free
--- is in the lobby.
-local solvedBlock = string.match(serverCode, "if board:allSolved%(%).-" .. NL .. "\tend") or ""
-check("(guard) found the last-line path", #solvedBlock > 0)
-check("the last line opens the way out", string.find(solvedBlock, "escape:open", 1, true) ~= nil)
-check("...and does not end the round by itself", string.find(solvedBlock, "round:finish", 1, true) == nil)
-local winBlock = string.match(serverCode, "local function workTheWayOut%(%).-" .. NL .. "end") or ""
-check("(guard) found the win path", #winBlock > 0)
--- R29 (winning stops the monster) and R33 (the client is TOLD, or the panel is
--- stale exactly when it matters) live in `endTheRound`, checked above. The way
--- out has to end the round through it, with whatever the step settled.
-check(
-	"the way out ends the round with whatever the step settled",
-	string.match(winBlock, "if outcome then%s+endTheRound%(outcome%)") ~= nil
-)
--- The rule itself -- when the Operator is sent, who is out, the time limit --
--- lives in `Escape.step`, which the soak and the bots call too. A copy of it
--- here is how R138's first draft ended up with three rules that disagreed.
-check("the way out is one beat of the shared step", string.find(winBlock, "escape:step(", 1, true) ~= nil)
--- ...asked about everyone present and where their bodies really are. Passing an
--- empty list for either would end every live escape lost at the time limit
--- with every suite green (R138 review).
-check(
-	"...asked about everyone present, where they really stand",
-	string.find(
-		winBlock,
-		"escape:step(clock(), pursuit, presentUserIds(), line, livePositions(), built.rooms)",
-		1,
-		true
-	) ~= nil
-)
-check("the tick asks the way out", string.find(tickBody, "workTheWayOut()", 1, true) ~= nil)
--- Capture before the way out: a player who reaches the lobby on the beat the
--- Operator arrives there is taken, not let out.
-local captureAt = string.find(tickBody, "takeWhoeverIsHere()", 1, true)
-local wayOutAt = string.find(tickBody, "workTheWayOut()", 1, true)
-check("the tick takes whoever is caught before it lets anyone out", (captureAt or math.huge) < (wayOutAt or 0))
-
 -- R48/R49. Everyone taken is one way to lose; nobody LEFT being able to finish
 -- anything is the other. Three of four caught in one arrival strands a line with
 -- its reader, and the survivor could then neither win nor be forced to lose.
@@ -1474,11 +1078,6 @@ check("the tick takes whoever is caught before it lets anyone out", (captureAt o
 -- it); these text checks follow it there.
 local lifecycleCode = LuauCode.stripNonCode(fs.readFile("src/server/systems/Lifecycle.luau"))
 local loseBody = string.match(lifecycleCode, "function Lifecycle.nobodyCanWin%(.-" .. NL .. "end") or ""
-local loseWrapper = string.match(serverCode, "local function endTheRoundIfNobodyCanWin%(.-" .. NL .. "end") or ""
-check(
-	"the server's losing rule is Lifecycle.nobodyCanWin",
-	string.find(loseWrapper, "Lifecycle.nobodyCanWin(present, board, line)", 1, true) ~= nil
-)
 -- R51. `Presence` must SPEAK through Shared.Hum, or the pitch difference is a
 -- module nobody consults and coming still sounds like going.
 local presenceCode = LuauCode.stripNonCode(fs.readFile("src/server/systems/Presence.luau"))
@@ -1513,10 +1112,6 @@ check(
 -- that play has stranded.
 check("...and only when play stranded it", string.find(loseBody, "line:count() > 0", 1, true) ~= nil)
 
-local captureBody = string.match(serverCode, "local function takeWhoeverIsHere%(%).-" .. NL .. "end") or ""
-check("(guard) found the capture path", #captureBody > 0)
-check("the capture path asks the losing rule", string.find(captureBody, "endTheRoundIfNobodyCanWin", 1, true) ~= nil)
-check("...and announces it through the one ending (control)", string.find(captureBody, "endTheRound(", 1, true) ~= nil)
 -- RAW source: the remote name is a string body and the lexer strips those, so
 -- against `clientCode` this reads `Remotes.get()` and never matches. Fifth time
 -- this project has hit that; the remote-names block above says the same thing.
@@ -1582,7 +1177,6 @@ check(
 	"...and actually subscribes to it",
 	string.find(clientCode, "phaseRemote.OnClientEvent:Connect(Guard.wrap( , onPhase))", 1, true) ~= nil
 )
-check("the release is announced", string.find(tickBody, "LINES.givingUp", 1, true) ~= nil)
 
 print("")
 print("nothing the client DISPLAYS is a giveaway")
@@ -1774,13 +1368,6 @@ end
 for _, s in Round.STATIONS do
 	scanPrompt(s.label, s.actionText)
 end
--- R137: the live Operator must be given the route. `routeFor` is optional
--- (nil walks straight), so dropping it would keep every other test green while
--- the Operator walked through the board room's wall to reach the lobby.
-check(
-	"the server gives the Operator its route through the building",
-	string.find(serverCode, "Pursuit.new(built.rooms, built.operatorStart, Layout.route)", 1, true) ~= nil
-)
 check(
 	"(guard) World labels objective stations from Round.STATIONS",
 	string.find(worldRaw, "station(s.label, s.actionText", 1, true) ~= nil
@@ -1845,21 +1432,6 @@ check(`no server reason gives a concept away ({table.concat(serverLeaks, " | ")}
 
 print("")
 print("where the Operator is waiting reaches every panel (R144)")
-local holdingBody = string.match(serverCode, "local function pushHolding%(.-" .. NL .. "end") or ""
-check("(guard) found pushHolding", #holdingBody > 0)
-check(
-	"the server tells everyone where it is, from the Operator's own state",
-	string.find(holdingBody, "Round.holding(pursuit.state, pursuit.targetName, Escape.ROOM)", 1, true) ~= nil
-		and string.find(holdingBody, "holdingRemote:FireAllClients(holding)", 1, true) ~= nil
-)
-check("...sent when it changes", string.find(holdingBody, "key ~= lastHolding", 1, true) ~= nil)
--- Every beat, after everything that can move it: a new destination at the same
--- state (`sendNow`) and `sendHome` from a room fire no change of state.
-local lastMove = string.find(serverCode, "pursuit:withdrawTo(built.operatorStart)", 1, true)
-local askedAfter = if lastMove then string.find(serverCode, "pushHolding()", lastMove, true) else nil
-check("...asked every beat, after the last thing in it that moves the Operator", askedAfter ~= nil)
-local joinBody = string.match(serverCode, "local function playerAdded%(.-" .. NL .. "end") or ""
-check("...and told to a player who joins, changed or not", string.find(joinBody, "pushHolding(true)", 1, true) ~= nil)
 check(
 	"the client redraws its panel when told",
 	string.find(clientCode, "holdingRemote.OnClientEvent:Connect(", 1, true) ~= nil
@@ -1869,35 +1441,6 @@ check(
 	"the sim's players see the same row",
 	string.find(botCode, "Readout.lineRows(self.board:viewFor(id), holding)", 1, true) ~= nil
 )
-
-print("")
-print("the Lexicon panel shows only filtered words")
-
--- R139 (COACH.md C2). The panel's phrases are words players typed, and Roblox
--- requires them filtered before another player sees them. Censor does the
--- filtering and the sending (tests/censor.luau runs both); these hold the
--- server, which cannot run here, to sending the panel only that way.
-check(
-	"the panel is sent through Censor's sender, with the server's filter",
-	string.find(serverCode, "local broadcastLexicon = Censor.new(filterForEveryone):sender(", 1, true) ~= nil
-)
-local lexiconSends = select(2, string.gsub(serverCode, "lexiconRemote:Fire", ""))
-check(`the panel remote is fired from one place ({lexiconSends})`, lexiconSends == 1)
-check(
-	"...which sends what the sender filtered",
-	string.find(serverCode, "lexiconRemote:FireAllClients(visible)", 1, true) ~= nil
-)
-local filterBody = string.match(serverCode, "local function filterForEveryone%(.-" .. NL .. "end") or ""
-check("(guard) found the server's filter", #filterBody > 0)
-check(
-	"...which uses Roblox's filter for text everyone can see",
-	string.find(filterBody, ":FilterStringAsync(text, authorId):GetNonChatStringForBroadcastAsync()", 1, true) ~= nil
-)
-check(
-	"...inside a pcall, so a failed web call leaves the phrase out",
-	string.find(filterBody, "pcall(", 1, true) ~= nil
-)
-check("...and says so", string.find(filterBody, "warn(", 1, true) ~= nil)
 
 print("")
 print("every engine API on its own side (PLATFORM.md)")
@@ -1965,61 +1508,22 @@ check(
 )
 
 print("")
-print("the codes are secrets: the server asks for them, spends them, and rings wrong ones through")
--- The server script cannot run headlessly, so its wiring is read from live
--- code here; tests/codes.luau proves the behaviour on the sim, which must be
--- wired the same way.
-local function handler(code: string, name: string): string
-	return string.match(code, `\n{name} = Guard%.wrap%( , function%(.-\nend%)`)
-		or string.match(code, `\n{name} = Guard%.wrap%(\n.-\n%)`)
-		or ""
-end
-local asksCodes = handler(serverCode, "operator%.liveCodes")
-check("the Operator asks the board for the live codes", string.find(asksCodes, "board:liveCodes()", 1, true) ~= nil)
-local codeHeard = handler(serverCode, "operator%.onCodeHeard")
-check("a heard code is rerolled on the board", string.find(codeHeard, "board:reroll(concept)", 1, true) ~= nil)
-check("...and the holder's panel is pushed", string.find(codeHeard, "pushObjectives(", 1, true) ~= nil)
-check(
-	"what it says when it understood is the read-back",
-	string.find(handler(serverCode, "operator%.onUnderstood"), "Round.readBack(heard)", 1, true) ~= nil
-)
-local submitHandler = string.match(serverCode, "local function submit%(.-\nend") or ""
-check("(guard) the submit handler was found", #submitHandler > 0)
-check(
-	"a wrong code that rings through is said to everyone",
-	string.find(submitHandler, "result.ringsThrough", 1, true) ~= nil
-		and string.find(submitHandler, "FireAllClients(Round.LINES.wrongParty", 1, true) ~= nil
-)
-check(
-	"...and sends the Operator to that station's room",
-	string.find(submitHandler, "Layout.stationRoom(", 1, true) ~= nil
-		and string.find(submitHandler, "pursuit:sendTo(room)", 1, true) ~= nil
-)
-check("the sim asks the board for the live codes too", string.find(botCode, "board:liveCodes()", 1, true) ~= nil)
+print("the sim keeps the codes secret the way the server does (tests/exchange runs the server's side)")
+check("the sim asks the board for the live codes", string.find(botCode, "board:liveCodes()", 1, true) ~= nil)
 check("...rerolls a heard code", string.find(botCode, "board:reroll(concept)", 1, true) ~= nil)
 check("...and rings a wrong code through", string.find(botCode, "result.ringsThrough", 1, true) ~= nil)
 
 print("")
-print("the wall says where each word leads, on the server and in the sim")
+print("the sim's wall says where each word leads")
 check(
-	"the server's wall is labelled with where each word leads",
-	string.find(serverCode, "Round.wallRows(operator:snapshot(), operator:countingRows())", 1, true) ~= nil
-)
-check(
-	"...and so is the sim's",
+	"the sim's wall is labelled with where each word leads",
 	string.find(botCode, "Round.wallRows(self.operator:snapshot(), self.operator:countingRows())", 1, true) ~= nil
 )
 
 print("")
-print("a restore teaches the counting learner, on the server and in the sim (R147)")
-local solvedBody = string.match(serverCode, "board.onSolved = Guard.wrap%( , function%(.-" .. NL .. "end%)") or ""
-check("(guard) found board.onSolved", #solvedBody > 0)
+print("a restore teaches the counting learner in the sim")
 check(
-	"the server credits the code just entered",
-	string.find(solvedBody, "operator:creditCode(objective.answer, clock(), objective.holder)", 1, true) ~= nil
-)
-check(
-	"...and so does the sim",
+	"the sim credits the code just entered",
 	string.find(botCode, "self.operator:creditCode(objective.answer, self.now, objective.holder)", 1, true) ~= nil
 )
 

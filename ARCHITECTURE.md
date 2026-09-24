@@ -1,4 +1,4 @@
-# ARCHITECTURE — OVERHEARD
+# ARCHITECTURE Ã¢â‚¬â€ OVERHEARD
 
 The map of the code. Use it to find the module that owns a concern before you
 open anything. Any commit that adds, moves or splits a module updates this
@@ -6,8 +6,8 @@ file in the same commit (`tests/wiring.luau` fails if a module in `src/` is
 missing from the map). Sizes are lines, as of R152.
 
 Luau on Roblox, synced with Rojo (`default.project.json`):
-`src/server` → ServerScriptService.Server, `src/client` →
-StarterPlayerScripts.Client, `src/shared` → ReplicatedStorage.Shared.
+`src/server` Ã¢â€ â€™ ServerScriptService.Server, `src/client` Ã¢â€ â€™
+StarterPlayerScripts.Client, `src/shared` Ã¢â€ â€™ ReplicatedStorage.Shared.
 Everything except the two entry scripts is a pure module that the headless
 harness can load; the entry scripts only run inside Roblox.
 
@@ -60,8 +60,9 @@ harness can load; the entry scripts only run inside Roblox.
 ### Tests (`tests`) and tools (`tools`)
 - Each suite is `tests/<name>.luau`, run by `lune run tests/<name>`. Most are
   named for the module they cover (`objectives`, `pursuit`, `counting` for
-  Numerals and the Operator's counting). `wiring` (2,017) checks the entry
-  scripts and cross-module wiring; `soak` runs long seeded sessions.
+  Numerals and the Operator's counting, `exchange` for the server's flow on a
+  fake host). `wiring` (1,549) checks the client, the entry script's glue and
+  cross-module rules; `soak` runs long seeded sessions.
 - Helpers: `harness.luau` (a fake Roblox runtime: `Harness.build()`, then
   `rt.require(rt.shared.X)` / `rt.require(rt.systems.X)`; a new module must be
   added to its lists), `kit.luau` (the shared `check` and `finish`),
@@ -80,20 +81,20 @@ harness can load; the entry scripts only run inside Roblox.
 1. **Deal.** `Round.dealSecrets` picks the secret concepts; `Objectives.deal`
    hands each station's line to a holder, who is the only one who sees its
    code (`viewFor`, sent on the `Objectives` remote).
-2. **Talk.** `ChatFeed` hears a line → `hearChat` → `Operator:hear` →
+2. **Talk.** `ChatFeed` hears a line Ã¢â€ â€™ `hearChat` Ã¢â€ â€™ `Operator:hear` Ã¢â€ â€™
    `Heuristic.conveyed` (plain words, the group's learned words, a live code
    said aloud, a learned number word or alphabet). An understanding fires
-   `operator.onUnderstood` → `Pursuit` walks to that room, or queues it. A
-   code heard fires `onCodeHeard` → `Objectives.reroll` (spent, new code).
+   `operator.onUnderstood` Ã¢â€ â€™ `Pursuit` walks to that room, or queues it. A
+   code heard fires `onCodeHeard` Ã¢â€ â€™ `Objectives.reroll` (spent, new code).
 3. **The beat** (`beat`, run by init.server's loop every
    `Config.TickSeconds`, while Presence steps `Pursuit` each frame);
    on arrival `Connected.takeInRoom` puts everyone in the room on the line;
    `Supervisor` puts a silent line through; `Lifecycle.nobodyCanWin` ends a
    round nobody can win; `Escape` steps the way out; panels are pushed.
-4. **Restore.** The `Submit` remote → `Station` (is the player at that
-   station) → `Keypad.validSubmission` → `Objectives.submit` → `onSolved` →
+4. **Restore.** The `Submit` remote Ã¢â€ â€™ `Station` (is the player at that
+   station) Ã¢â€ â€™ `Keypad.validSubmission` Ã¢â€ â€™ `Objectives.submit` Ã¢â€ â€™ `onSolved` Ã¢â€ â€™
    `Operator:credit` and `creditCode` (what was said before the restore is
-   learned) → the last line opens the way out (`Escape`).
+   learned) Ã¢â€ â€™ the last line opens the way out (`Escape`).
 5. **End and restart.** `Lifecycle` records "won" or "lost"; after the
    intermission `beginRound` resets the board, clears the line and the
    stations, cools the Operator (`coolRound`), resets the Escape and the
@@ -173,9 +174,11 @@ its `file:line`. `test.cmd heuristic` runs only the gates whose names contain
   module's, or it cannot see the module's bug.
 
 ## Organization debt (ORGANIZE phase, R152 on)
-- About 240 checks read source text instead of exported values, mostly in
-  `tests/wiring.luau`. The server's flow now runs headlessly (Exchange), so
-  its checks can become behaviour tests; the client's still read source.
+- About 110 lines of `tests/wiring.luau` still read source text: the client
+  (37 checks; it cannot run headlessly), module-order checks on Supervisor,
+  Connected, Station, Lifecycle and Presence, the soak-mirrors-server check,
+  and four facts about the entry script's glue. The server's flow checks run
+  as behaviour in `tests/exchange.luau`.
 - Tests do not all mirror modules: `wiring.luau` (2,017 lines) covers many.
 - `soak()` in tests/soak.luau is 290 lines (limit 150).
 - `Exchange.build` is a 635-line factory of closures (its largest inner
