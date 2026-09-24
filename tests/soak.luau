@@ -156,7 +156,11 @@ local RUN_AFTER = 6
 -- against the WORST and the TOTAL rather than against one session.
 local SEEDS = { 1, 7, 19, 42, 101, 2024, 31337 }
 
-local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, seed: number): Report
+-- One session's state: the server's systems wired as the server wires them,
+-- the group, where everyone stands, and the report.
+type Session = { [string]: any }
+
+local function newSession(rejoinEvery: number, takeAllButOne: boolean, seed: number): Session
 	math.randomseed(seed)
 	local rooms = Layout.rooms()
 	local secrets = Round.dealSecrets(Round.secretsPerRound())
@@ -247,204 +251,303 @@ local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, 
 		end
 		return able
 	end
+	return {
+		rooms = rooms,
+		secrets = secrets,
+		board = board,
+		line = line,
+		round = round,
+		operator = operator,
+		pursuit = pursuit,
+		escape = escape,
+		supervisor = supervisor,
+		present = present,
+		standing = standing,
+		report = report,
+		now = now,
+		takeAllButOne = takeAllButOne,
+		rejoinEvery = rejoinEvery,
+		placeEveryone = placeEveryone,
+		watchEveryone = watchEveryone,
+		ableNow = ableNow,
+		nextId = nextId,
+	}
+end
 
-	for tick = 1, ticks do
-		now += Config.TickSeconds
-		runForTheExit(escape, present, line, standing, rooms, now, RUN_AFTER)
+-- One utterance now and then, both listeners, as the server's chat handler does.
+local function talk(session: Session, tick: number)
+	local secrets, operator, supervisor, present, now =
+		session.secrets, session.operator, session.supervisor, session.present, session.now
+	if tick % 8 == 0 then
+		-- One utterance, both listeners. The server's chat handler feeds
+		-- `supervisor:hear` and `operator:hear` from the same message.
+		--
+		-- IT ROTATES. Until R62 only `present[1]` ever spoke, which was
+		-- harmless while nothing punished silence and pathological the moment
+		-- something did: three of four players permanently overdue, the
+		-- Operator permanently dispatched, and every round lost. That is the
+		-- model being wrong, not the game -- a group where nobody but one
+		-- person speaks for a whole session is what `silentGroup` is for.
+		--
+		-- The LAST player is skipped: a group with one quiet member is
+		-- ordinary, and it keeps the Supervisor firing here instead of never.
+		local speakers = math.max(1, #present - 1)
+		local who = present[(tick // 8) % speakers + 1]
+		supervisor:hear(who, now)
+		operator:hear({ speaker = { UserId = who } :: any, text = "meet me by the purple lantern", at = now })
+	end
+	if tick % 40 == 0 then
+		supervisor:hear(present[1], now)
+		operator:hear({
+			speaker = { UserId = present[1] } :: any,
+			text = `check the {secrets[1].plain[1]}`,
+			at = now,
+		})
+	end
+end
 
-		if tick % 8 == 0 then
-			-- One utterance, both listeners. The server's chat handler feeds
-			-- `supervisor:hear` and `operator:hear` from the same message.
-			--
-			-- IT ROTATES. Until R62 only `present[1]` ever spoke, which was
-			-- harmless while nothing punished silence and pathological the moment
-			-- something did: three of four players permanently overdue, the
-			-- Operator permanently dispatched, and every round lost. That is the
-			-- model being wrong, not the game -- a group where nobody but one
-			-- person speaks for a whole session is what `silentGroup` is for.
-			--
-			-- The LAST player is skipped: a group with one quiet member is
-			-- ordinary, and it keeps the Supervisor firing here instead of never.
-			local speakers = math.max(1, #present - 1)
-			local who = present[(tick // 8) % speakers + 1]
-			supervisor:hear(who, now)
-			operator:hear({ speaker = { UserId = who } :: any, text = "meet me by the purple lantern", at = now })
-		end
-		if tick % 40 == 0 then
-			supervisor:hear(present[1], now)
-			operator:hear({
-				speaker = { UserId = present[1] } :: any,
-				text = `check the {secrets[1].plain[1]}`,
-				at = now,
-			})
-		end
-
-		-- R110: the server's own dispatch, not a copy of it.
-		if round:isPlaying() then
-			if supervisor:putThrough(pursuit, rooms, Config.Rooms, standing, now) then
-				report.silenceCalls += 1
-			end
-		end
-
-		pursuit:step(Config.TickSeconds)
-		-- `takePending` returns whether it promoted a queued room, so the count is
-		-- the module's own answer rather than an inference from its fields.
-		if pursuit:takePending() then
-			report.pendingTaken += 1
-		end
-		if pursuit.pending ~= nil then
-			report.everQueued += 1
-		end
-
-		if round:isPlaying() and pursuit.state == "arrived" then
-			-- R112: the server's own capture (connect AND forget), not a copy.
-			line:takeInRoom(pursuit.position, standing, Layout.halfRoom(), now, supervisor)
-			-- R111: the server's own loss rule, not a copy (this one had drifted:
-			-- it lacked the line:count() > 0 clause).
-			local allTakenNow = line:allTaken(present)
-			if Lifecycle.nobodyCanWin(present, board, line) and round:finish("lost", now) then
-				report.lost += 1
-				if not allTakenNow then
-					report.strandedLost += 1
-				end
-				-- The server stops it hunting once there is nobody left to hunt;
-				-- leaving it travelling would keep the hum going over a finished
-				-- round. The soak cannot hear a hum, but it must not model a
-				-- monster still walking through an intermission either.
-				if pursuit.pending ~= nil then
-					report.queuedDropped += 1
-				end
-				pursuit:stop()
-			end
-		end
-
-		-- The server asks on every beat now, not only on arrival (R49).
-		if round:isPlaying() then
-			-- R111: the server's own loss rule, not a copy.
-			local allTakenNow = line:allTaken(present)
-			if Lifecycle.nobodyCanWin(present, board, line) and round:finish("lost", now) then
-				report.lost += 1
-				if not allTakenNow then
-					report.strandedLost += 1
-				end
-			end
-		end
-
-		if pursuit:shouldLeave(Config.LingerSeconds) then
-			pursuit:withdrawTo(Layout.operatorPost())
-			report.gaveUp += 1
-		end
-
-		if round:isPlaying() and tick % 260 == 0 then
-			for _, objective in board.list do
-				if objective.solved then
-					continue
-				end
-				for _, userId in present do
-					if not line:isConnected(userId) and not objective.seenBy[userId] then
-						-- Through submit, and then the credit `board.onSolved` does.
-						if board:submit(objective.id, userId, objective.answer, now).ok then
-							operator:credit(objective.concept, now)
-							report.solved += 1
-						end
-						break
-					end
-				end
-			end
-			-- R138: the last line opens the way out; the beat below settles it.
-			if board:allSolved() and escape:open(now) then
-				report.escapes += 1
-			end
-		end
-		local settled = workTheWayOut(escape, round, pursuit, present, line, standing, rooms, now)
-		if settled == "won" then
-			report.won += 1
-		elseif settled == "lost" then
-			report.lost += 1
-		end
-
-		-- A player rejoining. Every return re-deals the whole board.
-		if rejoinEvery > 0 and tick % rejoinEvery == 0 then
-			-- The deal is unconditional, because `PlayerAdded` is: the server
-			-- re-deals whatever the phase.
-			board:deal(present)
-			-- The MEASUREMENT is not. "Nobody can finish anything" is the normal,
-			-- correct state of a round that is already over -- everyone is still
-			-- on the line and the board is not reset until the restart -- so
-			-- counting it during an intermission counts the game working.
-			--
-			-- This was invisible until R62 put the Supervisor in this session and
-			-- losses became common: the count went from 0 to 28 with no change to
-			-- any rule, which is what a measurement that was never gated looks
-			-- like when the thing it forgot to exclude starts happening.
-			if round:isPlaying() and not everyLineEnterable(board, ableNow()) and not board:allSolved() then
-				report.stuckRejoins += 1
-			end
-		end
-
-		if round:readyToRestart(now, Config.IntermissionSeconds) and round:restart() then
-			report.rounds += 1
-			board:reset()
-			-- The restart must hand the next round an unsolved board. Counted as a
-			-- property rather than trusted: `board:reset()` could be deleted and
-			-- the suite noticed nothing.
-			local anySolved = false
-			for _, objective in board.list do
-				if objective.solved then
-					anySolved = true
-				end
-			end
-			if not anySolved then
-				report.cleanStarts += 1
-			end
-			line:clear()
-			escape:reset()
-			operator:forgetObservations()
-			-- R131: the server forgets once per round, here, not on a clock.
-			if operator:coolRound(Config.CoolPerRound) then
-				report.decayed += 1
-			end
-			if pursuit.pending ~= nil then
-				report.queuedDropped += 1
-			end
-			pursuit:sendHome(Layout.operatorPost())
-			-- R31's boundary. Without it a player quiet through the intermission
-			-- is called in the first seconds of the new round.
-			supervisor:reset(now)
-			if report.rounds % 3 == 0 then
-				table.insert(present, nextId)
-				nextId += 1
-				if #present > 6 then
-					local gone = table.remove(present, 1)
-					if gone then
-						standing[gone] = nil
-						supervisor:forget(gone)
-					end
-				end
-			end
-			-- Somebody who joined has to stand somewhere, or they are never in any
-			-- room and cannot be caught at all -- which would quietly turn the
-			-- harsh soak into the gentle one as the server filled up.
-			placeEveryone()
-			watchEveryone(now)
-			board:deal(present)
-		end
-
-		for _, objective in board.list do
-			local seen = 0
-			for _ in objective.seenBy do
-				seen += 1
-			end
-			report.worstSeen = math.max(report.worstSeen, seen)
-		end
-		report.worstLexicon = math.max(report.worstLexicon, #operator:snapshot())
-
-		if round:isPlaying() and not board:allSolved() and not everyLineEnterable(board, ableNow()) then
-			report.unfinishableTicks += 1
+-- The Supervisor's dispatch, the Operator's walk and queue, capture and the loss.
+local function hunt(session: Session)
+	local rooms, board, line, round, pursuit, supervisor, present, standing, report, now =
+		session.rooms,
+		session.board,
+		session.line,
+		session.round,
+		session.pursuit,
+		session.supervisor,
+		session.present,
+		session.standing,
+		session.report,
+		session.now
+	-- R110: the server's own dispatch, not a copy of it.
+	if round:isPlaying() then
+		if supervisor:putThrough(pursuit, rooms, Config.Rooms, standing, now) then
+			report.silenceCalls += 1
 		end
 	end
 
-	return report
+	pursuit:step(Config.TickSeconds)
+	-- `takePending` returns whether it promoted a queued room, so the count is
+	-- the module's own answer rather than an inference from its fields.
+	if pursuit:takePending() then
+		report.pendingTaken += 1
+	end
+	if pursuit.pending ~= nil then
+		report.everQueued += 1
+	end
+
+	if round:isPlaying() and pursuit.state == "arrived" then
+		-- R112: the server's own capture (connect AND forget), not a copy.
+		line:takeInRoom(pursuit.position, standing, Layout.halfRoom(), now, supervisor)
+		-- R111: the server's own loss rule, not a copy (this one had drifted:
+		-- it lacked the line:count() > 0 clause).
+		local allTakenNow = line:allTaken(present)
+		if Lifecycle.nobodyCanWin(present, board, line) and round:finish("lost", now) then
+			report.lost += 1
+			if not allTakenNow then
+				report.strandedLost += 1
+			end
+			-- The server stops it hunting once there is nobody left to hunt;
+			-- leaving it travelling would keep the hum going over a finished
+			-- round. The soak cannot hear a hum, but it must not model a
+			-- monster still walking through an intermission either.
+			if pursuit.pending ~= nil then
+				report.queuedDropped += 1
+			end
+			pursuit:stop()
+		end
+	end
+
+	-- The server asks on every beat now, not only on arrival (R49).
+	if round:isPlaying() then
+		-- R111: the server's own loss rule, not a copy.
+		local allTakenNow = line:allTaken(present)
+		if Lifecycle.nobodyCanWin(present, board, line) and round:finish("lost", now) then
+			report.lost += 1
+			if not allTakenNow then
+				report.strandedLost += 1
+			end
+		end
+	end
+
+	if pursuit:shouldLeave(Config.LingerSeconds) then
+		pursuit:withdrawTo(Layout.operatorPost())
+		report.gaveUp += 1
+	end
+end
+
+-- The group solves on a slow beat, through submit and the credit onSolved gives,
+-- and the way out settles.
+local function solveOnSchedule(session: Session, tick: number)
+	local rooms, board, line, round, operator, pursuit, escape, present, standing, report, now =
+		session.rooms,
+		session.board,
+		session.line,
+		session.round,
+		session.operator,
+		session.pursuit,
+		session.escape,
+		session.present,
+		session.standing,
+		session.report,
+		session.now
+	if round:isPlaying() and tick % 260 == 0 then
+		for _, objective in board.list do
+			if objective.solved then
+				continue
+			end
+			for _, userId in present do
+				if not line:isConnected(userId) and not objective.seenBy[userId] then
+					-- Through submit, and then the credit `board.onSolved` does.
+					if board:submit(objective.id, userId, objective.answer, now).ok then
+						operator:credit(objective.concept, now)
+						report.solved += 1
+					end
+					break
+				end
+			end
+		end
+		-- R138: the last line opens the way out; the beat below settles it.
+		if board:allSolved() and escape:open(now) then
+			report.escapes += 1
+		end
+	end
+	local settled = workTheWayOut(escape, round, pursuit, present, line, standing, rooms, now)
+	if settled == "won" then
+		report.won += 1
+	elseif settled == "lost" then
+		report.lost += 1
+	end
+end
+
+-- A player rejoining re-deals the board.
+local function rejoin(session: Session, tick: number)
+	local board, round, present, report, rejoinEvery, ableNow =
+		session.board, session.round, session.present, session.report, session.rejoinEvery, session.ableNow
+	-- A player rejoining. Every return re-deals the whole board.
+	if rejoinEvery > 0 and tick % rejoinEvery == 0 then
+		-- The deal is unconditional, because `PlayerAdded` is: the server
+		-- re-deals whatever the phase.
+		board:deal(present)
+		-- The MEASUREMENT is not. "Nobody can finish anything" is the normal,
+		-- correct state of a round that is already over -- everyone is still
+		-- on the line and the board is not reset until the restart -- so
+		-- counting it during an intermission counts the game working.
+		--
+		-- This was invisible until R62 put the Supervisor in this session and
+		-- losses became common: the count went from 0 to 28 with no change to
+		-- any rule, which is what a measurement that was never gated looks
+		-- like when the thing it forgot to exclude starts happening.
+		if round:isPlaying() and not everyLineEnterable(board, ableNow()) and not board:allSolved() then
+			report.stuckRejoins += 1
+		end
+	end
+end
+
+-- The intermission, then the next round, as beginRound sets it up.
+local function restartIfDue(session: Session)
+	local board, line, round, operator, pursuit, escape, supervisor, present, standing, report, now, placeEveryone, watchEveryone =
+		session.board,
+		session.line,
+		session.round,
+		session.operator,
+		session.pursuit,
+		session.escape,
+		session.supervisor,
+		session.present,
+		session.standing,
+		session.report,
+		session.now,
+		session.placeEveryone,
+		session.watchEveryone
+	if round:readyToRestart(now, Config.IntermissionSeconds) and round:restart() then
+		report.rounds += 1
+		board:reset()
+		-- The restart must hand the next round an unsolved board. Counted as a
+		-- property rather than trusted: `board:reset()` could be deleted and
+		-- the suite noticed nothing.
+		local anySolved = false
+		for _, objective in board.list do
+			if objective.solved then
+				anySolved = true
+			end
+		end
+		if not anySolved then
+			report.cleanStarts += 1
+		end
+		line:clear()
+		escape:reset()
+		operator:forgetObservations()
+		-- R131: the server forgets once per round, here, not on a clock.
+		if operator:coolRound(Config.CoolPerRound) then
+			report.decayed += 1
+		end
+		if pursuit.pending ~= nil then
+			report.queuedDropped += 1
+		end
+		pursuit:sendHome(Layout.operatorPost())
+		-- R31's boundary. Without it a player quiet through the intermission
+		-- is called in the first seconds of the new round.
+		supervisor:reset(now)
+		if report.rounds % 3 == 0 then
+			table.insert(present, session.nextId)
+			session.nextId += 1
+			if #present > 6 then
+				local gone = table.remove(present, 1)
+				if gone then
+					standing[gone] = nil
+					supervisor:forget(gone)
+				end
+			end
+		end
+		-- Somebody who joined has to stand somewhere, or they are never in any
+		-- room and cannot be caught at all -- which would quietly turn the
+		-- harsh soak into the gentle one as the server filled up.
+		placeEveryone()
+		watchEveryone(now)
+		board:deal(present)
+	end
+end
+
+-- What this file measures, every tick.
+local function measure(session: Session)
+	local board, round, operator, report, ableNow =
+		session.board, session.round, session.operator, session.report, session.ableNow
+	for _, objective in board.list do
+		local seen = 0
+		for _ in objective.seenBy do
+			seen += 1
+		end
+		report.worstSeen = math.max(report.worstSeen, seen)
+	end
+	report.worstLexicon = math.max(report.worstLexicon, #operator:snapshot())
+
+	if round:isPlaying() and not board:allSolved() and not everyLineEnterable(board, ableNow()) then
+		report.unfinishableTicks += 1
+	end
+end
+
+local function soak(ticks: number, rejoinEvery: number, takeAllButOne: boolean, seed: number): Report
+	local session = newSession(rejoinEvery, takeAllButOne, seed)
+	for tick = 1, ticks do
+		session.now += Config.TickSeconds
+		runForTheExit(
+			session.escape,
+			session.present,
+			session.line,
+			session.standing,
+			session.rooms,
+			session.now,
+			RUN_AFTER
+		)
+		talk(session, tick)
+		hunt(session)
+		solveOnSchedule(session, tick)
+		rejoin(session, tick)
+		restartIfDue(session)
+		measure(session)
+	end
+	return session.report
 end
 
 -- Every seed, folded into one report by taking the WORST of each measure. An

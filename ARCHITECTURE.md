@@ -37,7 +37,6 @@ harness can load; the entry scripts only run inside Roblox.
 | Censor | filtering each phrase before other players may read it | 91 |
 | Presence | the Operator's body and hum in the world (renders Pursuit) | 91 |
 | World | the code-built blockout of the exchange | 271 |
-| TestOperator | an end-to-end acquisition test run from Studio (test code; organization debt) | 193 |
 
 ### Shared (`src/shared`, loaded by both sides)
 | Module | Owns | Size |
@@ -64,12 +63,17 @@ harness can load; the entry scripts only run inside Roblox.
   fake host). `wiring` (1,549) checks the client, the entry script's glue and
   cross-module rules; `soak` runs long seeded sessions.
 - Helpers: `harness.luau` (a fake Roblox runtime: `Harness.build()`, then
-  `rt.require(rt.shared.X)` / `rt.require(rt.systems.X)`; a new module must be
-  added to its lists), `kit.luau` (the shared `check` and `finish`),
+  `rt.require(rt.shared.X)` / `rt.require(rt.systems.X)`; it adopts every
+  module in src/shared and src/server/systems from the folders, and the
+  Studio test under `rt.dev`), `kit.luau` (the shared `check` and `finish`),
   `luaucode.luau` (strips comments and strings from source), `sources.luau`
   (the server's code as the source-reading checks see it: the entry script
   and Exchange).
-- `tools/check.luau` the check command; `tools/suites.luau` which files are
+- `tests/studio/TestOperator.luau`: an end-to-end acquisition test that needs
+  a Roblox runtime. It is not in the shipped place: `dev.project.json` adds it
+  under ServerScriptService.Dev for Studio; `tests/operator` runs it headlessly.
+- `tools/check.luau` the check command; `tools/build.luau` the shipped build,
+  which fails if it holds dev-only test code; `tools/suites.luau` which files are
   suites; `tools/sim.luau` the server's flow run headlessly on a stepped
   clock; `tools/playtest.luau` the three bot personas; `tools/play.luau` a
   session player for unscripted testers (its language is at the top of the
@@ -133,7 +137,8 @@ or either in `src/shared`. Server only: `Chatted`, `FilterStringAsync`,
 `test.cmd` (= `lune run tools/check`) runs every SHIP gate in turn: each
 suite in `tests/`, a 2-round bot run (`gate`: fails if the bots win none),
 the smoke session, the market check, `selene src`, the guards lint,
-`stylua --check`, and a rojo build to %TEMP%. It prints one line per passing gate and the whole output
+`stylua --check`, and the shipped build (`tools/build`, to %TEMP%), which
+fails if it holds anything only the dev project adds. It prints one line per passing gate and the whole output
 of a failing one, then a summary: each failing gate, its first failure and
 its `file:line`. `test.cmd heuristic` runs only the gates whose names contain
 `heuristic`; `test.cmd verbose` prints every gate's output.
@@ -163,8 +168,9 @@ its `file:line`. `test.cmd heuristic` runs only the gates whose names contain
 - Chat is heard on the server only through `Player.Chatted`;
   `TextChatService.OnIncomingMessage` is client-only (it silenced the live
   game for 138 rounds while every test passed).
-- The harness is a test double: it supports exactly the two require shapes
-  the code uses, and a new module must be added to its lists.
+- The harness is a test double: it supports exactly the require shapes the
+  code uses (`script.Parent.X`, and `Shared.X` or `Server.systems.X` through
+  `game:GetService`).
 - `LOOP_LOG.md` is append-only (`tests/log.luau` guards it).
 - The heuristic suite's 30 ms timing budget fails under a loaded machine, on
   HEAD too: run it alone before calling it a regression.
@@ -180,11 +186,8 @@ its `file:line`. `test.cmd heuristic` runs only the gates whose names contain
   and four facts about the entry script's glue. The server's flow checks run
   as behaviour in `tests/exchange.luau`.
 - Tests do not all mirror modules: `wiring.luau` (2,017 lines) covers many.
-- `soak()` in tests/soak.luau is 290 lines (limit 150).
 - `Exchange.build` is a 635-line factory of closures (its largest inner
   function, `submit`, is 70 lines). Methods on a flow object would bring
   it under the 150-line limit.
-- `TestOperator` is test code shipped in the place.
 - About 270 comment lines in src, and 370 in tests, narrate round history
   (R-numbers, playtests) rather than say why.
-- The harness keeps hand lists of modules instead of reading the folders.

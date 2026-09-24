@@ -61,48 +61,24 @@ function Harness.build()
 	adopt(serverScripts, server)
 	adopt(server, systems)
 
-	-- A shared module missing from this list cannot be required by any test, so
-	-- it ships unhammered. `tests/wiring.luau` sweeps `src/shared/` against it.
-	for _, name in
-		{
-			"Lexicon",
-			"Types",
-			"Config",
-			"Remotes",
-			"Heat",
-			"Hud",
-			"Hum",
-			"Keypad",
-			"Readout",
-			"Layout",
-			"Silence",
-			"LexiconSave",
-			"Numerals",
-			"Guard",
-		}
-	do
-		adopt(shared, handle(name, `src/shared/{name}.luau`))
+	-- Every module in the two folders, read from the folders themselves, so a
+	-- new module is reachable from tests the moment it exists. A handle loads
+	-- only when required, so Roblox-only modules (World, Presence) cost nothing.
+	local function adoptFolder(parent: Handle, dir: string)
+		for _, entry in fs.readDir(dir) do
+			local name = string.match(entry, "^([%a][%w_]*)%.luau$")
+			if name then
+				adopt(parent, handle(name, `{dir}/{name}.luau`))
+			end
+		end
 	end
-	for _, name in
-		{
-			"Heuristic",
-			"Operator",
-			"Round",
-			"Objectives",
-			"Connected",
-			"Lifecycle",
-			"Pursuit",
-			"Station",
-			"Supervisor",
-			"TestOperator",
-			"Escape",
-			"ChatFeed",
-			"Censor",
-			"Exchange",
-		}
-	do
-		adopt(systems, handle(name, `src/server/systems/{name}.luau`))
-	end
+	adoptFolder(shared, "src/shared")
+	adoptFolder(systems, "src/server/systems")
+
+	-- dev.project.json's ServerScriptService.Dev: test code run from Studio.
+	local dev = handle("Dev")
+	adopt(serverScripts, dev)
+	adopt(dev, handle("TestOperator", "tests/studio/TestOperator.luau"))
 
 	local game = {
 		GetService = function(_self: any, name: string)
@@ -173,6 +149,7 @@ function Harness.build()
 		require = requireHandle,
 		systems = systems,
 		shared = shared,
+		dev = dev,
 	}
 end
 

@@ -1,0 +1,40 @@
+{
+  "name": "roblox-game-dev",
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "Server": {
+        "$path": "src/server"
+      },
+      "Dev": {
+        "$className": "Folder",
+        "TestOperator": {
+          "$path": "tests/studio/TestOperator.luau"
+        }
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "src/client"
+        }
+      }
+    },
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "src/shared"
+      }
+    },
+    "Workspace": {
+      "$properties": {
+        "FilteringEnabled": true
+      }
+    },
+    "Lighting": {},
+    "SoundService": {
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
+    }
+  }
+}

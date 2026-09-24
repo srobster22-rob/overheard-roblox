@@ -1,6 +1,6 @@
 --!strict
 -- Headless run of the acquisition assertions. Run: lune run tests/operator
--- Same assertions as src/server/systems/TestOperator, executed with no engine.
+-- Runs tests/studio/TestOperator (the Studio-run acquisition test) with no engine.
 
 -- Lune does not expose `process` as a global; without this require the
 -- FAILURE path of this file crashes instead of reporting, which hides the
@@ -10,7 +10,7 @@ local process = require("@lune/process")
 local Harness = require("./harness")
 
 local rt = Harness.build()
-local TestOperator = rt.require(rt.systems.TestOperator)
+local TestOperator = rt.require(rt.dev.TestOperator)
 
 local ok, err = pcall(TestOperator)
 if not ok then

@@ -43,7 +43,7 @@ Studio is the viewer and playtester. Never ask the user to paste code back.
 
 ## Testing
 `lune run tests/lexicon` for pure logic — keep the text layer free of Roblox
-APIs so it stays headlessly testable. `TestOperator` needs a runtime; run it
+APIs so it stays headlessly testable. `tests/studio/TestOperator` needs a runtime: serve `dev.project.json` and run it
 from Studio or MCP.
 
 Studio's playtest with 2 players (Test > Clients and Servers) is the minimum

@@ -9378,3 +9378,30 @@ Verified:
 Headline: unchanged; the seeded runs are byte-identical.
 Market: unchanged. Content: unchanged. Coach: none new. Decisions: none.
 Next: R156 ORGANIZE 5: TestOperator out of the shipped place (a Studio-only test), soak() split by phase under the 150-line limit, and the harness reading its module folders.
+
+
+## R156 · ORGANIZE · test code leaves the shipped place, the harness finds modules itself, and soak() comes apart by phase
+Pick: ORGANIZE 5 of at most 6 — owner order 2026-09-24 (AGENT_LOOP v3.4 §3a items 3, 4 and 5: no function over 150 lines, no hand-kept lists, test code out of the shipped product) · impact planned 0/0/+1.
+- TestOperator (a Studio-run test) ships in the place today. It moves to tests/studio/, a dev-only Rojo project (dev.project.json) still puts it in the place for Studio, and the check fails if the shipped build holds it.
+- The harness keeps two hand lists of modules; it reads the folders instead.
+- soak() in tests/soak.luau is 290 lines; it splits into named phases, proven by the soak's output being byte-identical.
+Sync: AGENT_LOOP v3.4 unchanged; OWNER.md `## Next` empty; COACH.md no new notes. Studio MCP: no tools. HEAD 184e27f green.
+
+Player notices: nothing (ORGANIZE; the only change to the place is that a test module no longer ships in it).
+Impact: planned 0/0/+1 → shipped 0/0/+1 (biggest file tests/wiring.luau 1,549→1,545; tests/soak.luau 944→1,048)
+Built:
+- TestOperator (193 lines of test code) left the shipped place: `git mv` to tests/studio/, its two requires now reach Operator and Heuristic through `game:GetService("ServerScriptService")`. dev.project.json adds it under ServerScriptService.Dev for Studio; tests/operator runs it headlessly from there.
+- tools/build.luau builds the shipped place and fails if it holds anything dev.project.json's Dev folder adds; the check's rojo gate runs it.
+- The harness adopts every module in src/shared and src/server/systems by reading the folders (two hand lists gone); wiring's coverage check now asks the harness's own tree whether each module on disk is reachable, not its source text.
+- soak() (290 lines) became `newSession` and six phase functions (talk, hunt, solveOnSchedule, rejoin, restartIfDue, measure). The bodies moved unchanged; each phase unpacks the session fields it uses into locals of the same names, and only the clock and `nextId` became session fields.
+- The check summary reads a harness-loaded module's `[string "path"]` as the path. ARCHITECTURE.md and CLAUDE.md follow the move.
+Quality: two first-run misses: TestOperator had a second `script.Parent` require, and Rojo needs `$className` on a folder with no `$path`. An unused `harnessSource` read in wiring removed.
+Verified:
+- Check green before and after: 35 gates, 2,098 checks, 7.9 s at 0% load.
+- Equivalence: the soak's whole output byte-identical across the split (sha256 B642E6A8…); the seven seeded runs byte-identical.
+- The dev project builds with TestOperator in it; the shipped build does not hold it.
+- 4 plants fail the check by name, restored by sha256 (r156/plants_out.txt): test code added to the shipped project (the build gate), a module the harness skips (wiring), a soak phase that never runs (soak), a failing Studio test (operator).
+- Files: src 32 / 7,994 → 31 / 7,801; tests (top level) 32 / 12,652 → 32 / 12,727, plus tests/studio 1 / 197; tools 8 / 1,446 → 9 / 1,481. Largest functions: soak() 290 → gone (newSession 113, silentGroup 149); Exchange.build 635 remains the one over 150 (debt).
+Headline: unchanged; the seeded runs are byte-identical.
+Market: unchanged. Content: unchanged. Coach: none new. Decisions: none.
+Next: R157 ORGANIZE 6, the last the cap allows: round-history comments in src (checklist item 7), then "ORGANIZE phase complete" with what is left under ARCHITECTURE.md's organization debt.

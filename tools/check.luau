@@ -43,8 +43,8 @@ local function gates(): { Gate }
 	-- Every connection and task in src goes through Guard.wrap.
 	table.insert(list, { name = "guards", program = lune, args = { "run", "tools/guards" } })
 	table.insert(list, { name = "stylua", program = tool("stylua"), args = { "--check", "src", "tests", "tools" } })
-	local built = `{process.env.TEMP or "."}\\overheard-check.rbxlx`
-	table.insert(list, { name = "rojo", program = tool("rojo"), args = { "build", "-o", built } })
+	-- The shipped place builds, and holds none of the dev project's test code.
+	table.insert(list, { name = "rojo", program = lune, args = { "run", "tools/build" } })
 	return list
 end
 
@@ -53,7 +53,8 @@ local ROOT = string.lower((string.gsub(process.cwd, "\\", "/")))
 -- A repo-relative `path.luau:line` for a path a tool printed. Lune prints
 -- absolute paths and drops the extension; selene and stylua keep it.
 local function place(path: string, line: string?): string
-	local p = string.gsub(path, "\\", "/")
+	local p = string.match(path, '%[string "(.-)"%]') or path
+	p = string.gsub(p, "\\", "/")
 	if string.sub(string.lower(p), 1, #ROOT) == ROOT then
 		p = string.sub(p, #ROOT + 1)
 	end

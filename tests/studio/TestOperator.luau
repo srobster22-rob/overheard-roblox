@@ -1,14 +1,17 @@
 --!strict
--- Proves the acquisition loop end to end. Needs a Roblox runtime, so run it
--- from Studio (or via MCP run_code):
+-- Proves the acquisition loop end to end. Test code, so it is not in the
+-- shipped place: serve dev.project.json, which adds it under
+-- ServerScriptService.Dev, and run it from Studio (or via MCP run_code):
 --
---   require(game.ServerScriptService.Server.systems.TestOperator)()
+--   require(game.ServerScriptService.Dev.TestOperator)()
+--
+-- tests/operator.luau runs the same file headlessly.
 --
 -- It asserts the behaviour the whole game rests on: plain speech is understood
 -- immediately, a coinage is not, and a coinage becomes understood only after
 -- the group repeatedly succeeds right after saying it.
 
-local Operator = require(script.Parent.Operator)
+local Operator = require(game:GetService("ServerScriptService").Server.systems.Operator)
 local Config = require(game:GetService("ReplicatedStorage").Shared.Config)
 
 return function()
@@ -138,7 +141,7 @@ return function()
 	-- than left as an argument in a comment: `understand` scores a coinage as
 	-- heat/BURNED_AT and only takes it `if confidence > best.confidence` from a
 	-- floor of 0, so a zero-heat coinage can never be the concept it picks.
-	local Heuristic = require(script.Parent.Heuristic)
+	local Heuristic = require(game:GetService("ServerScriptService").Server.systems.Heuristic)
 	local atZero = { { phrase = "purple lantern", concept = "exit", heat = 0, sightings = 9, coinedBy = 1 } }
 	local cold = Heuristic.understand(
 		{ speaker = fakeSpeaker, text = "meet at the purple lantern", at = 0 } :: any,

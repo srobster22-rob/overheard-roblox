@@ -3,7 +3,7 @@
 -- being rendered as if it were addressed to you.
 --
 -- The keypad has one red line under its input. Until R10 the only writer of it
--- was the `Heard` remote's detail field — and `Heard` is the Operator's voice,
+-- was the `Heard` remote's detail field â€” and `Heard` is the Operator's voice,
 -- broadcast to the whole server with the concept id or room name in `detail`.
 -- So a player standing at a keypad saw a red `jack_number` in the slot that
 -- says "that line is jammed - wait 20s", because somebody ELSE had spoken.
@@ -30,7 +30,6 @@ local check = Kit.check
 local clientSource = fs.readFile("src/client/init.client.luau")
 local serverSource = Sources.server()
 local remotesSource = fs.readFile("src/shared/Remotes.luau")
-local harnessSource = fs.readFile("tests/harness.luau")
 
 local clientCode = LuauCode.stripNonCode(clientSource)
 local serverCode = LuauCode.stripNonCode(serverSource)
@@ -219,29 +218,25 @@ check(`every write to the keypad status sits in an allowed handler ({writes} fou
 -- A shared module the harness does not adopt cannot be required by any test.
 
 print("")
-print("every shared module is reachable from tests")
-local adopted: { [string]: boolean } = {}
-local adoptedCount = 0
--- Whitespace-tolerant on purpose. This pattern used to require the list on
--- ONE line, and adding an eleventh shared module pushed it past the line
--- width, so stylua wrapped it and the sweep stopped finding the list at all
--- -- reporting all eleven modules as unadopted when every one of them was.
--- A guard that reads code must not depend on how the code is laid out (R7).
-local sharedList = string.match(harnessSource, "for _, name in%s*{(.-)}%s*do%s*adopt%(shared") or ""
-for name in string.gmatch(sharedList, '"([%a][%w_]*)"') do
-	adopted[name] = true
-	adoptedCount += 1
-end
-check("the harness's shared list was found", adoptedCount > 0)
-local onDisk = 0
-for _, entry in fs.readDir("src/shared") do
-	local name = string.match(entry, "^([%a][%w_]*)%.luau$")
-	if name then
-		onDisk += 1
-		check(`shared module '{name}' is adopted by the harness`, adopted[name] == true)
+print("every module is reachable from tests")
+-- The harness adopts every module in src/shared and src/server/systems from the
+-- folders themselves, so none can ship unhammered by being left off a list.
+local reachable = 0
+for _, dir in { { "src/shared", rt.shared }, { "src/server/systems", rt.systems } } do
+	for _, entry in fs.readDir(dir[1]) do
+		local name = string.match(entry, "^([%a][%w_]*)%.luau$")
+		if name then
+			reachable += 1
+			check(
+				`{dir[1]}/{name} is reachable from tests`,
+				pcall(function()
+					return (dir[2] :: any)[name]
+				end)
+			)
+		end
 	end
 end
-check("shared modules were found on disk (guard)", onDisk >= 5)
+check(`modules were found on disk (guard: {reachable})`, reachable >= 20)
 
 -- THE STATION A PLAYER IS AT ------------------------------------------------
 -- Second instance of this file's class, and the one that was on the wrong
@@ -1183,7 +1178,7 @@ print("nothing the client DISPLAYS is a giveaway")
 
 -- R43, finishing what R41 and R42 started. Those checked the station prompts and
 -- the panel's exported constants. The client's own inline literals were judged
--- "coherent" BY EYE — and one was not: the keypad hint read "enter the NUMBER
+-- "coherent" BY EYE â€” and one was not: the keypad hint read "enter the NUMBER
 -- you were told for the {stationId}", which conveyed `jack_number` at every
 -- station including the breaker, in front of the player working it. It also
 -- showed the raw station id, and `board` and `breaker` ARE the plain terms.
