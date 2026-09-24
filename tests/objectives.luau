@@ -289,9 +289,9 @@ print("the leave path is actually wired")
 -- KNOWN LIMIT, inherited: the scanner is a lexer, so `if false and
 -- board:redealOrphans(...)` is still code to it and would pass. Telling live
 -- code from dead code is the open item R7 filed and R8 did not close.
-local serverSource = stripNonCode(fs.readFile("src/server/init.server.luau"))
-local removingBody = string.match(serverSource, "Players%.PlayerRemoving:Connect%(Guard%.wrap%( , function.-\nend%)%)")
-check("init.server has a PlayerRemoving handler", removingBody ~= nil)
+local serverSource = stripNonCode(require("./sources").server())
+local removingBody = string.match(serverSource, "local function playerRemoving%(.-\nend")
+check("the server has a PlayerRemoving handler", removingBody ~= nil)
 check(
 	"the PlayerRemoving handler re-deals orphaned lines",
 	removingBody ~= nil and string.find(removingBody :: string, "redealOrphans", 1, true) ~= nil
@@ -307,7 +307,7 @@ check(
 -- `now` only explodes on the first comparison -- i.e. after a jam is set, in
 -- production, and never in the happy path anyone would notice.
 local submitCall = string.match(serverSource, "board:submit%b()")
-check("init.server calls board:submit", submitCall ~= nil)
+check("the server calls board:submit", submitCall ~= nil)
 check(
 	"and passes it a clock, or nothing can ever be jammed",
 	submitCall ~= nil and string.find(submitCall :: string, "now", 1, true) ~= nil

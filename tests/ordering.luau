@@ -22,8 +22,10 @@ local check = Kit.check
 
 -- Only files that RUN top to bottom need this. A ModuleScript's functions are
 -- all defined before anything calls them, because the caller is another module.
+-- init.server declares no local functions: it connects the ones Exchange.build
+-- declares, and that body runs top to bottom like a script.
 local ENTRY_POINTS = {
-	"src/server/init.server.luau",
+	"src/server/systems/Exchange.luau",
 	"src/client/init.client.luau",
 }
 

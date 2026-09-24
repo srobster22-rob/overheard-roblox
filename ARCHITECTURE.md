@@ -16,12 +16,13 @@ harness can load; the entry scripts only run inside Roblox.
 ### Entry scripts (Roblox only)
 | Path | Owns | Size |
 |---|---|---|
-| src/server/init.server.luau | the server's wiring: remotes, callbacks, the beat loop, round start and end | 689 |
+| src/server/init.server.luau | the Roblox glue: the world, the remotes, Exchange's host, the guarded connections and the loop | 119 |
 | src/client/init.client.luau | the client's three panels, the keypad and the remote listeners | 529 |
 
 ### Server systems (`src/server/systems`)
 | Module | Owns | Size |
 |---|---|---|
+| Exchange | the server's game flow: chat, restores, capture, the Supervisor, the way out, a round's start and end; built from a host so tests can run it | 693 |
 | Operator | the listener: hears chat, learns coinages, number words and a group's alphabet, credits restores | 708 |
 | Heuristic | what one line conveys: plain words, learned coinages, live codes | 344 |
 | Objectives | the board: lines, holders, who has seen a code, submissions, the stranded-line rule | 463 |
@@ -64,7 +65,9 @@ harness can load; the entry scripts only run inside Roblox.
 - Helpers: `harness.luau` (a fake Roblox runtime: `Harness.build()`, then
   `rt.require(rt.shared.X)` / `rt.require(rt.systems.X)`; a new module must be
   added to its lists), `kit.luau` (the shared `check` and `finish`),
-  `luaucode.luau` (strips comments and strings from source).
+  `luaucode.luau` (strips comments and strings from source), `sources.luau`
+  (the server's code as the source-reading checks see it: the entry script
+  and Exchange).
 - `tools/check.luau` the check command; `tools/suites.luau` which files are
   suites; `tools/sim.luau` the server's flow run headlessly on a stepped
   clock; `tools/playtest.luau` the three bot personas; `tools/play.luau` a
@@ -73,7 +76,7 @@ harness can load; the entry scripts only run inside Roblox.
   CONTENT.md; `tools/guards.luau` the lint that every connection and task
   in src goes through `Guard.wrap`.
 
-## One round, on the server
+## One round, on the server (systems/Exchange)
 1. **Deal.** `Round.dealSecrets` picks the secret concepts; `Objectives.deal`
    hands each station's line to a holder, who is the only one who sees its
    code (`viewFor`, sent on the `Objectives` remote).
@@ -82,7 +85,8 @@ harness can load; the entry scripts only run inside Roblox.
    said aloud, a learned number word or alphabet). An understanding fires
    `operator.onUnderstood` → `Pursuit` walks to that room, or queues it. A
    code heard fires `onCodeHeard` → `Objectives.reroll` (spent, new code).
-3. **The beat** (the `while running` loop in init.server): `Pursuit` steps;
+3. **The beat** (`beat`, run by init.server's loop every
+   `Config.TickSeconds`, while Presence steps `Pursuit` each frame);
    on arrival `Connected.takeInRoom` puts everyone in the room on the line;
    `Supervisor` puts a silent line through; `Lifecycle.nobodyCanWin` ends a
    round nobody can win; `Escape` steps the way out; panels are pushed.
@@ -95,8 +99,12 @@ harness can load; the entry scripts only run inside Roblox.
    stations, cools the Operator (`coolRound`), resets the Escape and the
    Supervisor, deals again and sends the Operator home.
 
-`tools/sim.luau` runs the same modules in the same order with scripted or
-session-driven players, so a headless trace follows the live game.
+init.server builds the world and hands `Exchange.build` its host: Players,
+TextService, the remotes it fires, the built world and task.spawn/defer. It
+connects what the build returns (hearChat, readerPrompt, openStation, submit,
+playerAdded, playerRemoving, beat) under Guard. `tools/sim.luau` runs the same
+modules in the same order with scripted or session-driven players, so a
+headless trace follows the live game.
 
 ## Content registries (content is data)
 | Kind | Lives in |
@@ -163,8 +171,8 @@ its `file:line`. `test.cmd heuristic` runs only the gates whose names contain
 
 ## Organization debt (ORGANIZE phase, R152 on)
 - About 240 checks read source text instead of exported values, mostly in
-  `tests/wiring.luau`, because the entry scripts hold handler bodies that
-  cannot run headlessly.
+  `tests/wiring.luau`. The server's flow now runs headlessly (Exchange), so
+  its checks can become behaviour tests; the client's still read source.
 - Tests do not all mirror modules: `wiring.luau` (2,017 lines) covers many.
 - `soak()` in tests/soak.luau is 290 lines (limit 150).
 - `TestOperator` is test code shipped in the place.

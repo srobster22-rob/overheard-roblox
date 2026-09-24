@@ -20,6 +20,7 @@ local fs = require("@lune/fs")
 
 local Harness = require("./harness")
 local LuauCode = require("./luaucode")
+local Sources = require("./sources")
 
 local rt = Harness.build()
 
@@ -27,7 +28,7 @@ local Kit = require("./kit")
 local check = Kit.check
 
 local clientSource = fs.readFile("src/client/init.client.luau")
-local serverSource = fs.readFile("src/server/init.server.luau")
+local serverSource = Sources.server()
 local remotesSource = fs.readFile("src/shared/Remotes.luau")
 local harnessSource = fs.readFile("tests/harness.luau")
 
@@ -231,7 +232,7 @@ check("broadcasts were found to sweep (guard)", broadcasts >= 3)
 check(`no broadcast is on the Rejected remote ({broadcasts} swept)`, leaks == 0)
 check("the server fires Rejected at ONE client", string.find(serverCode, "rejectedRemote:FireClient", 1, true) ~= nil)
 -- And the reason must travel on that channel, not stuffed back into the voice.
-local submitReply = string.match(serverCode, "board:submit(.-)\nend%)") or ""
+local submitReply = string.match(serverCode, "board:submit(.-)\nend") or ""
 check("the submit reply block was found", #submitReply > 0)
 check("the submit failure path fires Rejected", string.find(submitReply, "rejectedRemote", 1, true) ~= nil)
 
@@ -324,14 +325,14 @@ check(`the sweep accepted exactly one station per player (guard, {seated})`, sea
 
 print("")
 print("Station is wired, and Submit is gated on it")
-local triggeredBody = string.match(serverCode, "prompt%.Triggered:Connect%(Guard%.wrap%( , function.-\n\tend%)%)")
-check("init.server has a station prompt handler", triggeredBody ~= nil)
+local triggeredBody = string.match(serverCode, "local function openStation%(.-\nend")
+check("the server has a station prompt handler", triggeredBody ~= nil)
 check(
 	"reaching a station records it server-side",
 	triggeredBody ~= nil and string.find(triggeredBody :: string, "desk:open", 1, true) ~= nil
 )
-local submitBody = string.match(serverCode, "submitRemote%.OnServerEvent:Connect%(Guard%.wrap%( , function.-\nend%)%)")
-check("init.server has a Submit handler", submitBody ~= nil)
+local submitBody = string.match(serverCode, "local function submit%(.-\nend")
+check("the server has a Submit handler", submitBody ~= nil)
 check(
 	"the Submit handler checks the player is at that station",
 	submitBody ~= nil and string.find(submitBody :: string, "desk:gate(", 1, true) ~= nil
@@ -349,8 +350,8 @@ check(
 )
 -- The leaver's seat is given up; the jam tables deliberately are not (see
 -- tests/objectives.luau).
-local removing = string.match(serverCode, "Players%.PlayerRemoving:Connect%(Guard%.wrap%( , function.-\nend%)%)")
-check("init.server has a PlayerRemoving handler", removing ~= nil)
+local removing = string.match(serverCode, "local function playerRemoving%(.-\nend")
+check("the server has a PlayerRemoving handler", removing ~= nil)
 check(
 	"a departing player gives up their station",
 	removing ~= nil and string.find(removing :: string, "desk:forget", 1, true) ~= nil
@@ -462,8 +463,8 @@ for name in helpers do
 end
 table.sort(helperNames)
 check(
-	`the only helpers are the harness, the checker and luaucode ({table.concat(helperNames, ", ")})`,
-	table.concat(helperNames, ",") == "harness,kit,luaucode"
+	`the only helpers are the harness, the checker, luaucode and sources ({table.concat(helperNames, ", ")})`,
+	table.concat(helperNames, ",") == "harness,kit,luaucode,sources"
 )
 for _, entry in fs.readDir("tests") do
 	local stem = string.match(entry, "^(.+)%.luau$")
@@ -482,7 +483,7 @@ print("the round can be LOST, not only won")
 -- wiring itself is asserted here rather than the logic (which tests/connected
 -- already covers).
 
-local serverSource = fs.readFile("src/server/init.server.luau")
+local serverSource = Sources.server()
 local serverCode = LuauCode.stripNonCode(serverSource)
 
 -- R108: via Lifecycle.nobodyCanWin, which the server's losing rule calls (checked
@@ -580,7 +581,7 @@ local rawTick = string.match(serverSource, "local function beat%(%).-\nend") or 
 check("(guard) found the tick in raw source too", #rawTick > 0)
 check("and compares it against arrived", string.find(rawTick, "arrived", 1, true) ~= nil)
 check("the tick runs capture", string.find(tickBody, "takeWhoeverIsHere()", 1, true) ~= nil)
-check("each beat runs under a guard", string.find(tickBody, "Guard.run( , beat)", 1, true) ~= nil)
+check("each beat runs under a guard", string.find(tickBody, "Guard.run( , exchange.beat)", 1, true) ~= nil)
 check("the tick is paced by a dial, not a literal", string.find(tickBody, "Config.TickSeconds", 1, true) ~= nil)
 -- R131: forgetting left this clock. It is charged once per round in beginRound,
 -- and a second, per-second clock here would cool everything twice.
@@ -629,7 +630,7 @@ check("the Operator only listens while a round is live", string.find(chatBody, "
 -- and this check REQUIRED that hook. PLATFORM.md now decides the side (below).
 check(
 	"every player's chat reaches the handler through ChatFeed",
-	string.find(serverCode, "ChatFeed.new(Guard.wrap( , hearChat)):follow(Players)", 1, true) ~= nil
+	string.find(serverCode, "ChatFeed.new(Guard.wrap( , exchange.hearChat)):follow(Players)", 1, true) ~= nil
 )
 
 -- R42. The Operator's OWN lines once contained plain giveaways -- its greeting
@@ -658,10 +659,7 @@ check("...and that one call is inside the chat handler", string.find(chatBody, "
 -- the game still drew, and it vanished into a round that was over.
 -- Named apart from the `submitBody` extracted earlier in this file; two locals
 -- of the same name in one scope is legal Luau and reads like a bug.
-local submitPhaseBody = string.match(
-	serverCode,
-	"submitRemote.OnServerEvent:Connect%(Guard.wrap%( , function.-" .. NL .. "end%)%)"
-) or ""
+local submitPhaseBody = string.match(serverCode, "local function submit%(.-" .. NL .. "end") or ""
 check("(guard) found the submit handler", #submitPhaseBody > 0)
 check(
 	"...and it is the one that scores answers (control)",
@@ -745,7 +743,7 @@ end
 print("")
 print("every per-player table is cleaned when a player leaves")
 
-local leavingBody = string.match(serverCode, "Players.PlayerRemoving:Connect.-" .. NL .. "end%)") or ""
+local leavingBody = string.match(serverCode, "local function playerRemoving%(.-" .. NL .. "end") or ""
 check("(guard) found the PlayerRemoving handler", #leavingBody > 0)
 
 -- Read from the comment-stripped source, line by line. `stripNonCode` blanks
@@ -1814,7 +1812,12 @@ check("the keypad hint no longer names the jack", #saidAloud("enter what you wer
 -- repeating "someone else has to patch this" is chat like any other.
 local serverSaid = {}
 for _, file in
-	{ "src/server/init.server.luau", "src/server/systems/Objectives.luau", "src/server/systems/Station.luau" }
+	{
+		"src/server/init.server.luau",
+		"src/server/systems/Exchange.luau",
+		"src/server/systems/Objectives.luau",
+		"src/server/systems/Station.luau",
+	}
 do
 	local raw = fs.readFile(file)
 	for text in string.gmatch(raw, 'reason = "([^"]+)"') do
@@ -1855,8 +1858,7 @@ check("...sent when it changes", string.find(holdingBody, "key ~= lastHolding", 
 local lastMove = string.find(serverCode, "pursuit:withdrawTo(built.operatorStart)", 1, true)
 local askedAfter = if lastMove then string.find(serverCode, "pushHolding()", lastMove, true) else nil
 check("...asked every beat, after the last thing in it that moves the Operator", askedAfter ~= nil)
-local joinBody = string.match(serverCode, "Players.PlayerAdded:Connect%(Guard.wrap%( , function%(.-" .. NL .. "end%)%)")
-	or ""
+local joinBody = string.match(serverCode, "local function playerAdded%(.-" .. NL .. "end") or ""
 check("...and told to a player who joins, changed or not", string.find(joinBody, "pushHolding(true)", 1, true) ~= nil)
 check(
 	"the client redraws its panel when told",
@@ -1981,10 +1983,7 @@ check(
 	"what it says when it understood is the read-back",
 	string.find(handler(serverCode, "operator%.onUnderstood"), "Round.readBack(heard)", 1, true) ~= nil
 )
-local submitHandler = string.match(
-	serverCode,
-	"submitRemote%.OnServerEvent:Connect%(Guard%.wrap%( , function.-\nend%)%)"
-) or ""
+local submitHandler = string.match(serverCode, "local function submit%(.-\nend") or ""
 check("(guard) the submit handler was found", #submitHandler > 0)
 check(
 	"a wrong code that rings through is said to everyone",

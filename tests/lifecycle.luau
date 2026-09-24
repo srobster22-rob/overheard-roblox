@@ -408,7 +408,7 @@ print("the learning loop, measured (R46, closed in R131)")
 -- What is asserted is the rule; what is only RECORDED is how it depends on how
 -- often the holder says the codeword, which is the group's choice, not a dial.
 
-local serverSource = fs.readFile("src/server/init.server.luau")
+local serverSource = require("./sources").server()
 local serverCode = LuauCode.stripNonCode(serverSource)
 
 local function sitesOf(call: string): number

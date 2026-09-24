@@ -9336,3 +9336,11 @@ Verified:
 Headline: unchanged; the seeded runs are byte-identical.
 Market: unchanged. Content: unchanged. Coach: none new. Decisions: none.
 Next: R154 ORGANIZE 3: pure moves. wiring.luau split into suites named for the module each part checks; TestOperator out of the shipped place; soak() split by phase; the harness reads the module folders instead of hand lists.
+
+
+## R154 · ORGANIZE · the server's game flow becomes a module the suite can run
+Pick: ORGANIZE 3 of at most 6 — owner order 2026-09-24 (AGENT_LOOP v3.4 §3a, items 3 and 8: split the monolith along concerns; gates read exported values, never source text) · impact planned 0/0/+1.
+- init.server.luau (687 lines) holds the whole server flow (chat, restores, capture, the Supervisor, the way out, a round's start and end) inside a script only Roblox can run, which is why about 55 wiring checks read its source instead of running it. It moves, near-verbatim, into `systems/Exchange.luau`: `Exchange.build(host)` takes Players, TextService, the remotes, the built world and spawn/defer, and returns the handlers (hearChat, readerPrompt, openStation, submit, playerAdded, playerRemoving, beat). init.server keeps only the Roblox glue: the world, the host, the guarded connections and the loop.
+- A fake host (tests/exchange.luau) runs the moved flow headlessly: players join, chat moves the Operator, a code restores a line, beats capture and end rounds. This is what lets R155 replace the server's source pins with behaviour checks.
+- The wiring pins follow the code to Exchange.luau this round (they read init.server and Exchange together); R155 replaces them.
+Sync: AGENT_LOOP v3.4 unchanged; OWNER.md `## Next` empty; COACH.md no new notes. Studio MCP: no tools. HEAD 685164a green.
