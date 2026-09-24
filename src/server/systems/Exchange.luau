@@ -76,27 +76,25 @@ function Exchange.build(host: Host): Flow
 
 	-- Stations are the source of truth: the board and the Operator's secrets are
 	-- both derived from `Round.STATIONS`, so an objective can never exist for a
-	-- concept the Operator was not dealt (it used to, on 39.6% of servers).
+	-- concept the Operator was not dealt.
 	local secrets = Round.dealSecrets(Round.secretsPerRound())
 	local operator = Operator.new(secrets)
 	local board = Objectives.new()
-	-- Which keypad each player has actually walked up to. This used to be a local
-	-- in the CLIENT and the server took its word for the station id on every
-	-- submit. See systems/Station.
+	-- Which keypad each player has actually walked up to, kept on the server so
+	-- no submit takes the client's word for its station id. See systems/Station.
 	local desk = Station.new()
 	-- THE SUPERVISOR (GAME.md #4). Watches who has NOT spoken, which is the one
-	-- thing the Operator cannot see. Until this existed, four silent players won
-	-- 20 rounds in 600 simulated seconds with zero captures and the Operator
-	-- never leaving its post: saying nothing was not merely safe, it won more
-	-- than talking did, and a group on a voice call outside Roblox played an
-	-- unopposed fetch quest. It decides WHO; the dispatch below decides what.
+	-- thing the Operator cannot see. Without it, saying nothing is not merely
+	-- safe, it wins more than talking does, and a group on a voice call outside
+	-- Roblox plays an unopposed fetch quest (see systems/Supervisor).
+	-- It decides WHO; the dispatch below decides what.
 	local supervisor = Supervisor.new()
 	-- Who the Operator has taken. Being connected costs you the ability to ACT;
 	-- it does not cost you your voice. See systems/Connected.
 	local line = Connected.new()
 	-- Whether a round is being played. See systems/Lifecycle.
 	local round = Lifecycle.new()
-	-- The way out, opened when the last line is restored (R138). See systems/Escape.
+	-- The way out, opened when the last line is restored (DECISIONS D6). See systems/Escape.
 	local escape = Escape.new()
 
 	for _, station in Round.STATIONS do
@@ -108,7 +106,7 @@ function Exchange.build(host: Host): Flow
 		return board:liveCodes()
 	end)
 
-	-- R137: with a room off the corridor, the Operator turns at the junction.
+	-- With a room off the corridor, the Operator turns at the junction (DECISIONS D5).
 	local pursuit = Pursuit.new(built.rooms, built.operatorStart, Layout.route)
 	local function pushObjectives(player: Player?)
 		if player then
@@ -135,8 +133,8 @@ function Exchange.build(host: Host): Flow
 
 	-- The phrases on the Lexicon panel are words players typed, so each one goes
 	-- through Roblox's text filter, for the player who typed it, before any client
-	-- sees it (R139, COACH.md C2; PLATFORM.md). A phrase that cannot be filtered is
-	-- left off the panel (Censor); the failure is reported, never hidden.
+	-- sees it (PLATFORM.md). A phrase that cannot be filtered is left off the
+	-- panel (Censor, DECISIONS D8); the failure is reported, never hidden.
 	local function filterForEveryone(text: string, authorId: number): string?
 		local ok, result = pcall(function(): string
 			return TextService:FilterStringAsync(text, authorId):GetNonChatStringForBroadcastAsync()
@@ -184,23 +182,23 @@ function Exchange.build(host: Host): Flow
 	-- Has the group lost? Two ways, and they mean the same thing.
 	--
 	-- Everyone taken is the obvious one. The other is that nobody LEFT can finish
-	-- anything: R23 made the Operator take everyone in a room at once, so three of
-	-- four caught in one arrival strands a line with its reader, and the survivor
+	-- anything: the Operator takes everyone in a room at once, so three of four
+	-- caught in one arrival can strand a line with its reader, and the survivor
 	-- can then neither win nor be forced to lose.
 	--
-	-- ASKED ON THE TICK, not only when the Operator arrives. R48 put this check in
-	-- the capture path alone, and the R49 soak measured what that costs: 134 ticks
-	-- — about half a minute — of a stranded round still running after the Operator
-	-- had walked away, because nothing looked again until it came back.
+	-- ASKED ON THE TICK, not only when the Operator arrives. Checked on capture
+	-- alone, a stranded round keeps running after the Operator walks away --
+	-- about half a minute in the soak -- because nothing looks again until it
+	-- comes back.
 	--
 	-- The `line:count() > 0` clause is what keeps a solo server from losing
 	-- instantly and looping: a board nobody can finish with NOBODY connected is the
-	-- dealing problem, which is the owner's filed solo question, not a round that
-	-- play has stranded.
+	-- dealing problem, which is the owner's parked solo-play question (OWNER.md),
+	-- not a round that play has stranded.
 	--
-	-- R108: the rule itself lives in `Lifecycle.nobodyCanWin`, where the headless
-	-- suite can RUN it. Here it could only be grepped, and a mutation sweep of this
-	-- file flipped every clause of the game's loss condition without one failure.
+	-- The rule itself lives in `Lifecycle.nobodyCanWin`, where the headless suite
+	-- RUNS it: a check that only reads this file's text cannot catch a flipped
+	-- clause of the game's loss condition.
 	local function endTheRoundIfNobodyCanWin(present: { number }): boolean
 		return Lifecycle.nobodyCanWin(present, board, line)
 	end
@@ -208,11 +206,10 @@ function Exchange.build(host: Host): Flow
 	-- The round is over: finish it, say so, tell every panel and stop the
 	-- Operator. Nothing is said twice: a round already over is left alone. A win
 	-- says `completed`, not `taken`: `taken` is what it says when the MONSTER
-	-- arrives, and firing the same string for winning made the two opposite events
-	-- render as one sentence on the client. It STOPS either way: until R29 winning
-	-- left the Operator hunting, so a group could finish and then be taken by a
-	-- monster that had no idea the round was over, and a loss that left it
-	-- travelling kept the hum going over a finished round.
+	-- arrives, and the same string for winning would render the two opposite
+	-- events as one sentence on the client. It STOPS either way: a round that is
+	-- over must not leave it hunting, where a group that finished could still be
+	-- taken, or travelling, where the hum goes on over a finished round.
 	local function endTheRound(outcome: Lifecycle.Outcome)
 		if not round:finish(outcome, clock()) then
 			return
@@ -225,18 +222,18 @@ function Exchange.build(host: Host): Flow
 	local function takeWhoeverIsHere()
 		-- The ROOM it arrived in, not a circle around it. See Connected.reachedInRoom:
 		-- a circle big enough to cover the square also covers 9.94 studs of corridor
-		-- outside every wall, so running out of the door did not save you.
-		-- R112: connect-and-forget lives in Connected.takeInRoom (RUN by the
-		-- suite, and called by the soak); only the telling is left here.
+		-- outside every wall, so running out of the door would not save you.
+		-- Connect-and-forget lives in Connected.takeInRoom (RUN by the suite, and
+		-- called by the soak); only the telling is left here.
 		local caught, newly = line:takeInRoom(pursuit.position, livePositions(), Layout.halfRoom(), clock(), supervisor)
 		for _, userId in newly do
-			-- A caught player cannot act -- Objectives.submit refuses anyone
-			-- isConnected -- and nothing in this round releases them again, so
-			-- there is no more silence left to punish. Without this the
-			-- Supervisor kept chasing them anyway: measured, roughly HALF of
-			-- every dispatch and every audible "putting you through" went to a
-			-- player who could not possibly benefit from the visit, taken
-			-- directly from whoever the mechanic still has a reason to reach.
+			-- Each newly caught player is told, and takeInRoom has already made
+			-- the Supervisor forget them. A caught player cannot act -- Station.gate
+			-- refuses anyone on the line -- and nothing in this round releases
+			-- them again, so there is no more silence left to punish. Chasing them
+			-- would spend roughly HALF of every dispatch and every audible
+			-- "putting you through" on a player who cannot benefit from the visit,
+			-- taken directly from whoever the mechanic still has a reason to reach.
 			local victim = Players:GetPlayerByUserId(userId)
 			if victim then
 				heardRemote:FireClient(victim, Round.LINES.onTheLine, "", 1)
@@ -251,16 +248,16 @@ function Exchange.build(host: Host): Flow
 			pushObjectives(nil)
 		end
 
-		-- The loss. R16 wrote `allTaken` and never called it, so the round could be
-		-- WON but never LOST: the Operator could take every player and the game
-		-- would sit there, the board still open, nothing said. Checked against who
-		-- is actually present, so a player leaving cannot strand the round.
+		-- The loss. Without it the round could be WON but never LOST: the Operator
+		-- could take every player and the game would sit there, the board still
+		-- open, nothing said. Checked against who is actually present, so a player
+		-- leaving cannot strand the round.
 		if endTheRoundIfNobodyCanWin(presentUserIds()) then
 			endTheRound("lost")
 		end
 	end
 
-	-- R144: where the Operator is, to every Your Line panel (`Round.holding`).
+	-- Where the Operator is, to every Your Line panel (`Round.holding`).
 	-- Asked every beat and sent when it changes, not from `onStateChanged`: a new
 	-- destination at the same state (the outside call's `sendNow`) and `sendHome`
 	-- from a room (arrived to arrived) change no state and fire nothing.
@@ -295,9 +292,9 @@ function Exchange.build(host: Host): Flow
 	-- overdue players would queue three rooms behind each other and the last would
 	-- arrive a minute after the silence that caused it.
 	local function putThroughTheSilentLine()
-		-- R110: the dispatch lives in Supervisor.putThrough, where the suite RUNS
-		-- it and the soak calls the same function. All that is left here is the
-		-- one thing the module cannot do: say the line.
+		-- The dispatch lives in Supervisor.putThrough, where the suite RUNS it and
+		-- the soak calls the same function. All that is left here is the one
+		-- thing the module cannot do: say the line.
 		local called, announce = supervisor:putThrough(pursuit, built.rooms, Config.Rooms, livePositions(), clock())
 		if called and announce then
 			heardRemote:FireAllClients(Round.LINES.traced, "", 1)
@@ -305,28 +302,25 @@ function Exchange.build(host: Host): Flow
 	end
 
 	-- Nearly out of time, privately, so the player can still do something about it.
-	-- Separate from the call itself for the reason R10 and R13 each had to unpick:
-	-- two different events must not arrive as one sentence.
-	-- The last band each player was TOLD, so the push happens on change rather than
-	-- four times a second. R11's lesson: an event that should announce itself once
-	-- announcing itself continuously is its own bug, and this one would also
-	-- replicate to every client on every tick.
+	-- Separate from the call itself: two different events must not arrive as one
+	-- sentence. Pushed when a player's band changes rather than four times a
+	-- second: an event that should announce itself once must not announce itself
+	-- continuously, and this one would also replicate to every client on every
+	-- tick.
 	local function showEveryoneTheirClock()
 		local now = clock()
 		for _, player in Players:GetPlayers() do
-			-- R115: "on change" is remembered by the Supervisor, which forgets it on
+			-- "On change" is remembered by the Supervisor, which forgets it on
 			-- reset and on leave by construction.
 			local band, quiet = supervisor:bandNews(player.UserId, now)
 			if band then
-				-- Band, how full the bar is, and the words. The client is told the
-				-- PRESSURE rather than the seconds, so the dial can move without the
-				-- client knowing it exists -- `Silence.pressure` was written for
-				-- exactly this and had no reader until now.
 				-- Band, how full the bar is, the words, and HOW LONG IS LEFT. The
-				-- last one is what lets the client fill the bar between pushes
-				-- without knowing `SpeakEvery` -- pressure and seconds-left
-				-- together give the rate. Without it the bar showed three
-				-- positions in a countdown and stood still for 29.5s of 45.
+				-- client is told the PRESSURE rather than the seconds, so the dial
+				-- can move without the client knowing it exists. Seconds-left is
+				-- what lets the client fill the bar between pushes without knowing
+				-- `SpeakEvery` -- pressure and seconds-left together give the rate.
+				-- Without it the bar would show three positions in a countdown and
+				-- stand still for most of it.
 				silenceRemote:FireClient(
 					player,
 					band,
@@ -338,7 +332,7 @@ function Exchange.build(host: Host): Flow
 		end
 	end
 
-	-- Rate limiting: Station.tryPace (R116).
+	-- Rate limiting: Station.tryPace.
 
 	operator.onUnderstood = Guard.wrap(
 		"server.onUnderstood",
@@ -352,15 +346,15 @@ function Exchange.build(host: Host): Flow
 		end
 	)
 
-	-- R147: a word the group uses as a number is understood. Said to everyone,
-	-- and the wall shows the word under "counts as a number".
+	-- A word the group uses as a number is understood (DECISIONS D11). Said to
+	-- everyone, and the wall shows the word under "counts as a number".
 	operator.onCounted = Guard.wrap("server.onCounted", function(key: string, value: number)
 		print(`[operator] counts '{key}' as {value}`)
 		heardRemote:FireAllClients(Round.LINES.counted, "", 1)
 		broadcastLexicon()
 	end)
 
-	-- R148: the group's letters are understood.
+	-- The group's letters are understood (DECISIONS D12).
 	operator.onLettered = Guard.wrap("server.onLettered", function()
 		print("[operator] reads the group's letters")
 		heardRemote:FireAllClients(Round.LINES.lettered, "", 1)
@@ -385,27 +379,27 @@ function Exchange.build(host: Host): Flow
 	board.onSolved = Guard.wrap("server.onSolved", function(objective, _actor: number)
 		print(`[objective] {objective.id} restored`)
 		operator:credit(objective.concept, clock())
-		-- R147: and whatever was said that works out as the code just entered.
+		-- And whatever was said that works out as the code just entered.
 		operator:creditCode(objective.answer, clock(), objective.holder)
 		pushObjectives(nil)
 		broadcastLexicon()
-		-- R138: the last line opens the way out rather than winning. The outside
-		-- call rings, and once it has the Operator comes for the lobby; see
-		-- `workTheWayOut`, which the tick asks.
+		-- The last line opens the way out rather than winning (DECISIONS D6). The
+		-- outside call rings, and once it has the Operator comes for the lobby;
+		-- see `workTheWayOut`, which the tick asks.
 		if board:allSolved() and escape:open(clock()) then
 			heardRemote:FireAllClients(Round.LINES.ringing, "", 1)
 		end
 	end)
 
 	-- Everything a player says is evidence, heard on the server through ChatFeed
-	-- (`Player.Chatted`). Until R139 this was `TextChatService.OnIncomingMessage`,
-	-- a callback Roblox runs only on the client, so on a live server nothing
-	-- reached either listener (COACH.md C1).
+	-- (`Player.Chatted`). Not `TextChatService.OnIncomingMessage`: Roblox runs
+	-- that callback only on the client, so on a live server nothing would reach
+	-- either listener (PLATFORM.md).
 	local function hearChat(player: Player, text: string)
-		-- It is only listening while a round is being played. R29 gated CAPTURE on
-		-- this and nothing else, so during the intermission a plain giveaway still
-		-- made the Operator announce itself and walk audibly toward a room it could
-		-- take nobody in -- and then `beginRound` teleported it home mid-walk.
+		-- It is only listening while a round is being played. Gating capture alone
+		-- is not enough: during the intermission a plain giveaway would still make
+		-- the Operator announce itself and walk audibly toward a room it can take
+		-- nobody in -- and then `beginRound` teleports it home mid-walk.
 		-- The whole game rests on the hum meaning something; a hum that sometimes
 		-- means nothing is worse than no hum. Gating the FEED also keeps lobby
 		-- chatter out of the observation buffer.
@@ -433,7 +427,7 @@ function Exchange.build(host: Host): Flow
 	local function openStation(player: Player, station: Round.Station)
 		-- Record it FIRST. This is the server's own copy of which station this
 		-- player reached, and `submit` is gated on it -- the client's
-		-- `openStation` is now a view, not the authority.
+		-- `openStation` is a view, not the authority.
 		desk:open(player.UserId, station.id)
 		-- The client needs to know WHICH keypad it opened, or it submits every
 		-- answer against the switchboard.
@@ -442,7 +436,7 @@ function Exchange.build(host: Host): Flow
 
 	local function submit(player: Player, id: unknown, value: unknown)
 		-- Never trust the client.
-		-- R109: types and lengths, in Shared.Keypad where the suite runs them.
+		-- Types and lengths, in Shared.Keypad where the suite runs them.
 		if not Keypad.validSubmission(id, value) then
 			return
 		end
@@ -453,17 +447,17 @@ function Exchange.build(host: Host): Flow
 		end
 
 		-- You must have reached that station. Checked here rather than inside
-		-- `submit` because it is about the player's body, not about the line: a
-		-- station id the client made up now fails on the same private channel as a
+		-- `board:submit` because it is about the player's body, not about the line:
+		-- a station id the client made up fails on the same private channel as a
 		-- wrong code, and never touches `misses`, so a probe cannot cost the honest
 		-- actor a jam.
-		-- A finished round takes no more answers. R29 gated capture on the phase and
-		-- R32 gated listening; this is the last place that takes player input, and
-		-- without it a player types the number they were told into a keypad the game
-		-- still draws and it vanishes into a round that is over.
-		-- R114: the gates -- round over, on the line, not at the station, a keypad
-		-- never opened -- live in Station.gate, in that order, where the suite runs
-		-- them. Only the telling is left here.
+		-- A finished round takes no more answers. Capture and listening are gated
+		-- on the phase too; this is the last place that takes player input, and
+		-- without it a player types the number they were told into a keypad the
+		-- game still draws and it vanishes into a round that is over.
+		-- The gates -- round over, on the line, not at the station, a keypad never
+		-- opened -- live in Station.gate, in that order, where the suite runs them.
+		-- Only the telling is left here.
 		local refused = desk:gate(
 			player.UserId,
 			id :: string,
@@ -490,9 +484,9 @@ function Exchange.build(host: Host): Flow
 			-- THE VOICE IS GATED ON `fault`, the keypad note is not. Two players at
 			-- one keypad both enter the number they were told and the loser of the
 			-- frame lands on `already restored` -- a refusal that is nobody's doing.
-			-- Firing `busy` for it meant the Operator said "That line is busy." to a
-			-- player for typing the RIGHT answer, in the same breath as it told
-			-- everyone the call had been completed. Two contradictory lines, one
+			-- Firing `busy` for it would have the Operator say "That line is busy."
+			-- to a player for typing the RIGHT answer, in the same breath as it tells
+			-- everyone the call has been completed: two contradictory lines, one
 			-- tick apart, and only ever with two players. The station-tagged note
 			-- still goes, because "already restored" is information; the accusation
 			-- does not.
@@ -554,11 +548,11 @@ function Exchange.build(host: Host): Flow
 		end
 	end
 
-	-- THE WAY OUT (R138). Asked on the tick, AFTER capture and the loss, like
-	-- them: one beat of `Escape.step`, the rule the soak and the bots also run.
-	-- It sends the Operator for the lobby once the call has rung, and says when the
-	-- round is settled -- won when everyone still free is in the lobby, or at the
-	-- escape's time limit.
+	-- THE WAY OUT (DECISIONS D6, D7). Asked on the tick, AFTER capture and the
+	-- loss, like them: one beat of `Escape.step`, the rule the soak and the bots
+	-- also run. It sends the Operator for the lobby once the call has rung, and
+	-- says when the round is settled -- won when everyone still free is in the
+	-- lobby, or at the escape's time limit.
 	local function workTheWayOut()
 		if not (round:isPlaying() and escape:isOpen()) then
 			return
@@ -569,18 +563,6 @@ function Exchange.build(host: Host): Flow
 		end
 	end
 
-	-- The server's clock. Two jobs at two rates.
-	--
-	-- CAPTURE runs every tick, because until R24 it ran ONCE — from
-	-- `pursuit.onStateChanged` on the transition to `arrived`, and `setState`
-	-- returns early when the state has not changed. The Operator took whoever
-	-- happened to be in the room at that single instant and then stood there
-	-- permanently harmless: a player could walk in beside it and stay for a minute
-	-- untouched. Occupancy is a continuous fact, so it has to be asked continuously.
-	--
-	-- FORGETTING is not on this clock any more. R131: heat cools once per round, in
-	-- `beginRound`, so how long a codeword lasts is counted in rounds and does not
-	-- depend on how fast the group plays.
 	-- Begin the next round. The LEXICON deliberately survives: a group's shared
 	-- vocabulary carrying between rounds is the retention mechanic GAME.md is built
 	-- on, and resetting it would make every round a first round with strangers.
@@ -593,15 +575,15 @@ function Exchange.build(host: Host): Flow
 		-- that list from the source rather than trusting this comment.
 		desk:clear()
 		operator:forgetObservations()
-		-- R131: the Operator forgets a little, once per round. The Lexicon goes out
+		-- The Operator forgets a little, once per round. The Lexicon goes out
 		-- to everyone at the end of this function either way.
 		operator:coolRound(Config.CoolPerRound)
-		-- R138: the way out shuts again until the new board is done.
+		-- The way out shuts again until the new board is done.
 		escape:reset()
-		-- Every clock starts again. R31: a player quiet through the eight-second
+		-- Every clock starts again: a player quiet through the eight-second
 		-- intermission must not be called in the first seconds of the round.
 		supervisor:reset(clock())
-		-- (R115: `supervisor:reset` above also clears what each panel was last told.)
+		-- (`supervisor:reset` above also clears what each panel was last told.)
 
 		local userIds: { number } = {}
 		for _, p in Players:GetPlayers() do
@@ -612,8 +594,9 @@ function Exchange.build(host: Host): Flow
 		board:deal(userIds)
 
 		-- Back to its post, not merely stopped. `stop()` leaves it standing wherever
-		-- the last round ended, so round two began with it inside a room and the
-		-- next understanding of that room arrived instantly and silently.
+		-- the last round ended, so the next round would begin with it inside a room
+		-- and the next understanding of that room would arrive instantly and
+		-- silently.
 		pursuit:sendHome(built.operatorStart)
 		heardRemote:FireAllClients(Round.LINES.greeting, "", 0)
 		pushPhase(nil)
@@ -624,6 +607,17 @@ function Exchange.build(host: Host): Flow
 
 	-- One beat of the server's clock: capture, the restart, the loss, the silent
 	-- line, the way out, a queued room, the linger, the panels.
+	--
+	-- CAPTURE runs every beat, not only on the transition to `arrived`:
+	-- `setState` returns early when the state has not changed, so a capture
+	-- fired from `pursuit.onStateChanged` alone takes whoever is in the room at
+	-- that single instant, and then the Operator stands there harmless while a
+	-- player walks in beside it. Occupancy is a continuous fact, so it has to be
+	-- asked continuously.
+	--
+	-- FORGETTING is not on this clock: heat cools once per round, in
+	-- `beginRound`, so how long a codeword lasts is counted in rounds and does
+	-- not depend on how fast the group plays.
 	local function beat()
 		-- A finished round is not a hunting ground. Without this the Operator
 		-- keeps taking people during the intermission, after the line that told
@@ -636,18 +630,15 @@ function Exchange.build(host: Host): Flow
 			beginRound()
 		end
 
-		-- ...but not forever. Nothing except the loss ever released it before
-		-- R25, so a single plain word parked it on an objective for the rest of
-		-- the round and nobody could ever finish that station.
 		-- Losing is checked every beat, not only when the Operator arrives: a
-		-- round stranded by a capture stayed live until it came back.
+		-- round stranded by a capture would stay live until it came back.
 		if round:isPlaying() and endTheRoundIfNobodyCanWin(presentUserIds()) then
 			endTheRound("lost")
 		end
 
 		-- Silence, which is the one thing the Operator cannot hear. Asked every
 		-- beat for the same reason capture is: it is a continuous fact, not an
-		-- event, and R24 is the round that learned what asking once costs.
+		-- event.
 		if round:isPlaying() then
 			showEveryoneTheirClock()
 			putThroughTheSilentLine()
@@ -657,14 +648,18 @@ function Exchange.build(host: Host): Flow
 
 		-- A room it heard about while it was busy. Taken up only once it is idle
 		-- again, so it finishes one call before answering the next -- see
-		-- Pursuit.sendTo, and the livelock that made commitment necessary.
+		-- Pursuit.sendTo, and the livelock that commitment prevents.
 		pursuit:takePending()
 
+		-- It lingers in a room, but not forever: if only the loss released it, a
+		-- single plain word would park it on an objective for the rest of the
+		-- round and nobody could ever finish that station.
 		if pursuit:shouldLeave(Config.LingerSeconds) then
 			-- It WALKS out, audibly, rather than switching off where it stands.
-			-- `stop()` released the room in silence with the body motionless, so
-			-- nothing told players it was safe -- and a monster whose rule cannot
-			-- be learned reads as unfair. It also says so, in its own register.
+			-- `stop()` would release the room in silence with the body motionless,
+			-- so nothing would tell players it was safe -- and a monster whose
+			-- rule cannot be learned reads as unfair. It also says so, in its own
+			-- register.
 			pursuit:withdrawTo(built.operatorStart)
 			heardRemote:FireAllClients(Round.LINES.givingUp, "", 0)
 		end

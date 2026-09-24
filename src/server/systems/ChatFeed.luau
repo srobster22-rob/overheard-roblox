@@ -1,13 +1,13 @@
 --!strict
--- WHAT PLAYERS TYPE, HEARD ON THE SERVER (R139, COACH.md C1).
+-- WHAT PLAYERS TYPE, HEARD ON THE SERVER.
 --
--- Everything the Operator and the Supervisor hear comes through here. Until
--- R139 the server set `TextChatService.OnIncomingMessage`, a callback Roblox
--- only ever runs on the CLIENT (PLATFORM.md has the doc line). On a live
--- server it never fired: no plain word brought the Operator, no codeword was
--- learned, and every player counted as silent, so the Supervisor sent it after
--- them whatever they typed. The suite called that hook by hand, so it never
--- noticed.
+-- Everything the Operator and the Supervisor hear comes through here. Not
+-- `TextChatService.OnIncomingMessage`: Roblox only ever runs that callback on
+-- the CLIENT (PLATFORM.md has the doc line). Set on the server it never fires,
+-- so no plain word brings the Operator, no codeword is learned, and every
+-- player counts as silent, whatever they type. The headless suite cannot tell
+-- which side a callback runs on; tests/wiring.luau checks every such API
+-- against PLATFORM.md instead.
 --
 -- `Player.Chatted` fires on the server for text chat. One connection per
 -- player, made when they join and dropped when they leave (CLAUDE.md: every

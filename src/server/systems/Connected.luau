@@ -74,21 +74,18 @@ local function distance(a: Point, b: Point): number
 	return math.sqrt(dx * dx + dz * dz)
 end
 
--- Who the Operator takes when it arrives: everyone inside `reach`, and nobody
--- who is already connected.
+-- Who the Operator takes when it arrives in a ROOM: everyone inside that room's
+-- walls, and nobody who is already connected.
 --
 -- It takes EVERYONE in reach rather than one victim. Taking a single player
 -- would make standing together safe-ish and reward huddling, and huddling is
 -- the opposite of a game about having to transmit facts across a building.
--- Who the Operator takes when it arrives in a ROOM: everyone inside that room's
--- walls, and nobody who is already connected.
 --
--- This is the shape the promise actually names. R21 satisfied "being anywhere in
--- that room should not be survivable" with the smallest CIRCLE containing the
--- square, which spills 9.94 studs past every wall — 157% of the room's floor
--- area — so a player 29 studs from the centre was outside the room, in the
--- corridor, and still taken. R22 had just given the rooms doors; this made
--- using one pointless. Hearing the silence, running, and getting out now works.
+-- The room's square, not a circle: the promise is that being anywhere in that
+-- room is not survivable, and nothing more. The smallest circle containing the
+-- square spills 9.94 studs past every wall -- 157% of the room's floor area --
+-- which takes players out in the corridor and makes the doors pointless.
+-- Hearing the silence, running, and getting out through a door must work.
 --
 -- `half` is passed rather than read from Layout so this module stays free of
 -- everything except arithmetic, the way the rest of it is.
@@ -135,11 +132,11 @@ end
 -- The Operator takes the room it arrived in: everyone inside is put on the
 -- line, and a player put on the line is FORGOTTEN by the Supervisor -- a caught
 -- player cannot act, so there is no silence left to punish, and chasing them
--- took about half of every dispatch (R54). Returns everyone reached and, of
+-- would waste about half of every dispatch. Returns everyone reached and, of
 -- those, who was newly connected (the ones the server tells).
 --
--- R112 moved this out of init.server. tests/soak.luau ran a copy of it "as the
--- server runs it", and the copy had drifted: it connected but never forgot.
+-- One function that the server and the tests both run: a test that keeps its
+-- own copy of the server's steps drifts from them and still passes.
 function Connected.takeInRoom(
 	self: Line,
 	centre: Point,

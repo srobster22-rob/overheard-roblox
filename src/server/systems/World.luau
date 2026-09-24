@@ -17,10 +17,9 @@ local Round = require(script.Parent.Round)
 
 local World = {}
 
--- Dimensions live in Shared.Layout so they can be swept headlessly and so the
--- Operator's reach can be DERIVED from the room rather than restated. This file
--- needs Roblox instances to load, which is what put those numbers out of reach
--- of every test until R21.
+-- Dimensions live in Shared.Layout so they can be swept headlessly and so
+-- everything that follows from them is DERIVED rather than restated. This file
+-- needs Roblox instances to load, so no test can reach a number kept here.
 local FLOOR_Y = Layout.Floor
 local ROOM = Layout.Room
 local SEPARATION = Layout.Separation
@@ -86,8 +85,8 @@ local function room(name: string, origin: Vector3, openOn: string, parent: Insta
 	part("Ceiling", Vector3.new(ROOM, 1, ROOM), CFrame.new(origin + Vector3.new(0, WALL_H, 0)), CEILING, model)
 
 	-- Built from Layout.walls so the geometry a player walks through is the same
-	-- geometry tests/layout.luau sweeps. Until R22 this was four full-span walls
-	-- with no gap, and both work rooms were sealed boxes nobody could enter.
+	-- geometry tests/layout.luau sweeps, doorway included. Walls built here by
+	-- hand could seal a room and no test would see it.
 	for i, wall in Layout.walls({ x = origin.X, z = origin.Z }, openOn) do
 		wallPart(`Wall{i}`, wall, ROOM_WALL, model)
 	end
@@ -120,9 +119,9 @@ local function station(name: string, label: string, position: Vector3, parent: I
 	prompt.ActionText = label
 	prompt.ObjectText = name
 	prompt.HoldDuration = 0.2
-	-- DERIVED, not typed. This was a bare 10 while Config claimed StationReach
-	-- was "slightly wider than the prompt's own activation distance" -- a
-	-- promise about a number in another file with nothing between them.
+	-- DERIVED, not typed. `Config.StationReach` must stay wider than this, and a
+	-- literal here would be a promise about a number in another file with
+	-- nothing between them. tests/layout.luau checks that World reads the dial.
 	prompt.MaxActivationDistance = Config.PromptReach
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = p
@@ -167,11 +166,10 @@ function World.build(): Built
 	folder.Name = "Exchange"
 	folder.Parent = Workspace
 
-	-- The rooms, far apart. You cannot see one from another.
-	-- R105: from Layout, the same centres every headless capture and walk test
-	-- uses. This file computed them itself, so a drift here would have passed
-	-- the whole suite -- nothing in it runs outside Studio. R137: from the one
-	-- registry, `Layout.rooms()`.
+	-- The rooms, far apart. You cannot see one from another. Their centres come
+	-- from the one registry, `Layout.rooms()`, the same centres every headless
+	-- capture and walk test uses: nothing in this file runs outside Studio, so
+	-- a centre computed here could drift and still pass the whole suite.
 	local layoutRooms = Layout.rooms()
 	for name, centre in layoutRooms do
 		local modelName = ROOM_MODELS[name]
@@ -184,8 +182,8 @@ function World.build(): Built
 	-- A corridor so the corridor-end rooms are connected but the walk is long
 	-- enough to make shouting the answer feel like the wrong idea.
 	-- Width DERIVED from the doorway: a corridor narrower than the door it
-	-- serves leaves part of every approach unfloored. It was 8 against a 12-stud
-	-- door until R28, and it is the only floor for the span between the rooms.
+	-- serves leaves part of every approach unfloored, and this is the only floor
+	-- for the span between the rooms.
 	part(
 		"Corridor",
 		Vector3.new(SEPARATION, 1, Layout.corridorWidth()),
@@ -201,8 +199,8 @@ function World.build(): Built
 		wallPart(`CorridorWall{i}`, wall, HALL_WALL, folder)
 	end
 
-	-- R137: the passage from the corridor's midpoint up to the lobby door. Floor
-	-- and walls both from Layout, where tests/layout.luau checks them.
+	-- The passage from the corridor's midpoint up to the lobby door. Floor and
+	-- walls both from Layout, where tests/layout.luau checks them.
 	floorPart("Passage", Layout.passageFloor(), HALL_FLOOR, folder)
 	for i, wall in Layout.passageWalls() do
 		wallPart(`PassageWall{i}`, wall, HALL_WALL, folder)
@@ -210,15 +208,16 @@ function World.build(): Built
 
 	-- The reader is not an objective station, so it keeps its literal label
 	-- (tests/wiring reads it). Labels are shown over each station, so none may
-	-- name a secret (R126: the owner ruled "Directory", "Switchboard" and
-	-- "Breaker" gave theirs away).
+	-- name a secret: the owner's rule (OWNER.md). A label like "Switchboard" or
+	-- "Breaker" gives its station's words away.
 	local readerAt = placeAt("reader")
 	local readerPrompt = station("Card Index", "Read", readerAt, folder)
 
 	-- Every objective station, from Round.STATIONS (the label and verb) and
-	-- Layout.stationPoint (where it stands). R106: no literal offsets here. The
-	-- breaker sits in the records room, opposite the board, so the group cannot
-	-- camp one room; R137's latch is in the lobby, a third direction.
+	-- Layout.stationPoint (where it stands), with no literal offsets here
+	-- (DECISIONS D5). The breaker sits in the records room, opposite the board,
+	-- so the group cannot camp one room; the latch is in the lobby, a third
+	-- direction.
 	local stationPrompts: { [string]: ProximityPrompt } = {}
 	local stationAt: { [string]: { x: number, z: number } } = {}
 	for _, s in Round.STATIONS do
@@ -237,18 +236,15 @@ function World.build(): Built
 
 	-- Payload name -> room centre. `Config.Rooms` is the CONTRACT this must
 	-- satisfy: it is the list `tests/round.luau` validates every secret payload
-	-- against. The two used to be kept in step by a comment sitting exactly
-	-- here, which is not a mechanism — a name declared in Config with no
-	-- position here makes `Pursuit.sendTo` refuse the move, so the Operator
-	-- simply never comes and nothing anywhere errors. Checked in both
-	-- directions, loudly, because a silent monster reads as a dead game.
-	-- (R6 had to write "the config" in these messages instead of naming the
-	-- dial, because the guard could not tell a string from a read and the
-	-- message would have certified it. R7's scanner can, so they say it.)
+	-- against. A comment is not a mechanism for keeping the two in step: a name
+	-- declared in Config with no position here makes `Pursuit.sendTo` refuse
+	-- the move, so the Operator simply never comes and nothing anywhere errors.
+	-- Checked in both directions, loudly, because a silent monster reads as a
+	-- dead game.
 	local rooms: { [string]: { x: number, z: number } } = layoutRooms
 
-	-- R104: the comparison lives in Layout so the headless suite can run it;
-	-- nothing in this file can run outside Studio.
+	-- The comparison lives in Layout so the headless suite can run it; nothing
+	-- in this file can run outside Studio.
 	local mismatch = Layout.roomMismatch(rooms, Config.Rooms)
 	if mismatch then
 		error(mismatch)
@@ -258,12 +254,12 @@ function World.build(): Built
 		readerPrompt = readerPrompt,
 		stations = stationPrompts,
 		stationAt = stationAt,
-		-- R107: Layout.spawn, where every route test starts walking from.
+		-- Layout.spawn, where every route test starts walking from.
 		spawn = Vector3.new(Layout.spawn().x, FLOOR_Y + 4, Layout.spawn().z),
 		rooms = rooms,
 		-- Out in the corridor, far enough from every room that each approach
-		-- begins outside the silence radius. Standing 20 studs from the board
-		-- room's centre meant it reached that room silently every time.
+		-- begins outside the silence radius. A start inside a room's silence
+		-- radius would reach that room silently every time.
 		operatorStart = Layout.operatorPost(),
 	}
 end

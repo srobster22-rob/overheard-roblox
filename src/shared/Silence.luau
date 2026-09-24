@@ -1,17 +1,17 @@
 --!strict
 -- What a player's SILENCE means, in one place.
 --
--- The Operator hunts by meaning, so until now the optimal way to play was to
--- say nothing at all. Measured over 600 simulated seconds with four players:
+-- The Operator hunts by meaning, so without this rule the optimal way to play
+-- is to say nothing at all. Simulated with four players for 600 seconds:
 --
 --   a group that talks    16 rounds won, 96 captures, the Operator active for
 --                         2120 of 2400 ticks
---   a group that is silent  20 rounds won, 0 captures, the Operator NEVER LEFT
+--   a group that is silent  20 rounds won, 0 captures, the Operator NEVER LEAVES
 --                           ITS POST
 --
--- Silence was not merely safer, it won MORE rounds and the monster was never
--- switched on. Two people on a voice call outside the game could pass every
--- answer and play an unopposed fetch quest. `GAME.md` has the answer in the
+-- Without it, silence is not merely safer: it wins MORE rounds and the monster
+-- is never switched on. Two people on a voice call outside the game could pass
+-- every answer and play an unopposed fetch quest. `GAME.md` has the answer in the
 -- roster: entity #4, the Supervisor, "punishes silence -- you must keep
 -- talking. Inverts everything: babble continuously, convey nothing."
 --
@@ -78,17 +78,16 @@ end
 -- How full the bar is NOW, given what the last push said and how long ago it
 -- arrived.
 --
--- R56 pushed the clock on band change rather than per tick -- 4 replications in
--- 600 ticks instead of 1,200, which is the right call. But the bar was drawn
--- from the pressure sent at that instant, so it showed three positions in a
--- whole countdown and sat perfectly still for 29.5 of the 45 seconds. A bar that
--- does not move for two-thirds of the wait says nothing about time passing, and
--- the first thing it says is that you are already out of time.
+-- The server pushes the clock on band change rather than per tick -- 4
+-- replications in 600 ticks instead of 1,200. A bar drawn only from the
+-- pressure sent at that instant would show three positions in a whole
+-- countdown and sit perfectly still for 29.5 of the 45 seconds. A bar that
+-- does not move for two-thirds of the wait says nothing about time passing,
+-- and the first thing it says is that you are already out of time.
 --
 -- The client can fill in the gap itself without knowing a single dial: the push
 -- carries how full the bar is and how many seconds are left, and those two give
--- the rate. That keeps the thresholds here, beside the numbers they come from,
--- which is what the client's own comment already claimed.
+-- the rate. That keeps the thresholds here, beside the numbers they come from.
 --
 -- `secondsLeft <= 0` holds at full rather than dividing by it: the deadline has
 -- passed, and there is no "more than overdue".

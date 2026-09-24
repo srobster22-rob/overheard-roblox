@@ -2,16 +2,14 @@
 -- The Lexicon's SAVE FORMAT, built and proved before any `DataStoreService`
 -- call exists.
 --
--- R6 on the EXPANSION AXIS backlog is "the Lexicon persists across sessions,
--- per group" — the retention mechanic `GAME.md`'s escalation section is
--- written around. It has two separable problems, and only one of them belongs
--- in this file: WHAT COUNTS AS A GROUP that persists is a design decision with
--- real cost trade-offs (private servers? a shared code? Roblox's friends
--- graph?) and is filed for the owner, not guessed at here — the same reason
--- R59's corridor question and R62's loss-rate number were filed rather than
--- decided. WHETHER THE SAVED DATA ROUND-TRIPS HONESTLY needs no such decision
--- and is pure data, so it is built and tested headlessly first, the same
--- order this project used for `Hum.smooth` (R65) and `Silence` (R56): prove
+-- A Lexicon that persists across sessions, per group, is the retention
+-- mechanic `GAME.md`'s escalation section is written around. It has two
+-- separable problems, and only one of them belongs in this file: WHAT COUNTS
+-- AS A GROUP that persists is a design decision with real cost trade-offs
+-- (private servers? a shared code? Roblox's friends graph?) and is an open
+-- question for the owner (OWNER.md), not guessed at here. WHETHER THE SAVED
+-- DATA ROUND-TRIPS HONESTLY needs no such decision and is pure data, so it is
+-- built and tested headlessly first, as `Hum.smooth` and `Silence` are: prove
 -- the arithmetic where a test can reach it, then wire the Roblox-only part
 -- thin.
 --
@@ -29,10 +27,9 @@ local LexiconSave = {}
 -- players back the WRONG words for the wrong concepts.
 LexiconSave.VERSION = 1
 
--- A generous backstop, not a design number. (Re-measured for R131: about 43 at the high-water mark in a simulated
--- session, up to ~170 for a very chatty group.) R46 measured a session's Lexicon
--- settling at roughly 10 coinages because heat decay prunes dead ones long
--- before this would ever bind — this exists only so a bug that stops pruning
+-- A generous backstop, not a design number. A simulated session's Lexicon
+-- peaks at about 43 coinages, and ~170 for a very chatty group, because
+-- cooling prunes the dead ones. This exists only so a bug that stops pruning
 -- cannot also grow the saved payload without limit.
 LexiconSave.MAX_SAVED = 200
 
@@ -52,10 +49,10 @@ export type SaveData = {
 -- Coinages in -> a plain, DataStore-safe table out.
 --
 -- Cold coinages (heat <= 0) are dropped rather than saved: they carry nothing
--- the group has not already fully forgotten, and R14 built the same rule for
--- the live Lexicon panel ("a phrase that cools all the way to zero is now
--- dropped") for the identical reason. Saving them anyway would mean every
--- session's save grows even though nothing meaningful survived it.
+-- the group has not already fully forgotten, which is also why the live
+-- Lexicon panel drops a phrase that cools all the way to zero. Saving them
+-- anyway would mean every session's save grows even though nothing
+-- meaningful survived it.
 --
 -- Sorted by heat, strongest first, so if `MAX_SAVED` ever actually binds it is
 -- the WEAKEST coinages that are dropped, not an arbitrary prefix of whatever

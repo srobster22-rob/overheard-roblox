@@ -1,13 +1,9 @@
 --!strict
 -- Where the HUD panels go, as arithmetic.
 --
--- Until R34 each panel carried a hand-picked mix of scale and offset and
--- nothing checked the result. Computed against the live values, they collided:
--- five overlapping pairs at 800x480 and at 640x360, six at 480x270 — the
--- Lexicon and Your Line both buried under the centre panels, and on the
--- narrowest screens under each other. Roblox skews heavily mobile, so that is a
--- large share of players reading the Lexicon through a box sitting on top of
--- it, and the Lexicon is the instrument the game asks them to read.
+-- Panels placed by eye collide on small screens, and Roblox skews heavily
+-- mobile: a box sitting on top of the Lexicon hides the instrument the game
+-- asks players to read.
 --
 -- The rects live here, pure, so `tests/hud.luau` can sweep every viewport
 -- instead of somebody opening Studio at one window size and calling it fine.
@@ -38,8 +34,8 @@ export type Panel = {
 export type Rect = { left: number, top: number, right: number, bottom: number }
 
 -- Top row heights drive everything below them, so they are named once.
--- R137: tall enough for two held lines (about 103 px of rows, plus the 40 the
--- title takes); the list scrolls past that, since 200 px collides with the
+-- LINE_H is tall enough for two held lines (about 103 px of rows, plus the 40
+-- the title takes); the list scrolls past that, since 200 px collides with the
 -- centre panels at the smallest supported screen (tests/hud.luau).
 local LINE_H = 160
 local LEX_H = 140
@@ -69,8 +65,8 @@ local PANELS: { Panel } = {
 		anchorY = 0,
 	},
 	-- Centre column, pinned to OFFSETS below the top row rather than to a
-	-- fraction of the height. A scale-based y is what put these on top of the
-	-- top row the moment the window got short.
+	-- fraction of the height. A scale-based y puts these on top of the top row
+	-- the moment the window gets short.
 	{
 		name = "On the line",
 		width = 300,
@@ -100,10 +96,9 @@ local PANELS: { Panel } = {
 	-- typing at a keypad, and the keypad owns the centre.
 	{
 		name = "Supervisor",
-		-- 150, not the 220 this started at. At MinWidth the centre column runs
-		-- 180..460, so a bottom-left panel has 164 of gutter and 220 reached
-		-- into the keypad. R34's sweep caught it; the number is derived from the
-		-- gutter, not chosen.
+		-- Derived from the gutter, not chosen. At MinWidth the centre column
+		-- runs 180..460, so a bottom-left panel has 164 of gutter, and anything
+		-- wider reaches into the keypad.
 		width = 150,
 		height = 52,
 		scaleX = 0,
@@ -169,11 +164,10 @@ local EXCLUSIVE: { { string } } = {
 
 -- The exclusions, readable. Every entry here is a PROMISE ABOUT THE CLIENT --
 -- "these two are never on screen together" -- sitting in a module the client
--- does not have to obey. R56 added one and used it to justify where the
--- Supervisor's clock sits, and the client then showed that panel on every push
--- and never hid it again, so the pair it swore could not overlap did overlap at
--- MinWidth. `tests/wiring.luau` sweeps this list against the client for a hide
--- path, so the next promise added cannot be taken on trust either.
+-- does not have to obey. A client that shows one of a pair and never hides it
+-- breaks the promise, and the pair overlaps at MinWidth. `tests/wiring.luau`
+-- sweeps this list against the client for a hide path, so no promise added
+-- here is taken on trust.
 function Hud.exclusions(): { { string } }
 	return EXCLUSIVE
 end

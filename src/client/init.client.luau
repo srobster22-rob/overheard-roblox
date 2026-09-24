@@ -46,16 +46,14 @@ local BRASS = Color3.fromRGB(198, 176, 124)
 local DIM = Color3.fromRGB(110, 106, 100)
 local PANEL_BG = Color3.fromRGB(14, 13, 12)
 
--- Placed from Shared.Hud, never from numbers typed here. Every panel used to
--- carry its own hand-picked mix of scale and offset, and nothing checked the
--- result: five overlapping pairs at 800x480, six at 480x270, with the Lexicon
--- buried under the centre panels on exactly the screens most players use.
--- `tests/hud.luau` sweeps every viewport; it can only do that if this reads
--- from the same table.
+-- Placed from Shared.Hud, never from numbers typed here. A hand-picked mix of
+-- scale and offset per panel overlaps on small screens, which are exactly the
+-- screens most players use. `tests/hud.luau` sweeps every viewport; it can
+-- only do that if this reads from the same table.
 local function panel(name: string): Frame
 	local spec = Hud.get(name)
-	-- R90: "named" now reads as "name" (a directory word), and the
-	-- wiring leak scan counts every client template -- so not "named".
+	-- "called", not "named": "named" reads as "name" (a directory word), and
+	-- the wiring leak scan counts every client template.
 	assert(spec, `no Hud panel called '{name}'`)
 
 	local frame = Instance.new("Frame")
@@ -103,8 +101,8 @@ end
 
 -- A list of rows under a panel's title that scrolls once it outgrows the
 -- panel, so a long list is never cut off. The Lexicon shows every understood
--- word however many there are (R143); Your Line did not overflow until three
--- stations (R137) let one player hold three.
+-- word however many there are, and with three stations one player can hold
+-- three lines.
 local function scrollingList(parent: Instance, padding: number): ScrollingFrame
 	local list = Instance.new("ScrollingFrame")
 	list.Position = UDim2.fromOffset(8, 32)
@@ -129,9 +127,9 @@ local lexPanel = panel("Lexicon")
 local lexList = scrollingList(lexPanel, 2)
 
 -- The breakpoint is DERIVED from the threshold the Operator actually uses, not
--- restated here. It used to be a hard-coded 0.5 reaching red at 1.0, so a
--- coinage at 60% — already being understood — looked mid-amber with headroom
--- left. See Shared.Heat.
+-- restated here. A number restated here can drift from it, and then a coinage
+-- already being understood would look mid-amber with headroom left. See
+-- Shared.Heat.
 local AMBER = Color3.fromRGB(226, 176, 82)
 local RED = Color3.fromRGB(206, 62, 52)
 
@@ -143,7 +141,7 @@ local function heatColor(heat: number): Color3
 	return INK:Lerp(AMBER, Heat.safeProgress(heat))
 end
 
--- R143: the wall's two kinds of row. A word is coloured by its heat; a header,
+-- The wall's two kinds of row. A word is coloured by its heat; a header,
 -- which names where the words under it lead, in brass.
 local LEX_ROW_STYLE: { [string]: { size: number, color: Color3? } } = {
 	header = { size = 11, color = BRASS },
@@ -160,11 +158,10 @@ local function renderLexicon(entries: { any })
 		label(lexList, "no coinages yet", 11, DIM)
 		return
 	end
-	-- R119: the rows (order, percent, "understood") are Readout.lexiconRows,
-	-- run by tests/readout; only the drawing is left here.
-	-- R143: a header row names where the words under it lead. A row too long
-	-- for the panel wraps onto a second line of its own instead of into the
-	-- next row.
+	-- The rows (order, percent, "understood") are Readout.lexiconRows, run by
+	-- tests/readout; only the drawing is here. A header row names where the
+	-- words under it lead. A row too long for the panel wraps onto a second
+	-- line of its own instead of into the next row.
 	for i, entry in Readout.lexiconRows(entries) do
 		local style = LEX_ROW_STYLE[entry.kind] or LEX_ROW_STYLE.word
 		local row = label(lexList, entry.text, style.size, style.color or heatColor(entry.heat :: number))
@@ -175,11 +172,10 @@ end
 
 -- THE SUPERVISOR'S CLOCK ------------------------------------------------------
 --
--- R54 built a monster that takes you on a timer. R55 measured its real
--- dispatches going from 20 to 74 once it stopped announcing calls it never
--- placed. Nothing on screen said the timer existed: the only signal was one
--- sentence 15 seconds before, sent down the OPERATOR's voice channel, so the
--- Supervisor's warning arrived as the thing that hunts meaning talking to you.
+-- The Supervisor puts a call through on a player who stays quiet too long, and
+-- the Operator answers it. That clock gets its own panel: a warning line in the
+-- Operator's voice would sound like the thing that hunts meaning talking to
+-- you, not like a clock.
 --
 -- `CLAUDE.md`: the monster must be legible, or the scare reads as unfair. A
 -- monster on a clock you cannot see is what that rule is about.
@@ -231,10 +227,10 @@ local BAND_COLOUR: { [string]: Color3 } = {
 -- What the last push said, and when it arrived. The bar is filled in between
 -- pushes from these three numbers.
 --
--- The server speaks only when the BAND changes -- 4 times in 600 ticks -- so
--- drawing only what it says gave three bar positions in a whole countdown, still
--- for 29.5 of the 45 seconds. The arithmetic lives in `Shared.Silence` so this
--- file still decides nothing: it holds what it was told and the clock.
+-- The server speaks only when the BAND changes, so drawing only what it says
+-- would give three bar positions in a whole countdown, standing still for most
+-- of it. The arithmetic lives in `Shared.Silence` so this file still decides
+-- nothing: it holds what it was told and the clock.
 local lastPressure = 0
 local lastSecondsLeft = 0
 local lastPushAt = os.clock()
@@ -271,13 +267,13 @@ local ROW_STYLE: { [string]: { size: number, color: Color3 } } = {
 	note = { size = 10, color = DIM },
 	count = { size = 11, color = BRASS },
 	empty = { size = 11, color = DIM },
-	-- R138: every line is restored; the way out is open. Loud on purpose.
+	-- Every line is restored; the way out is open. Loud on purpose.
 	escape = { size = 13, color = BRASS },
-	-- R144: where the Operator is waiting.
+	-- Where the Operator is waiting.
 	holding = { size = 11, color = AMBER },
 }
 
--- R144: where the Operator is waiting (the server's `Holding`), and the board
+-- Where the Operator is waiting (the server's `Holding`), and the board
 -- last drawn, so a change of either redraws the panel with both.
 local holding: any = nil
 local shownEntries: { any } = {}
@@ -290,10 +286,9 @@ local function renderObjectives(entries: { any })
 		end
 	end
 
-	-- Rows arrive already ordered from Shared.Readout. This used to build them
-	-- from two number series -- `i` for a line and `i + 100` for its note --
-	-- which put every note below every line once a player held two of them, so
-	-- "only you can see this" sat under a line it was not about.
+	-- Rows arrive already ordered from Shared.Readout, and are drawn in that
+	-- order: a note must sit under its own line, or "only you can see this"
+	-- makes a claim about a line it is not about.
 	for index, row in Readout.lineRows(entries, holding) do
 		local style = ROW_STYLE[row.kind] or ROW_STYLE.note
 		label(lineList, row.text, style.size, style.color).LayoutOrder = index
@@ -343,7 +338,7 @@ input.FocusLost:Connect(Guard.wrap("client.keypadInput", function(enterPressed: 
 		return
 	end
 	local value = input.Text
-	-- R120: Keypad.sends, run by the suite.
+	-- The rule is Keypad.sends, run by the suite.
 	if not Keypad.sends(value, openStation) then
 		closeBoard()
 		return
@@ -359,10 +354,9 @@ local function onOpenBoard(stationId: string, actionText: string?)
 	if title then
 		title.Text = string.upper(actionText or "keypad")
 	end
-	-- No plain language, and no raw station id. This read "enter the NUMBER you
-	-- were told for the {stationId}", which conveyed `jack_number` at every
-	-- station including the breaker -- a concept that keypad is not about, in
-	-- front of the player working it. The id is the giveaway word too; the
+	-- No plain language, and no raw station id. "number" would convey
+	-- `jack_number` at every station, including ones whose keypad is not about
+	-- it, in front of the player working it. The id is a giveaway word too; the
 	-- title above already says which keypad this is, in the station's own verb.
 	hint.Text = "enter what you were told"
 	local _ = stationId
@@ -388,27 +382,24 @@ connectedRemote.OnClientEvent:Connect(Guard.wrap("client.connected", function(ca
 	onLine.Visible = caught == true
 	if caught then
 		closeBoard()
-		-- R70. The server stops watching a caught player's silence the instant
-		-- they are connected (Supervisor.forget, see R67), so Supervisor.band
-		-- returns nil for them from that tick on and showEveryoneTheirClock
-		-- simply stops sending them anything -- it never tells THIS client the
-		-- clock is gone. Without this the panel kept showing whatever band was
-		-- last pushed, which could be the red "SILENT LINE - TRACED" state, for
-		-- the rest of the round: a stale alarm about something that can no
-		-- longer happen to you. CLAUDE.md: the monster must be legible.
+		-- The server stops watching a caught player's silence the instant they
+		-- are connected (Supervisor.forget), so Supervisor.band returns nil for
+		-- them from that tick on and showEveryoneTheirClock simply stops sending
+		-- them anything -- it never tells THIS client the clock is gone. Without
+		-- this the panel would keep showing whatever band was last pushed, which
+		-- could be the red "SILENT LINE - TRACED" state, for the rest of the
+		-- round: a stale alarm about something that can no longer happen to you.
+		-- CLAUDE.md: the monster must be legible.
 		silencePanel.Visible = false
 	end
 end))
 
 -- BETWEEN ROUNDS -------------------------------------------------------------
 --
--- The client had no idea a round could end until R33. The win or loss was one
--- sentence that faded after 2.5 seconds; the keypad stayed open and
--- usable-looking; "restored 1/1" sat there and then silently became
--- "restored 0/1" when the next round began, with nothing saying why.
---
 -- This panel is PERSISTENT for the whole intermission on purpose: an outcome
--- you can miss by looking away is not an outcome.
+-- you can miss by looking away is not an outcome. The Operator's line fades
+-- after 2.5 seconds, and the restored count silently drops to zero when the
+-- next round begins; this panel says what happened and what comes next.
 
 local overPanel = panel("Round over")
 overPanel.Visible = false
@@ -422,16 +413,16 @@ overNext.Position = UDim2.fromOffset(8, 56)
 overNext.Size = UDim2.new(1, -16, 0, 28)
 
 local OUTCOME_TEXT = {
-	-- R138: winning means getting out. There are two ways (Escape.step): everyone
+	-- Winning means getting out. There are two ways (Escape.step): everyone
 	-- still free in the lobby, or anyone free in it at the time limit, and the
-	-- server sends only "won", so this must be true of both -- as R118 made the
-	-- loss text true of both losses. tests/wiring.luau holds it to that.
+	-- server sends only "won", so this must be true of both (tests/wiring.luau
+	-- holds it to that).
 	won = "Every line restored. Someone reached the lobby in time.",
-	-- R118: true of BOTH losses. Since R48 a round is also lost when nobody
-	-- still free can finish, with players not on the line, and "Everyone was
-	-- put on the line" told them something false. The server sends only
-	-- "lost", so this must not claim which kind. Kept free of secret words so
-	-- the displayed-text leak scan needs no exemption for it.
+	-- True of BOTH losses: everyone taken, or nobody still free able to finish
+	-- while some players are not on the line (Lifecycle.nobodyCanWin), so it
+	-- may not claim everyone was taken. The server sends only "lost", so this
+	-- must not claim which kind. Kept free of secret words so the
+	-- displayed-text leak scan needs no exemption for it.
 	lost = "Nobody left free could finish it.",
 }
 
@@ -443,18 +434,16 @@ local function onPhase(state: { playing: boolean, outcome: string?, number: numb
 
 	-- The Supervisor's clock stops with the round, so its panel goes with it.
 	--
-	-- `Hud.exclusions()` says these two are never on screen together, and R56 used
-	-- that claim to justify where the clock sits: at MinWidth `Round over` spans
-	-- x 160..480 and the clock spans x 16..166, and they share the bottom of the
-	-- window. The claim was true of the SERVER (the Supervisor only runs while
-	-- the round is played) and false of this file, which showed the panel on
-	-- every push and never hid it again. An exclusion is a promise the client
-	-- has to keep; `tests/wiring.luau` now checks that every pair on that list
-	-- has one.
+	-- `Hud.exclusions()` says these two are never on screen together, and the
+	-- layout counts on it: at MinWidth `Round over` spans x 160..480 and the
+	-- clock spans x 16..166, and they share the bottom of the window. The
+	-- server stops the Supervisor with the round, but only this line hides its
+	-- panel. An exclusion is a promise the client has to keep;
+	-- `tests/wiring.luau` checks that every pair on that list has one.
 	silencePanel.Visible = false
 
 	overPanel.Visible = true
-	-- R123: title, win/loss and the next-round line are Readout.roundOver.
+	-- Title, win/loss and the next-round line are Readout.roundOver.
 	local over = Readout.roundOver(state.outcome, state.number)
 	local title = overPanel:FindFirstChild("Title") :: TextLabel?
 	if title then
@@ -483,10 +472,9 @@ said.TextTransparency = 1
 said.Text = ""
 said.Parent = gui
 
--- The Operator's voice, and ONLY the voice. This handler used to also write the
--- keypad's error line from its detail field, which is broadcast: one player
--- speaking painted a red `jack_number` into another player's keypad, in the
--- slot that says "that line is jammed". Keypad feedback arrives on `Rejected`.
+-- The Operator's voice, and ONLY the voice. `Heard` is broadcast, so writing
+-- keypad errors from it would let one player speaking paint a red error into
+-- another player's keypad. Keypad feedback arrives on `Rejected`, privately.
 local function onHeard(line: string)
 	said.Text = line
 	said.TextTransparency = 0
@@ -504,9 +492,8 @@ heardRemote.OnClientEvent:Connect(Guard.wrap("client.heard", onHeard))
 local function onObjectives(entries: { any })
 	renderObjectives(entries)
 	-- A solved station closes its own keypad rather than leaving a stale one
-	-- open. Only the station actually in front of the player, now that there
-	-- is more than one.
-	-- R120: Keypad.closesOn, run by the suite.
+	-- open. Only the station actually in front of the player: there is more
+	-- than one. The rule is Keypad.closesOn, run by the suite.
 	if Keypad.closesOn(openStation, entries) then
 		closeBoard()
 	end

@@ -23,30 +23,27 @@ local lexiconRemote = Remotes.get("LexiconUpdated")
 local objectivesRemote = Remotes.get("Objectives")
 local submitRemote = Remotes.get("Submit")
 local openBoardRemote = Remotes.get("OpenBoard")
--- The SUPERVISOR's own channel. Its warning used to go out on `heardRemote`,
--- which is the Operator's voice, so the only signal it gave arrived as the
--- thing that hunts meaning talking to you. R10, R13 and R51 were each spent
--- proving two events must not arrive as one signal; this is the fourth.
+-- The SUPERVISOR's own channel, apart from `heardRemote`, which is the
+-- Operator's voice: two different events must not arrive as one signal, or its
+-- warning reads as the thing that hunts meaning talking to you.
 -- Fired at one client only: how long everybody else has been quiet is not
 -- yours to see.
 local silenceRemote = Remotes.get("Silence")
 -- Keypad feedback. Separate from `heardRemote` on purpose: `Heard` is the
--- Operator's voice and goes to everyone, and while the keypad read its detail
--- field, a broadcast about one player's speech landed in another player's
--- error line. FireClient only, and it names its station. See Shared.Keypad.
+-- Operator's voice and goes to everyone, so a keypad reading it would show one
+-- player's speech in another player's error line. FireClient only, and it
+-- names its station. See Shared.Keypad.
 local rejectedRemote = Remotes.get("Rejected")
 local connectedRemote = Remotes.get("Connected")
--- Whether a round is being played, and how the last one ended. The client had
--- no idea a round could END until R33.
+-- Whether a round is being played, and how the last one ended.
 local phaseRemote = Remotes.get("Phase")
 local holdingRemote = Remotes.get("Holding")
 
 local built = World.build()
 
--- `built.spawn` was computed by World and read by nobody for twenty-one
--- rounds, so players landed wherever Roblox decided rather than in the
--- corridor between the rooms. Placed here rather than in World because it
--- is a game-flow decision, not geometry.
+-- Players spawn at `built.spawn`, the corridor between the rooms; without this
+-- pad they land wherever Roblox decides. Placed here rather than in World
+-- because it is a game-flow decision, not geometry.
 local spawnPad = Instance.new("SpawnLocation")
 spawnPad.Name = "Exchange"
 spawnPad.Anchored = true

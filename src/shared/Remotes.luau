@@ -9,14 +9,12 @@ local RunService = game:GetService("RunService")
 -- error. `tests/wiring.luau` sweeps every `Remotes.get("...")` in the source
 -- against this table in both directions.
 --
--- `Silence` is the SUPERVISOR's channel, and separate for the same reason.
--- Its warning used to go out on `Heard`, which is the Operator's voice, so
--- the only signal the Supervisor gave arrived as the thing that hunts meaning
--- talking to you. R10 split the keypad off `Heard`, R13 split two refusals
--- that meant opposite things, R51 split the hum coming from the hum going --
--- three rounds proving two events must not arrive as one signal. It carries
--- the player's own clock, so it is fired at ONE client, never broadcast: how
--- long everyone else has been quiet is not yours to see.
+-- `Silence` is the SUPERVISOR's channel, separate from `Heard`, which is the
+-- Operator's voice: a Supervisor warning sent on `Heard` would arrive as the
+-- thing that hunts meaning talking to you. Two events must never arrive as
+-- one signal. It carries the player's own clock, so it is fired at ONE
+-- client, never broadcast: how long everyone else has been quiet is not yours
+-- to see.
 --
 -- `Objectives`, `OpenBoard`, `Rejected` and `Connected` are private for the
 -- same reason `Silence` is, and the most serious of the four: `Objectives`
@@ -27,15 +25,15 @@ local RunService = game:GetService("RunService")
 -- held answer to every player in the server. `tests/wiring.luau` guards all
 -- four against ever being broadcast.
 --
--- `Holding` (R144) is where the Operator is waiting, or nil while it walks. It
--- is broadcast on purpose: the room it holds is the one thing every player
--- needs, and a player walking in beside it was the loss nobody could read.
+-- `Holding` is where the Operator is waiting, or nil while it walks. It is
+-- broadcast on purpose: the room it holds is the one thing every player needs,
+-- and without it a player walking in beside it is a loss nobody can read.
 --
 -- `Rejected` is deliberately separate from `Heard`. `Heard` is the Operator's
 -- voice and is broadcast; `Rejected` is why YOUR submit at THAT station failed
--- and is only ever fired at one client. They were the same remote until R10,
--- which meant one player speaking painted another player's keypad with a red
--- concept id. See `Shared.Keypad`.
+-- and is only ever fired at one client. On one shared remote, one player
+-- speaking would paint another player's keypad with a red concept id. See
+-- `Shared.Keypad`.
 local REMOTE_NAMES = {
 	"Heard",
 	"LexiconUpdated",

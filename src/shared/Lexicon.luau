@@ -113,12 +113,11 @@ end
 -- A letter held for three or more characters ("jackkk", "exiiit") collapses to
 -- one. Real spellings never repeat a letter three times, so this cannot damage
 -- an ordinary word; a genuine double stretched out ("doooor") collapses to
--- "dor" and is still missed, which is no worse than before.
+-- "dor" and is missed, as it would be without this.
 --
 -- Walked by hand rather than done with a pattern: Lua applies quantifiers only
 -- to single character classes, never to a back-reference, so "(%a)%1%1+" reads
--- its "+" as a literal plus sign and matched nothing. The first version of
--- this function was exactly that, and the probe caught it at 0 of 5.
+-- its "+" as a literal plus sign and matches nothing.
 local function unstretch(word: string): string
 	local out: { string } = {}
 	local i = 1
@@ -139,26 +138,25 @@ local function unstretch(word: string): string
 	return table.concat(out)
 end
 
--- R83. RESPELLINGS ARE NOT SHARED CONTEXT. Tokens are split on anything
--- outside [%a%d'], so "j.a.c.k", "j-a-c-k" and "j a c k" all arrived as four
--- one-letter tokens, and "j4ck" as a token matching nothing. Measured against
--- the real Heuristic: 0 of 30 respelled giveaways understood, across every
--- secret in the pool. GAME.md is explicit that what defeats the Operator is
--- "shared context it was never present for" -- a stranger spacing a word out
--- on their first round is not that, and once one player finds it the whole
--- mechanic is optional.
+-- RESPELLINGS ARE NOT SHARED CONTEXT. Tokens are split on anything outside
+-- [%a%d'], so without the joining below "j.a.c.k", "j-a-c-k" and "j a c k"
+-- arrive as four one-letter tokens, and "j4ck" as a token matching nothing.
+-- GAME.md is explicit that what defeats the Operator is "shared context it
+-- was never present for" -- a stranger spacing a word out on their first
+-- round is not that, and once one player finds it the whole mechanic is
+-- optional.
 --
 -- Normalised HERE, in the one function every reader goes through, so plain
 -- matching, coinages and novel terms all see the same word.
 --
 -- `splitCodes` gives a SECOND reading, in which a code glued to a word is two
--- tokens ("door48", "48door", "x47"): as one token the word in it matched
+-- tokens ("door48", "48door", "x47"): as one token the word in it matches
 -- nothing, so a station could be named unheard by leaving out the space. It
 -- is not the only reading, because "ex17" is "exit" respelled, not "ex" and
--- 17: split alone, it cost the respelling rule above 18 of 56 plain words.
+-- 17: split alone, it costs the respelling rule above 18 of 56 plain words.
 function Lexicon.tokenize(text: string, splitCodes: boolean?): { string }
-	-- R84. `@` and `$` stand in for `a` and `s` ("j@ck", "bre$k"), but the
-	-- token class below treats them as separators, so "j@ck" arrived as "j" and
+	-- `@` and `$` stand in for `a` and `s` ("j@ck", "bre$k"), but the token
+	-- class below treats them as separators, so "j@ck" would arrive as "j" and
 	-- "ck". Rewritten only where they touch a letter, so "@bob" or "$5" are not
 	-- turned into words.
 	local lowered = string.lower(text)
@@ -201,10 +199,10 @@ function Lexicon.tokenize(text: string, splitCodes: boolean?): { string }
 		-- A run of three or more single letters is one word spelled out. Two
 		-- is left alone: "u r" and "i a" are ordinary chat, not a spelling.
 		--
-		-- R84: a run may include a single LEET digit ("j 4 c k"), which R83's
-		-- letters-only run broke on. It must still hold at least two real
-		-- letters, so an answer spelled out digit by digit ("4 2") is never
-		-- joined and never un-leeted.
+		-- A run may include LEET digits ("j 4 c k"), so a respelling does not
+		-- break it. It must still hold at least two real letters, so an answer
+		-- spelled out digit by digit ("4 2") is never joined and never
+		-- un-leeted.
 		local j = i
 		local letters = 0
 		while j <= #raw and (string.match(raw[j], "^%a$") or LEET[raw[j]] ~= nil) do
@@ -230,27 +228,25 @@ end
 -- A STOPWORD IS RETURNED UNCHANGED, and that guard belongs here rather than at
 -- the call sites. `Heuristic.understand` gates novel terms with
 -- `isStopword(stem)`, not `isStopword(word)`, so any stopword that stems into a
--- non-stopword walks straight through the gate. Two of the 67 did:
--- `this -> thi` and `guys -> guy`, both long enough to clear the `#s > 2`
--- filter. Five utterances of "guys the wire is over here" plus one credit burnt
--- `guy` and `guy the` to heat 1.00, after which "hey guys" gave the group away
--- at confidence 1.00 — the monster moving on a phrase nobody coined, with
--- nothing in the panel to explain why. It also silently disabled the
--- both-words-are-stopwords bigram rejection, since `guy` then read as
+-- non-stopword walks straight through the gate. Unguarded, `this -> thi` and
+-- `guys -> guy` are both long enough to clear the `#s > 2` filter: "guys the
+-- wire is over here" burns `guy`, and then "hey guys" moves the monster on a
+-- phrase nobody coined, with nothing in the panel to explain why. It also
+-- defeats the both-words-are-stopwords bigram rejection, since `guy` reads as
 -- contentful.
 --
--- Guarding inside `stem` protects every consumer at once instead of the one
--- that happened to be caught, and keeps the promise the stopword table above
--- makes: if "the" could burn, every phrase would burn.
+-- Guarding inside `stem` protects every consumer at once, and keeps the
+-- promise the stopword table above makes: if "the" could burn, every phrase
+-- would burn.
 function Lexicon.stem(word: string): string
 	if STOPWORDS[word] then
 		return word
 	end
 	for _, suffix in { "ing", "ers", "er", "es", "s" } do
 		-- A word ending in "ss" is not a plural: "fuss", "boss", "address".
-		-- Stripping its last s made "fuss" and "fuses" the same stem, and made
-		-- "address" disagree with "addresses". R85 found both measuring
-		-- paraphrase: "don't make a fuss" moved the Operator to the breaker.
+		-- Stripping its last s would make "fuss" and "fuses" the same stem (so
+		-- "don't make a fuss" would send the Operator to the breaker), and make
+		-- "address" disagree with "addresses".
 		if suffix == "s" and string.sub(word, -2) == "ss" then
 			continue
 		end
@@ -264,25 +260,22 @@ end
 -- Every reasonable reading of an already-stemmed word, for SINGLE-word
 -- matching only.
 --
--- R85, and R17's filed "stemming pair" item 2. `stem` strips one suffix, and
--- English does not say which one: `fuses` is `fuse`+s or `fus`+es, exactly as
--- `buses` is `bus`+es. The current order gives `fuses -> fus` against
--- `fuse -> fuse`, so every plain word ending in e was free to say in the plural
--- or with -ing: "the fuses", "the names", "leaving now", "escaping". R17 filed
--- it because any SINGLE rule is wrong one way (try `s` before `es` and `boxes`
--- and `buses` break instead).
+-- `stem` strips one suffix, and English does not say which one: `fuses` is
+-- `fuse`+s or `fus`+es, exactly as `buses` is `bus`+es. The suffix order gives
+-- `fuses -> fus` against `fuse -> fuse`, so on the stem alone every plain word
+-- ending in e is free to say in the plural or with -ing: "the fuses", "the
+-- names", "leaving now", "escaping". Any SINGLE rule is wrong one way (try `s`
+-- before `es` and `boxes` and `buses` break instead).
 --
--- It never needed a single rule. A match is accepted if ANY reading of the
--- word agrees with any reading of the term, so nothing that matched before can
--- stop matching; the cost is a wider net, measured in the tests rather than
+-- So there is no single rule. A match is accepted if ANY reading of the word
+-- agrees with any reading of the term, so a new reading can only add matches,
+-- never remove one; the cost is a wider net, measured in the tests rather than
 -- assumed. The readings: the stem itself, and the stem without a trailing `e`
 -- (`fuse`, `leave` -> `fus`, `leav`, meeting `fuses`, `leaving`).
 --
 -- And the stem stemmed once more, for chained suffixes: `numbering -> number`
 -- meets `number -> numb`, `powering -> power` meets `power -> pow`, `listings ->
--- listing` meets `listing -> list`. The first version of this round dropped
--- that reading while fixing the "ss" bug, took inflections from 70 of 70 to 59,
--- and was put back once the probe showed what it had been doing.
+-- listing` meets `listing -> list`. Without it those inflections stop matching.
 local function computeReadings(stemmed: string): { string }
 	local out = { stemmed }
 	if #stemmed > 3 and string.sub(stemmed, -1) == "e" then
@@ -292,7 +285,7 @@ local function computeReadings(stemmed: string): { string }
 	if again ~= stemmed then
 		table.insert(out, again)
 	end
-	-- R89: the "-ves" plurals. "leaves" stems to "leav", "knives" to "kniv";
+	-- The "-ves" plurals. "leaves" stems to "leav", "knives" to "kniv";
 	-- reading the v as f meets "leaf" and "knif" (knife). Only where English
 	-- actually does this -- after l (wolves, shelves, halves), after i (knives,
 	-- wives, lives), or after two vowels (leaves, loaves, thieves) -- because a
@@ -304,18 +297,18 @@ local function computeReadings(stemmed: string): { string }
 			table.insert(out, string.sub(stemmed, 1, -2) .. "f")
 		end
 	end
-	-- R90: past tense and doubled consonants. `stem` never strips -ed and
-	-- never undoes "running -> runn", so "stopped", "wired", "digging",
-	-- "hurried" and "batteries" were all different words from their roots (12
-	-- of 15 common pairs missed). Readings, not `stem`, because stems are what
-	-- LexiconSave stores: changing `stem` would orphan every saved coinage.
+	-- Past tense and doubled consonants. `stem` never strips -ed and never
+	-- undoes "running -> runn", so without these readings "stopped", "wired",
+	-- "digging", "hurried" and "batteries" are different words from their
+	-- roots. Readings, not `stem`, because stems are what LexiconSave stores:
+	-- changing `stem` would orphan every saved coinage.
 	local base = table.clone(out)
 	if #stemmed > 4 and string.sub(stemmed, -2) == "ed" then
 		table.insert(base, string.sub(stemmed, 1, -3)) -- stopped -> stopp, hurried -> hurri
 		table.insert(base, string.sub(stemmed, 1, -2)) -- wired -> wire
-		-- R92: and stem what is left, as the root itself was stemmed: "number"
-		-- stems to "numb" and "power" to "pow", so "numbered" and "powered"
-		-- missed the plain words they are.
+		-- And stem what is left, as the root itself was stemmed: "number" stems
+		-- to "numb" and "power" to "pow", so otherwise "numbered" and "powered"
+		-- miss the plain words they are.
 		table.insert(base, Lexicon.stem(string.sub(stemmed, 1, -3)))
 	end
 	for _, r in base do
@@ -336,12 +329,12 @@ local function computeReadings(stemmed: string): { string }
 	return out
 end
 
--- R95: readings are a pure function of the stem, and after R89-R92 they cost
--- enough that recomputing them made a worst-case chat line (200 characters, a
--- full 200-coinage lexicon) take 120.8 ms in Heuristic.conveyed, against 9.5
--- ms before R89 -- seven server frames of hitch every time someone talked.
--- Cached, frozen so no caller can corrupt a shared entry, and capped: chat
--- vocabulary is open-ended, so a long server would otherwise grow it forever.
+-- Readings are a pure function of the stem, and they cost enough that
+-- recomputing them makes a worst-case chat line (200 characters, a full
+-- 200-coinage lexicon) take about 120 ms in Heuristic.conveyed -- seven server
+-- frames of hitch every time someone talks. Cached, frozen so no caller can
+-- corrupt a shared entry, and capped: chat vocabulary is open-ended, so a long
+-- server would otherwise grow it forever.
 local READINGS_CAP = 4096
 local readingsCache: { [string]: { string } } = {}
 local readingsCached = 0
@@ -362,9 +355,9 @@ function Lexicon.readings(stemmed: string): { string }
 end
 
 -- Do two stems share any reading? The ONE definition of "the same word",
--- used by the matcher (Heuristic) and the learner (Operator) alike. R87: when
--- only the matcher knew it, a group alternating "blue wire" and "blue wires"
--- was understood as one phrase but learned as two, each half-heated.
+-- used by the matcher (Heuristic) and the learner (Operator) alike. If only
+-- the matcher used it, a group alternating "blue wire" and "blue wires" would
+-- be understood as one phrase but learned as two, each half-heated.
 function Lexicon.sameWord(a: string, b: string): boolean
 	if a == b then
 		return true
@@ -543,7 +536,8 @@ local function wholeNumber(word: string): number?
 	end
 	return nil
 end
--- R147: Numerals reads a group's number words with the same whole numbers.
+-- Numerals reads a group's number words with the same whole numbers
+-- (DECISIONS D11).
 Lexicon.wholeNumber = wholeNumber
 
 -- Every number one reading of a line holds, added to `found`.

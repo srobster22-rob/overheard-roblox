@@ -1,17 +1,16 @@
 --!strict
--- WHAT OTHER PLAYERS MAY READ (R139, COACH.md C2).
+-- WHAT OTHER PLAYERS MAY READ.
 --
 -- The Lexicon panel shows every client the phrases the Operator is learning,
 -- and those are words a PLAYER typed. Roblox requires text one user creates to
 -- pass its filter before any other user sees it: TextService:FilterStringAsync,
 -- then GetNonChatStringForBroadcastAsync for text everyone can see (Creator
--- Hub, "Text filtering"; PLATFORM.md). Until R139 the raw phrases went to
--- every client.
+-- Hub, "Text filtering"; PLATFORM.md).
 --
 -- Pure: the filter and the thread it runs on are passed in. The server passes
 -- TextService and task.spawn; the tests pass fakes. A phrase that could not be
 -- filtered -- the call failed, came back empty, or nobody is known to have
--- typed it -- is LEFT OUT of the panel, never shown raw.
+-- typed it -- is LEFT OUT of the panel, never shown raw (DECISIONS D8).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 

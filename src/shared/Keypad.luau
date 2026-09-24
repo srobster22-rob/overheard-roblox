@@ -2,20 +2,19 @@
 -- Who is allowed to write on the keypad.
 --
 -- THE BUG THIS MODULE EXISTS TO PREVENT. The keypad has one red line under the
--- input, and until R10 the only thing that wrote to it was the `Heard` remote —
--- which is the Operator's VOICE and is broadcast to everyone. The server
--- broadcasts `Heard` with a non-empty detail whenever it understands somebody
+-- input. `Heard` is the Operator's VOICE and is broadcast to everyone: the
+-- server sends it with a non-empty detail whenever it understands somebody
 -- (detail = the concept id), whenever a coinage burns (detail = the concept id)
--- and whenever the Operator arrives somewhere (detail = the room name). So a
--- player standing at the keypad saw `jack_number` in red, in the slot that
--- otherwise says "that line is jammed - wait 20s", because a DIFFERENT player
--- had spoken.
+-- and whenever the Operator arrives somewhere (detail = the room name). If
+-- `Heard` wrote to the keypad, a player standing there would see `jack_number`
+-- in red, in the slot that otherwise says "that line is jammed - wait 20s",
+-- because a DIFFERENT player had spoken.
 --
 -- That is invisible with one player: you cannot be typing at a keypad and be
 -- the one talking. With two it is the main path, because the entire loop of
 -- this game is one player talking while another stands at the keypad.
 --
--- So the two channels are now separate remotes, and the rule about which
+-- So the two channels are separate remotes, and the rule about which
 -- messages may touch the keypad lives HERE, as a pure function, rather than in
 -- an `if` inside the client where nothing headless can reach it:
 --
@@ -51,11 +50,10 @@ Keypad.MAX_VALUE = 8
 Keypad.MAX_ID = 32
 
 -- Is a Submit payload even worth looking at? Never trust the client: both must
--- be strings, and both bounded. R109 moved this out of init.server (where the
--- suite could only grep it, and a sweep flipped every clause unnoticed) and
--- bounded the id, which had NO cap: a client could send an id of any length,
--- and the server echoes the id straight back through FireClient and uses it as
--- a lookup key.
+-- be strings, and both bounded. The id needs its cap as much as the value:
+-- the server echoes it straight back through FireClient and uses it as a
+-- lookup key, so without one a client could send an id of any length. Kept
+-- here rather than in init.server, where the suite could only grep it.
 function Keypad.validSubmission(id: any, value: any): boolean
 	if typeof(id) ~= "string" or typeof(value) ~= "string" then
 		return false
@@ -65,7 +63,7 @@ end
 
 -- Does this push of the board close the keypad in front of the player? Only if
 -- THAT station was just solved -- with several stations, solving another must
--- not shut the keypad somebody is typing into. R120 moved this out of
+-- not shut the keypad somebody is typing into. Kept here rather than in
 -- init.client, where no test could run it.
 function Keypad.closesOn(openStation: string?, entries: { any }): boolean
 	if openStation == nil then

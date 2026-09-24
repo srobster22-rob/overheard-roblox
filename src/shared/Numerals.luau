@@ -1,12 +1,12 @@
 --!strict
--- WORDS A GROUP USES AS NUMBERS (R147).
+-- WORDS A GROUP USES AS NUMBERS (DECISIONS D11).
 --
--- PT4's three blind groups beat the listener by round 2 with a number SCHEME:
+-- A group can beat the listener within a round or two with a number SCHEME:
 -- "five dozen minus two", "sixty take away the usual", "three quarters". The
 -- Operator reads digits, number words and simple sums (Lexicon.numbersIn), but
--- a word only the group had given a value to was never a number to it. And the
+-- a word only the group has given a value to is no number to it. And the
 -- learner credits words toward STATIONS, where a scheme word used for every
--- station cancels out (R143).
+-- station cancels out (DECISIONS D10).
 --
 -- This module does the arithmetic and nothing else:
 --   * `explain` takes one line said before a code was entered, and the code,
@@ -382,13 +382,13 @@ function Numerals.read(text: string, known: { [string]: number }): { [string]: b
 	return found
 end
 
--- LETTERS (R148). PT4's veteran passed codes as letters ("bee ay" = 21) and as
--- radio words ("india alpha" = 91): one word per digit. Every spelling of a
--- letter is the same letter here, so a group that moves from "b a" to "bee
--- ay" to "bravo alpha" is still using the one alphabet the Operator learns
--- (Operator.creditCode). "see", "eye" and "oh" are how people spell C, I and
--- zero, so they count; letter names that are everyday words in any other way
--- ("you", "are", "be", "why", "tea") are left out.
+-- LETTERS (DECISIONS D12). A group can pass codes as letters ("bee ay" = 21)
+-- and as radio words ("india alpha" = 91): one word per digit. Every spelling
+-- of a letter is the same letter here, so a group that moves from "b a" to
+-- "bee ay" to "bravo alpha" is still using the one alphabet the Operator
+-- learns (Operator.creditCode). "see", "eye" and "oh" are how people spell C,
+-- I and zero, so they count; letter names that are everyday words in any
+-- other way ("you", "are", "be", "why", "tea") are left out.
 local LETTER_WORDS: { [string]: string } = {
 	ay = "a",
 	bee = "b",

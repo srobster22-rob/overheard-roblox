@@ -1,12 +1,10 @@
 --!strict
 -- Which station each player is physically standing at, ON THE SERVER.
 --
--- THE BUG THIS EXISTS TO CLOSE: this was client state. The world has one
--- ProximityPrompt per station -- a shared path -- and `prompt.Triggered` fired
--- `OpenBoard` at one player and then the server forgot. The only record of
--- which keypad a player had walked up to lived in `openStation`, a local in
--- `init.client.luau`, and `submitRemote` accepted whatever station id came
--- back. So the station you were acting at was decided by the client.
+-- The world has one ProximityPrompt per station -- a shared path -- and
+-- `prompt.Triggered` only fires `OpenBoard` at one player. Unless the server
+-- records which keypad each player walked up to, `Submit` has nothing to check
+-- the station id against, and the client decides where it is acting.
 --
 -- That matters beyond exploiting. `Round.luau`'s design rule is that the holder
 -- and the actor "are never in the same room -- that is what makes players
@@ -31,7 +29,7 @@ export type Desk = typeof(setmetatable(
 	{} :: {
 		-- userId -> the station id that player most recently reached.
 		at: { [number]: string },
-		-- userId -> when that player last submitted (R116; was init.server's lastSubmit).
+		-- userId -> when that player last submitted.
 		lastSubmit: { [number]: number },
 	},
 	Station
@@ -60,18 +58,16 @@ function Station.accepts(self: Desk, userId: number, stationId: string): boolean
 	return self.at[userId] == stationId
 end
 
--- Per-player state needs exactly one place that forgets it. `lastSubmit` was
--- cleaned on PlayerRemoving and `misses`/`jammedUntil` were not; adding a third
--- slot with no cleanup would repeat that in the round that names it.
 -- Forget where everyone is standing. Called when a new round begins: `desk` is
--- the server's own copy of which keypad each player walked up to, and it used
--- to survive the boundary — so a player who opened the breaker in round one
--- could submit to it from the corridor in round two, which is exactly the gate
--- R12 added to close.
+-- the server's own copy of which keypad each player walked up to, and if it
+-- survived the boundary, a player who opened the breaker in one round could
+-- submit to it from the corridor in the next.
 function Station.clear(self: Desk)
 	self.at = {}
 end
 
+-- Per-player state needs exactly one place that forgets it, and this is it:
+-- every slot this desk keeps for a player is cleared here when they leave.
 function Station.forget(self: Desk, userId: number)
 	self.at[userId] = nil
 	self.lastSubmit[userId] = nil
@@ -82,9 +78,8 @@ end
 -- fires (the prompts are proximity-gated by Roblox; chat is TextChatService).
 Station.SUBMIT_COOLDOWN = 0.75
 
--- May this player submit at all right now? Records the attempt if so. R116
--- moved this from init.server so `forget` (on leave) clears it by construction
--- and the suite can run it.
+-- May this player submit at all right now? Records the attempt if so. It lives
+-- on the desk so `forget` (on leave) clears it and the suite can run it.
 function Station.tryPace(self: Desk, userId: number, now: number): boolean
 	if now - (self.lastSubmit[userId] or 0) < Station.SUBMIT_COOLDOWN then
 		return false
@@ -97,10 +92,9 @@ end
 -- the refusal, and whether the Operator also says "busy" to them (only for a
 -- keypad they never opened -- a probe, not an honest mistake).
 --
--- R114 moved these gates out of init.server's Submit handler, where the suite
--- could only grep them; a sweep flipped every one without a failure. The
--- ORDER is part of the rule: a finished round and the line come first, then
--- your body, then the keypad you opened.
+-- The gates live here, not in the Submit handler, so the suite runs them
+-- rather than reading their text. The ORDER is part of the rule: a finished
+-- round and the line come first, then your body, then the keypad you opened.
 function Station.gate(
 	self: Desk,
 	userId: number,

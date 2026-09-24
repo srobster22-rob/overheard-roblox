@@ -1,8 +1,8 @@
 --!strict
--- THE WAY OUT (R138): GAME.md's last two phases, "The Call" and "Out".
+-- THE WAY OUT: GAME.md's last two phases, "The Call" and "Out".
 --
--- Restoring the last line used to win the round on the spot. Now it opens the
--- escape:
+-- Restoring the last line does not win the round on the spot. It opens the
+-- escape (DECISIONS D6 and D7):
 --   THE CALL  the outside call rings for `Config.CallRingSeconds`. The street
 --             door stays shut, so nobody is out yet however close they stand.
 --   OUT       the call has rung: the door opens and the Operator is sent for

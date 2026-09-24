@@ -1,15 +1,12 @@
 --!strict
 -- What the Operator SOUNDS like, per state.
 --
--- `Presence` used to play one hum at one volume whenever `isAudible()` was
--- true, and `isAudible()` is true for two opposite events: `approaching` and
--- `leaving`. So the sound of it coming and the sound of it going were
--- identical, and a player who heard the hum knew only that it was moving.
---
--- R26 built the retreat precisely so a group could hear the room being given
--- up, and said in its own log entry that whether the hum reads as retreating
--- was the claim it could not make. It did not read as anything: GAME.md's tell
--- is "you hear it come and you hear it go", and half of it was not delivered.
+-- `isAudible()` is true for two opposite events, `approaching` and `leaving`.
+-- One hum at one volume whenever it is true makes the sound of it coming and
+-- the sound of it going identical, and a player who hears the hum knows only
+-- that it is moving. The retreat exists so a group can hear the room being
+-- given up: GAME.md's tell is "you hear it come and you hear it go", and both
+-- halves must sound different to be heard.
 --
 -- Pitch carries the difference rather than volume, because volume is already
 -- spoken for -- distance rolloff uses it, so a quieter retreat would be
@@ -46,10 +43,9 @@ end
 -- instead of a decision" (see `Presence.luau`), so the smoothing has to be a
 -- REAL fade, and this is the only place that can be tested headlessly:
 -- `Presence.luau` calls `game:GetService` and `RunService.Heartbeat`, so no
--- lune suite can exercise it directly, and the only guard on it before this was
--- a source sweep confirming it requires this module -- which cannot tell a real
--- fade from a snap. A mutation sweep proved that: replacing the fade with a
--- snap (`hum.Volume = voice.volume`) passed the whole suite.
+-- lune suite can exercise it directly, and a source sweep confirming it
+-- requires this module cannot tell a real fade (`Hum.smooth`) from a snap
+-- (`hum.Volume = voice.volume`).
 Hum.FADE_PER_SECOND = 3
 
 -- One step of the fade, pulled out of `Presence.luau` so it can be proved here

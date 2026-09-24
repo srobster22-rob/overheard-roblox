@@ -1,15 +1,12 @@
 --!strict
 -- Whether a round is being played, and what to do when it stops.
 --
--- Until R29 there was no such thing. `allSolved()` fired the win line and
--- returned; `allTaken()` fired the loss line and stopped the Operator. Nothing
--- reset anything, so:
---   * after a WIN the Operator kept hunting — you finished the board and were
---     then taken by a monster that had no idea the round was over
---   * after either ending the objectives stayed solved and the connected stayed
---     connected, and the server was a dead lobby
--- The game was playable exactly once, which meant everything else built for it
--- was reachable exactly once.
+-- The server acts on its two transitions, each exactly once:
+--   * a round that ends stops the Operator, win or loss: a round that is over
+--     must not leave it hunting
+--   * a round that restarts gets a fresh board and line; without that the
+--     objectives stay solved, the connected stay connected, and the server is
+--     a dead lobby after its first round
 --
 -- Pure and clockless: it is TOLD the time, so the intermission stays a dial and
 -- this module stays headlessly testable.
@@ -89,11 +86,11 @@ function Lifecycle.restart(self: Round): boolean
 end
 
 -- Has the group lost? Everyone present taken, OR a line that nobody left able
--- may enter (R48/R49, and R149: one such line is enough, since the way out needs
--- every line; see the caller in init.server). `board` is an Objectives board and
--- `line` a Connected line -- both pure, so this runs headlessly.
--- R138: with every line restored the round goes on (the escape), so the only
--- way to lose it then is for everyone to be taken.
+-- may enter (one such line is enough, since the way out needs every line; see
+-- the caller in Exchange). `board` is an Objectives board and `line` a
+-- Connected line -- both pure, so this runs headlessly.
+-- With every line restored the round goes on (the way out, DECISIONS D6), so
+-- the only way to lose it then is for everyone to be taken.
 -- `line:count() > 0` keeps a solo server from losing instantly and looping: a
 -- board nobody can finish with NOBODY connected is the dealing problem (the
 -- owner's filed solo question), not a round that play has stranded.

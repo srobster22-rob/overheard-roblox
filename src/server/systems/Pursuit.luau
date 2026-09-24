@@ -11,9 +11,9 @@
 export type Point = { x: number, z: number }
 
 -- `leaving` is the walk back out after it loses interest. It is AUDIBLE and it
--- never captures, which is the whole point: R25 released the room by switching
--- to `idle` where it stood, and both `arrived` and `idle` are silent with no
--- movement, so the room went from lethal to safe with nothing to signal it.
+-- never captures, which is the whole point: `arrived` and `idle` are both
+-- silent and still, so switching from one to the other where it stands would
+-- turn a lethal room safe with nothing to signal it.
 export type State = "idle" | "approaching" | "closing" | "arrived" | "leaving"
 
 local Config = require(game:GetService("ReplicatedStorage").Shared.Config)
@@ -38,7 +38,7 @@ export type Tracker = typeof(setmetatable(
 		silenceRadius: number,
 		arriveRadius: number,
 		rooms: { [string]: Point },
-		-- The turns still to take before `target`, nearest first (R137).
+		-- The turns still to take before `target`, nearest first (DECISIONS D5).
 		route: { Point },
 		-- How to get from a point to a target: the turns between them. nil walks
 		-- straight, which is right for any building whose rooms all sit on one
@@ -111,8 +111,8 @@ local function headFor(self: Tracker, payload: string, room: Point)
 	setCourse(self, target)
 	self.targetName = payload
 	-- A request queued for this room is served by this trip. Kept, it would send
-	-- the Operator back once it had given the room up and walked home: R138's
-	-- review found it back in the lobby inside the escape's time limit.
+	-- the Operator back once it had given the room up and walked home: back into
+	-- the lobby, say, while the way out is still open.
 	if self.pending == payload then
 		self.pending = nil
 	end
@@ -134,17 +134,15 @@ function Pursuit.setState(self: Tracker, state: State)
 end
 
 -- The ONLY place that decides what the state should be. Both `sendTo` and
--- `step` route through it, so a caller can no longer assert a state the
--- geometry contradicts.
+-- `step` route through it, so a caller cannot assert a state the geometry
+-- contradicts.
 --
--- It used to be inlined in `step` alone, while `sendTo` simply declared
--- "approaching". `onUnderstood` calls `sendTo` on EVERY utterance it
--- understands, not just the first, so every time the group said the giveaway
--- again the hum was re-armed at whatever distance it had already reached:
--- driven once per step it stayed audible at distance 0.0, standing on top of
--- the players, and re-announced its arrival six times in six seconds. The
--- silence rule at the top of this file never fired on the main path -- and
--- talking is the main path.
+-- `onUnderstood` calls `sendTo` on EVERY utterance it understands, not just
+-- the first. If `sendTo` declared "approaching" itself, each repeat of the
+-- giveaway would re-arm the hum at whatever distance it had reached: audible
+-- while standing on top of the players, and announcing its arrival again and
+-- again. The silence rule at the top of this file would never fire on the main
+-- path -- and talking is the main path.
 function Pursuit.classify(self: Tracker, remaining: number): State
 	if remaining <= self.arriveRadius then
 		return "arrived"
@@ -160,16 +158,16 @@ end
 -- IT FINISHES THE CALL IT STARTED. A different room heard mid-approach is
 -- QUEUED, not switched to.
 --
--- `sendTo` used to retarget unconditionally, and with two concepts in play that
--- is a livelock: alternating the two plain words once a second held the
--- Operator 40 studs from either room for five minutes, audible the whole time
--- and able to capture nobody, because capture requires `arrived`. The
--- counterplay to a monster that hunts what you say became saying MORE of it,
--- which inverts the design. It needs no coordination either — two players
--- panicking and both blurting giveaways produce it by accident.
+-- Retargeting on every call would be a livelock: alternating two plain words
+-- would hold the Operator between two rooms for as long as the group kept it
+-- up, audible the whole time and able to capture nobody, because capture
+-- requires `arrived`. The counterplay to a monster that hunts what you say
+-- would be saying MORE of it, which inverts the design. It needs no
+-- coordination either — two players panicking and both blurting giveaways
+-- produce it by accident.
 --
--- Being called back out of a RETREAT is still allowed: that is R26's rule and a
--- retreat is not a call in progress.
+-- Being called back out of a RETREAT is allowed: a retreat is not a call in
+-- progress.
 -- Returns `accepted, onItsWay`.
 --
 -- `accepted` is whether the room exists. `onItsWay` is whether the Operator
@@ -177,13 +175,11 @@ end
 -- committed elsewhere: the request goes into `pending`, where the next one
 -- overwrites it.
 --
--- This used to return a bare `true` for both, and R54's Supervisor believed
--- it. Measured over 4,000 ticks with the Operator kept busy: 117 silence
--- calls announced, ONE that turned it toward the room, 77 swallowed into
--- `pending` and 39 where it was already going. Every one of the 116 told
--- every player a line about a call that was not placed, and forgave the
--- silent player for 25 seconds. A hum that sometimes means nothing is worse
--- than no hum (R11), and the same is true of a sentence.
+-- A caller that announces a call, as the Supervisor does, must go by
+-- `onItsWay`: while the Operator is kept busy most requests are queued, and
+-- telling every player about a call that was not placed is a lie. A hum that
+-- sometimes means nothing is worse than no hum, and the same is true of a
+-- sentence.
 function Pursuit.sendTo(self: Tracker, payload: string): (boolean, boolean)
 	local room = self.rooms[payload]
 	if not room then
@@ -199,10 +195,10 @@ function Pursuit.sendTo(self: Tracker, payload: string): (boolean, boolean)
 	return true, true
 end
 
--- Sent somewhere it must go NOW, whatever call it is on (R138: the outside
--- call). Unlike `sendTo` it is never queued behind a call in progress, and a
--- retreat is turned round too. Unlike `stop` then `sendTo` it keeps a room
--- already queued, and an Operator already standing in that room stays
+-- Sent somewhere it must go NOW, whatever call it is on (the outside call, in
+-- Escape.step). Unlike `sendTo` it is never queued behind a call in progress,
+-- and a retreat is turned round too. Unlike `stop` then `sendTo` it keeps a
+-- room already queued, and an Operator already standing in that room stays
 -- `arrived` with its time there intact, rather than arriving again.
 function Pursuit.sendNow(self: Tracker, payload: string): boolean
 	local room = self.rooms[payload]
@@ -222,8 +218,8 @@ function Pursuit.stop(self: Tracker)
 end
 
 -- True while it should be making noise. The whole design hangs off this.
--- True while it should be making noise. Approaching AND leaving: you hear it
--- come and you hear it go. The silence in between is the tell.
+-- Approaching AND leaving: you hear it come and you hear it go. The silence in
+-- between is the tell.
 function Pursuit.isAudible(self: Tracker): boolean
 	return self.state == "approaching" or self.state == "leaving"
 end
@@ -279,12 +275,11 @@ function Pursuit.step(self: Tracker, dt: number)
 	-- Recompute after moving so the state matches where it actually is.
 	local now = distance(self.position, target)
 	if now <= self.arriveRadius then
-		-- SNAP. This branch used to set `arrived` through `classify` without
-		-- moving the position, so an ordinary arrival left the Operator up to
-		-- `ArriveRadius` short of the centre -- and R23's room-shaped capture is
-		-- centred on `pursuit.position`, so the box hung that far outside one
-		-- wall and fell that far short of the opposite one. R26 recorded this
-		-- case as unreachable; it is the normal path.
+		-- SNAP to the centre. Arriving without moving would leave the Operator
+		-- up to `ArriveRadius` short of it, and the room-shaped capture is
+		-- centred on `pursuit.position`, so the box would hang that far outside
+		-- one wall and fall that far short of the opposite one. This is the
+		-- normal arrival path, not an edge case.
 		self.position = { x = target.x, z = target.z }
 	end
 	self:setState(self:classify(distance(self.position, target)))
@@ -303,10 +298,10 @@ end
 -- watching during an intermission, and walking it home would leave the room
 -- lethal until it got there.
 --
--- `stop()` alone was not enough. It clears the target and goes idle but leaves
--- the POSITION where it stood, so round two began with the Operator inside the
--- room it had hunted -- and the next understanding of that room made it
--- `arrived` on the spot, with no approach and no sound at all.
+-- `stop()` alone is not enough. It clears the target and goes idle but leaves
+-- the POSITION where it stood, so the next round would begin with the Operator
+-- inside the room it had hunted -- and the next understanding of that room
+-- would make it `arrived` on the spot, with no approach and no sound at all.
 function Pursuit.sendHome(self: Tracker, point: Point)
 	self.position = { x = point.x, z = point.z }
 	self.target = nil
@@ -331,11 +326,10 @@ end
 
 -- Has it stood in this room long enough to lose interest?
 --
--- Until R25 nothing ever returned it to idle except the round being lost, so
--- once it arrived it stayed for good — and since R24 it captures the whole time
--- it is arrived. A single plain word therefore parked it on top of an objective
--- permanently: nobody could patch that station, `allSolved` was unreachable,
--- and the round could only end in a loss. Both required stations were lockable.
+-- It must leave on its own. It captures the whole time it is `arrived`, so an
+-- Operator that stayed for good would park on top of a station after a single
+-- plain word: nobody could work that station, `allSolved` would be
+-- unreachable, and the round could only end in a loss.
 --
 -- Asked rather than acted on, so the DURATION stays a dial in Config and this
 -- module stays free of clocks.

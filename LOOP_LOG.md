@@ -9405,3 +9405,28 @@ Verified:
 Headline: unchanged; the seeded runs are byte-identical.
 Market: unchanged. Content: unchanged. Coach: none new. Decisions: none.
 Next: R157 ORGANIZE 6, the last the cap allows: round-history comments in src (checklist item 7), then "ORGANIZE phase complete" with what is left under ARCHITECTURE.md's organization debt.
+
+
+## R157 · ORGANIZE · the shipped code's comments say why, not which round did what
+Pick: ORGANIZE 6 of at most 6 — owner order 2026-09-24 (AGENT_LOOP v3.4 §3a item 7: "dead code, commented-out code and round-history comments are gone. That history lives in LOOP_LOG and git") · impact planned 0/0/+1.
+- src's comments narrate the project's history: 268 comment lines name a round, a playtest or a coach note ("R149: EVERY line, not any...", "Until R29 winning left the Operator hunting..."). Each keeps its reason, said in the present tense, and drops the history. Pointers to owner answers and design decisions stay (as OWNER.md or DECISIONS D<n>).
+- Proof that only comments changed: every file's code, with comments removed and strings kept, is identical to HEAD's token for token (r157/verify.py), and the seven seeded runs are byte-identical.
+- Last round the cap allows: the log records "ORGANIZE phase complete", and what is left goes under ARCHITECTURE.md's organization debt.
+Sync: AGENT_LOOP v3.4 unchanged; OWNER.md `## Next` empty; COACH.md no new notes. Studio MCP: no tools. HEAD 90ae420 green.
+
+Player notices: nothing (ORGANIZE: comments only).
+Impact: planned 0/0/+1 → shipped 0/0/+1 (biggest src file src/server/systems/Operator.luau 708→705; src 7,801→7,660 lines)
+Built:
+- Every comment in src says why, in the present tense, without the project's history: 271 comment lines that named a round, a playtest or a coach note → 0; comment lines 2,522 → 2,382 across 31 files. Pointers that help a reader stay: DECISIONS D1, D3-D6, D8-D12, OWNER.md, PLATFORM.md, and the tests that check a rule.
+- The rewrite also moved comments that sat over the wrong function (the beat's, the operator post's, Station's forget), removed claims the code no longer bears out (a "reach" dial that does not exist, counts measured under the old per-second cooling), and pointed stale references at Exchange instead of the entry script.
+- Done by three subagents in parallel on separate file groups, each checking every file with the verifier below; their reports are in r157/.
+- ARCHITECTURE.md's organization debt now lists what the phase leaves behind.
+Quality: I read a sample of the diff and checked the DECISIONS pointers against DECISIONS.md: D6/D7 (the way out), D8 (the filter), D11/D12 (numbers, letters) match; D5 is used loosely for the corridor junction (the same round's placement decision).
+Verified:
+- Comment-only, proven: r157/verify.py strips comments but keeps strings, collapses whitespace and compares every src file with HEAD token for token: 31 files, code changed in 0.
+- Check green: 35 gates, 2,098 checks, 13.9 s at 17% load; stylua clean; the seven seeded runs byte-identical.
+- Files: src 31 / 7,801 → 31 / 7,660; tests and tools unchanged.
+Headline: unchanged; the seeded runs are byte-identical.
+Market: unchanged. Content: unchanged. Coach: none new. Decisions: none.
+ORGANIZE phase complete (R152-R157, the cap of 6). The checklist now holds for: ARCHITECTURE.md (194 lines), one check command with a failure summary, Guard on every handler, loop and callback with the smoke run failing on any recorded error, test code out of the shipped place (a build gate), no hand-kept module lists, src comments free of history, and the server's rules checked by behaviour. Left as organization debt (ARCHITECTURE.md): the client's 37 source checks, module-order source checks, `Exchange.build` at 630 lines, tests not all mirroring modules, and history in test comments.
+Next: resume the cycle. R158 is a k=3 PLAYTEST slot, but no building round has run since PT5 (R151 was the RETRO; ORGANIZE rounds do not count), so it swaps to EXPAND. Its pick, by gap value: core loop depth (12), PT5 #1: the listener reads what the entrant is told across the holder's messages, not one more encoding, measured first against the scheme corpus (the PLAYBOOK TRY; HEAD reads 5 of 10). The swing panel's three drafts, cut off at R152, can be resumed as input.

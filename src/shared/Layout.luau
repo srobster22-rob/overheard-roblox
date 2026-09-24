@@ -1,23 +1,11 @@
 --!strict
 -- The exchange's dimensions, and the facts that follow from them.
 --
--- These used to be three `local`s inside `World.luau`, which needs Roblox
--- instances to load — so no test could reach them, and `Config.OperatorReach`
--- restated a number derived from them by hand. It drifted, exactly as
--- hand-restated numbers do:
---
---   Config said "being anywhere in that room should not be survivable".
---   The room is 48x48, so its corners are 33.94 studs from the centre.
---   The reach was 22.
---
--- That covers 66% of the floor. The other 34% is the perimeter and all four
--- corners — precisely where a frightened player stands.
---
--- R22 found the larger consequence of the same blind spot: the rooms had no
--- DOORS. `World.room()` built four full-span walls and nothing cut a gap, so
--- the straight walk from the corridor to the Switchboard crossed the wall plane
--- x=36 at z=-10.8, inside a wall spanning z=-24..24. Both work rooms were
--- sealed boxes and every system in the game sat behind one.
+-- They live here, not in `World.luau`, because World needs Roblox instances to
+-- load and no test can reach it. Anything that follows from them is derived in
+-- code, never restated by hand: a hand-copied number drifts from the geometry,
+-- and a gap in the geometry (a room with no doorway, a floor narrower than its
+-- door) is invisible until something walks the building.
 --
 -- Pure arithmetic, no Roblox APIs, so `tests/layout.luau` can sweep all of it.
 
@@ -50,25 +38,19 @@ function Layout.halfRoom(): number
 end
 
 -- Distance from the room's centre to its furthest corner. Any radius smaller
--- than this leaves a survivable pocket inside the room.
+-- than this leaves a survivable pocket inside the room: the perimeter and the
+-- corners, exactly where a frightened player stands.
 function Layout.cornerDistance(): number
 	local half = Layout.halfRoom()
 	return math.sqrt(half * half + half * half)
 end
 
--- R77. This comment used to say "how far the Operator reaches when it
--- arrives... DERIVED, so the promise in Config cannot drift from the number
--- again", describing a Config.OperatorReach dial that R23 deleted -- capture
--- is the ROOM itself now (Connected.reachedInRoom), and `Config.luau`'s own
--- comment says so: "There is no OperatorReach dial any more... a radius
--- nobody enforces is worse than none."
---
--- Left as the honest radius primitive rather than deleted, the same call R69
--- made for Connected.reached: it is possible geometry, not currently wired to
--- anything, and `Layout.cornerDistance` -- which exists only to feed this --
--- has exactly one other caller (its own test). NOT claimed to be needed;
--- filed for the owner alongside R73's group-identity question rather than
--- removed on this round's say-so or kept on a stale comment's.
+-- The radius that covers the whole room from its centre. NOT the Operator's
+-- reach: capture is the ROOM itself (`Connected.reachedInRoom`), and nothing
+-- in the game calls this. Kept as honest geometry rather than deleted, like
+-- `Connected.reached`; `Layout.cornerDistance` exists to feed it and is
+-- otherwise called only by its own test. Whether to remove both is parked
+-- with the owner (unused Layout helpers, OWNER.md).
 function Layout.reach(): number
 	return Layout.cornerDistance()
 end
@@ -81,11 +63,11 @@ function Layout.archiveCentre(): Point
 	return { x = -Layout.Separation / 2, z = 0 }
 end
 
--- R137: the third room, the front hall with the street door. It hangs off the
+-- The third room, the front hall with the street door. It hangs off the
 -- corridor's midpoint through a short passage, so it is a third direction
 -- rather than a third point on one line. Its distance from the Operator's post
 -- is DERIVED to equal the board room's, so every room hears the same length of
--- approach (R50's rule, asserted in tests/layout.luau).
+-- approach (asserted in tests/layout.luau).
 function Layout.lobbyCentre(): Point
 	local post = Layout.operatorPost()
 	local board = Layout.boardCentre()
@@ -117,11 +99,11 @@ end
 -- Where each thing a player walks up to stands: the room it is in, and its
 -- offset from that room's centre. Keyed by `Round.STATIONS[].id`, plus the
 -- reader. Kept here so a test walks to the same point the world actually
--- builds (R106: World wrote these as literals and the layout test copied them
--- by hand, so they agreed only by coincidence).
+-- builds: literals copied by hand into World and a test agree only by
+-- coincidence. Placement as data is DECISIONS D5.
 --   board    against the room's -z wall
 --   breaker  toward the records room's doorway wall
---   latch    on the lobby's far wall: the street door itself (R137)
+--   latch    on the lobby's far wall: the street door itself (DECISIONS D4)
 --   reader   the card index, against the records room's -z wall
 local PLACES: { [string]: { room: string, offset: Point } } = {
 	board = { room = "board", offset = { x = 0, z = -18 } },
@@ -165,7 +147,7 @@ end
 
 -- The wall segments of one room, in world space. The side named by `openOn` is
 -- built as TWO segments with the doorway between them. Order is north, south,
--- west, east, so World's Wall1..WallN names are stable for the two old rooms.
+-- west, east, which is the order World numbers them Wall1..WallN in.
 function Layout.walls(centre: Point, openOn: string): { Rect }
 	local half = Layout.halfRoom()
 	local doorHalf = Layout.Door / 2
@@ -200,12 +182,10 @@ end
 
 -- THE CORRIDOR ---------------------------------------------------------------
 --
--- Until R28 it was 8 studs wide against a 12-stud doorway, with nothing at its
--- edges, and it is the ONLY floor for the 72 studs between its end rooms. Two
--- studs of every doorway approach had no floor under it, and a player anywhere
--- along that span who stepped past z = +/-4 fell out of the world — worst
--- exactly when it matters most, since escaping means running out of a room in
--- the dark.
+-- It is the ONLY floor for the 72 studs between its end rooms, so any strip of
+-- a doorway's approach it does not cover drops a player out of the world. That
+-- is worst exactly when it matters most: escaping means running out of a room
+-- in the dark.
 
 -- Derived from the doorway, so the approach to a door is always floored. A
 -- corridor narrower than the door it serves is a hole by construction.
@@ -218,25 +198,23 @@ function Layout.corridorHalfLength(): number
 	return Layout.Separation / 2 - Layout.halfRoom()
 end
 
--- The corridor's own walls, so you cannot walk off the side of it. They stop at
--- the room walls, leaving the doorways open.
 -- The width a player can actually WALK, between the corridor's walls.
 --
--- Narrower than the floor by a whole character, because the floor's job and the
--- walls' job are different and R28 built one from the other and used it for
--- both. The FLOOR must be at least as wide as a doorway or part of every
--- approach is unfloored (R28's defect). The WALLS must keep a player inside the
--- span a doorway can pass, or the corridor walks them into the frame: a
--- character is about 4 studs across against a 12-stud door, so anyone past
--- z = 4 clipped it while the walls let them reach z = 6. A third of the
--- corridor led to a door they could not fit through, and hugging a wall is what
--- a fleeing player does.
+-- Narrower than the floor by a whole character, because the floor and the
+-- walls do different jobs and one width cannot serve both. The FLOOR must be
+-- at least as wide as a doorway or part of every approach is unfloored. The
+-- WALLS must keep a player inside the span a doorway can pass, or the corridor
+-- walks them into the frame: a character is about 4 studs across against a
+-- 12-stud door, so anyone past z = 4 clips it, and walls at the floor's edge
+-- would let them reach z = 6. Hugging a wall is what a fleeing player does.
 function Layout.corridorClear(): number
 	return Layout.Door - Config.PlayerWidth
 end
 
--- Three segments: the south wall runs the whole length; the north wall is cut
--- at the midpoint where the passage to the lobby leaves (R137).
+-- The corridor's own walls, so you cannot walk off the side of it. They stop at
+-- the room walls, leaving the doorways open. Three segments: the south wall
+-- runs the whole length; the north wall is cut at the midpoint where the
+-- passage to the lobby leaves.
 function Layout.corridorWalls(): { Rect }
 	local halfW = Layout.corridorClear() / 2
 	local endX = Layout.corridorHalfLength()
@@ -253,16 +231,16 @@ function Layout.passageEnd(): number
 end
 
 -- The passage's floor: as wide as the corridor floor (so the lobby door's
--- approach is floored, R28's rule), from the corridor floor's edge to the
--- lobby's door wall with no gap.
+-- approach is floored, the corridor's own rule), from the corridor floor's
+-- edge to the lobby's door wall with no gap.
 function Layout.passageFloor(): Rect
 	local halfFloor = Layout.corridorWidth() / 2
 	return { minX = -halfFloor, minZ = halfFloor, maxX = halfFloor, maxZ = Layout.passageEnd() }
 end
 
 -- The passage from the corridor's midpoint up to the lobby door. Same walkable
--- width as the corridor, for the same reason (R52: a character must fit the
--- door the walls lead to).
+-- width as the corridor, for the same reason (a character must fit the door
+-- the walls lead to).
 function Layout.passageWalls(): { Rect }
 	local halfW = Layout.corridorClear() / 2
 	local top = Layout.passageEnd()
@@ -282,13 +260,12 @@ end
 -- that station" at the moment a player submits, rather than trusting a memory
 -- of which prompt they last triggered.
 --
--- Until R39 the submit gate was `Station.accepts`, which is
--- `self.at[userId] == stationId` — a record of the last prompt TRIGGERED. The
--- prompt's own activation distance gates the trigger and nothing gated the
--- submit, so a player could prime the Switchboard, walk the 104 studs to the
--- other room, stand beside the holder reading the number, and patch from there.
--- This file's own comment says the read point and the patch point must never be
--- reachable in one glance, and that distance IS the mechanic.
+-- A record of the last prompt TRIGGERED is not enough. The prompt's activation
+-- distance gates the trigger, not the submit, so a player could trigger a
+-- station's prompt, walk to the other room, stand beside the holder reading
+-- the number, and patch from there. The read point and the patch point must
+-- never be reachable in one glance: distance IS the mechanic
+-- (`Layout.Separation`).
 function Layout.within(centre: Point, point: Point, radius: number): boolean
 	local dx = point.x - centre.x
 	local dz = point.z - centre.z
@@ -401,27 +378,12 @@ function Layout.routeIsClear(route: { Point }): boolean
 	return true
 end
 
--- Where the Operator stands when it has nothing to chase, and where it walks
--- back to when it loses interest.
---
--- THE INVARIANT: it must be further from every room centre than
--- `Config.SilenceRadius`, or an approach that starts here is inaudible for the
--- whole trip. Until R27 the post was the board room's own centre plus 20 studs,
--- inside a silence radius of 26 — so the Operator reached the board room, which
--- holds a required station, having made no sound at all. R26 made that the
--- normal case by sending it home after every linger.
---
--- The corridor runs x = -Separation/2 .. +Separation/2 at z = 0, so any x with
--- |x -/+ Separation/2| >= SilenceRadius satisfies it. This sits well inside that
--- band and away from the player spawn at the midpoint.
--- `tests/layout.luau` asserts the invariant against the real dial rather than
--- trusting this comment.
 -- Do the rooms the world builds and the rooms Config declares agree, in both
 -- directions? nil if they do, otherwise the message World.build raises. A name
 -- declared with no position makes `Pursuit.sendTo` refuse the move, so the
 -- Operator never comes and nothing errors -- a silent monster reads as a dead
--- game. R104 moved this out of World.build, which only runs in Studio, so R103's
--- sweep could finally reach it.
+-- game. It lives here rather than in World.build, which only runs in Studio,
+-- so the headless tests can reach it.
 function Layout.roomMismatch(built: { [string]: Point }, declared: { string }): string?
 	local named: { [string]: boolean } = {}
 	for _, name in declared do
@@ -438,25 +400,32 @@ function Layout.roomMismatch(built: { [string]: Point }, declared: { string }): 
 	return nil
 end
 
+-- Where the Operator stands when it has nothing to chase, and where it walks
+-- back to when it loses interest.
+--
+-- THE INVARIANT: it must be further from every room centre than
+-- `Config.SilenceRadius`, or an approach that starts here is inaudible for the
+-- whole trip. The Operator walks home after every linger, so that would be the
+-- normal case, not a corner of one.
+--
+-- The corridor runs x = -Separation/2 .. +Separation/2 at z = 0, so any x with
+-- |x -/+ Separation/2| >= SilenceRadius satisfies it.
+-- `tests/layout.luau` asserts the invariant against the real dial rather than
+-- trusting this comment.
 function Layout.operatorPost(): Point
 	-- EQUIDISTANT from both corridor-end rooms, so both get the same warning
-	-- (and `lobbyCentre` is placed to match, so the lobby does too).
-	--
-	-- R27 put this at `-Separation / 6` to sit well inside the band and away
-	-- from the player spawn, and never checked it for symmetry: forty studs from
-	-- the archive and eighty from the board meant the audible part of an
-	-- approach was 1.6 seconds to one room and 6.0 to the other. R27's own guard
-	-- could not see it — it asserts an approach STARTS audible, which a second
-	-- and a half satisfies, and never asked for how long.
+	-- (and `lobbyCentre` is placed to match, so the lobby does too). An
+	-- off-centre post gives one room a long audible approach and the other a
+	-- short one, and a guard that only asks whether an approach STARTS audible
+	-- cannot see that: it must ask for how long.
 	--
 	-- The corridor midpoint is the only equidistant point on it, so the post
 	-- sits there, pushed to the edge of the corridor floor to leave the spawn
-	-- pad clear. Both rooms now hear 3.8 seconds of it.
+	-- pad clear. Both rooms hear 3.8 seconds of it.
 	--
-	-- Derived from the WALKABLE span, not the floor. R52 brought the walls in by
-	-- a character's width and this sat a stud outside them -- which would have
-	-- made the filed geometry-blind movement defect reachable, since every path
-	-- from here to a room crosses the wall line on its way in.
+	-- Derived from the WALKABLE span, not the floor. The Operator walks each leg
+	-- in a straight line and does not see walls, so a post outside the corridor
+	-- walls would put the wall line across every path from here to a room.
 	return { x = 0, z = -(Layout.corridorClear() / 2 - 1) }
 end
 

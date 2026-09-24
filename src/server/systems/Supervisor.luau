@@ -1,11 +1,11 @@
 --!strict
 -- THE SUPERVISOR — GAME.md entity #4. It punishes silence.
 --
--- The Operator hunts by meaning, which made saying nothing the strongest
--- strategy in the game. Measured, four players, 600 simulated seconds: a silent
--- group won 20 rounds to a talking group's 16, took zero captures, and the
--- Operator never left its post. The monster was opt-in, and a group on a voice
--- call outside the game played an unopposed fetch quest.
+-- The Operator hunts by meaning, so on its own it makes saying nothing the
+-- strongest strategy in the game. Simulated without a Supervisor, a silent
+-- group wins more rounds than a talking one, is never caught, and the Operator
+-- never leaves its post. The monster becomes opt-in, and a group on a voice
+-- call outside the game plays an unopposed fetch quest.
 --
 -- So this watches the one thing the Operator cannot: who has NOT spoken. Every
 -- player carries a clock that only their own voice resets. Run it out and the
@@ -126,8 +126,8 @@ function Supervisor.called(self: Tracker, userId: number, at: number)
 end
 
 -- A new round starts everyone's clock again. Without this, a player who was
--- quiet through the intermission is called in the first seconds of the round --
--- R31's whole lesson, per-round state crossing the round boundary.
+-- quiet through the intermission is called in the first seconds of the round:
+-- per-round state must not cross the round boundary.
 function Supervisor.reset(self: Tracker, at: number)
 	for userId in self.lastSpoke do
 		self.lastSpoke[userId] = at
@@ -135,14 +135,14 @@ function Supervisor.reset(self: Tracker, at: number)
 	table.clear(self.lastCalled)
 	-- A new round re-tells every panel: the client hid them all when the round
 	-- ended, and a band equal to the last one pushed would otherwise never be
-	-- sent again (R115; this was one easily-lost line in init.server).
+	-- sent again.
 	table.clear(self.shown)
 end
 
 -- The band to TELL this player now, or nil if it has not changed since they
--- were last told (R11: announce once, not four times a second). Also returns
--- how long they have been quiet, for the bar. R115 moved the memory of what was
--- shown in here, so `reset` and `forget` clear it by construction.
+-- were last told: announce once, not four times a second. Also returns how long
+-- they have been quiet, for the bar. The memory of what was shown lives in the
+-- tracker, so `reset` and `forget` clear it by construction.
 function Supervisor.bandNews(self: Tracker, userId: number, now: number): (Silence.Band?, number)
 	local band = self:band(userId, now)
 	local quiet = self:quietFor(userId, now) or 0
@@ -155,14 +155,15 @@ end
 
 -- Put through ONE silent line: the longest-quiet overdue player who is standing
 -- in a room. Returns the userId it called (nil if none) and whether the call is
--- NEWS worth announcing. R110 moved this out of init.server, where the suite
--- could only check the ORDER of its statements by text, and where the soak ran
--- a hand-copied twin "as the server runs it" that could drift from the real one.
+-- NEWS worth announcing. It lives here so the suite and the soak run this very
+-- function: checking the ORDER of its statements by text, or running a copy of
+-- it, lets the real one drift unseen.
 --
--- The rules, unchanged (R54/R55):
+-- The rules:
 --   * no body yet (loading, dead): skipped, and NOT forgiven;
---   * standing in the corridor: skipped (filed, R54), and the next overdue
---     player is considered;
+--   * standing in the corridor: skipped, and the next overdue player is
+--     considered. The corridor is in no room, so it is a refuge from the
+--     Supervisor; whether it should be is a question parked in OWNER.md;
 --   * the Operator committed elsewhere: the request only lands in `pending`,
 --     so NOTHING happened -- nobody forgiven, nothing said, and it stops;
 --   * a trip already under way to that room answers the silence: forgiven,

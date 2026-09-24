@@ -24,16 +24,16 @@ export type Objective = {
 	solved: boolean,
 	-- Human-readable, shown to the holder only.
 	prompt: string,
+	-- Everyone who has been dealt this line THIS ROUND, and therefore had its
+	-- answer on their screen. Not the same thing as the current holder: a
+	-- mid-round join re-deals the board, and the previous holder -- who may
+	-- just have read the number out -- must not type it in themselves.
+	-- The invariant is about having SEEN the answer, so that is what is stored.
+	seenBy: { [number]: boolean },
 	-- Wrong answers this line has taken, per actor, and the time until which
 	-- that actor's attempts on it are jammed. Per (line, actor) on purpose: one
 	-- player guessing must not lock a line for the player who was actually told
-	-- the number, and must not lock them out of the OTHER line either.
-	-- Everyone who has been dealt this line THIS ROUND, and therefore had its
-	-- answer on their screen. Not the same thing as the current holder: a
-	-- mid-round join re-deals the board, and until R38 the previous holder --
-	-- who had just read the number out — was free to type it in themselves.
-	-- The invariant is about having SEEN the answer, so that is what is stored.
-	seenBy: { [number]: boolean },
+	-- the number, and must not lock them out of the OTHER lines either.
 	misses: { [number]: number },
 	jammedUntil: { [number]: number },
 }
@@ -50,10 +50,10 @@ export type SubmitResult = {
 	-- the whole point of the field. Two players at one keypad both enter the
 	-- number they were told; the first solves the line and the second arrives
 	-- a frame later against `already restored`. Nothing about that is the
-	-- second player's doing, but `init.server` used to route every `not ok` to
-	-- the Operator's mouth, so at the exact moment the group WON it also said
-	-- "That line is busy." to somebody for typing the right answer. The
-	-- Operator may only accuse a player this module marks at fault.
+	-- second player's doing. If every `not ok` reached the Operator's mouth, it
+	-- would tell somebody "That line is busy." for typing the right answer, at
+	-- the exact moment the group restored the line. The Operator may only accuse
+	-- a player this module marks at fault.
 	fault: boolean,
 }
 
@@ -149,9 +149,9 @@ end
 -- player holds everything, which would collapse the transfer problem.
 --
 -- IN A SHUFFLED ORDER, NOT A ROTATION. Dealing consecutive seats from a random
--- start gave four players only four deals, and the station order never
--- changed, so a group could read which station a code was for from who said
--- it, and pass codes with nothing the Operator could hear. Shuffled, the holder
+-- start gives four players only four deals, and the station order never
+-- changes, so a group could read which station a code is for from who says
+-- it, and pass codes with nothing the Operator can hear. Shuffled, the holder
 -- has to say which station, and that is what the Operator listens for.
 function Objectives.deal(self: Board, userIds: { number })
 	if #userIds == 0 then
@@ -169,15 +169,14 @@ function Objectives.deal(self: Board, userIds: { number })
 			-- set growing every time somebody joins.
 			--
 			-- Without this the round deadlocks. `PlayerAdded` re-deals the whole
-			-- board, so a player rejoining marks one more reader per line; after
-			-- five deals over four players every line had been seen by everybody,
-			-- nobody could patch anything, `allSolved` could never become true --
-			-- and since only a finished round calls `reset`, `seenBy` was never
-			-- cleared. Four players sat in a server that could not be finished.
+			-- board, so each rejoin would mark one more reader per line; after a
+			-- few deals every line has been seen by everybody, nobody can enter
+			-- anything, `allSolved` can never become true -- and since only a
+			-- finished round calls `reset`, `seenBy` is never cleared.
 			--
-			-- This does not touch whether a join SHOULD re-deal at all, which is
-			-- the owner's filed question: the board still reshuffles exactly as
-			-- before, it just stops burning a fresh reader each time.
+			-- This does not settle whether a join SHOULD re-deal at all, which is
+			-- a question parked for the owner (OWNER.md): the board still
+			-- reshuffles on a join, it just does not burn a fresh reader each time.
 			local repeatReader: number? = nil
 			for _, candidate in userIds do
 				if o.seenBy[candidate] then
@@ -277,8 +276,8 @@ function Objectives.viewFor(self: Board, userId: number): { any }
 end
 
 -- What you do at a station, as its refusals say it: the prompt's own verb,
--- lower case ("patch", "throw", "turn"). Every refusal said "patch" until R144,
--- so the Cutoff told a player somebody else had to patch it (PT3).
+-- lower case ("patch", "throw", "turn"), so the Cutoff never tells a player
+-- somebody else has to patch it.
 local function verbAt(id: string): string
 	for _, station in Round.STATIONS do
 		if station.id == id then
@@ -293,13 +292,13 @@ end
 -- `now` is passed in rather than read from the clock, so the jam is testable
 -- headlessly and the module stays pure (same reason `Operator.hear` takes `at`).
 --
--- GUESSING IS THE HOLE THIS CLOSES. The invariant at the top of this file said
--- a single player can never solve a line alone, and the only thing enforcing it
--- was `holder ~= actor`. But the answer is two digits: 90 values, median 45
+-- GUESSING IS THE HOLE THIS CLOSES. The invariant at the top of this file says
+-- a single player can never solve a line alone, and `holder ~= actor` alone
+-- does not enforce it. The answer is two digits: 90 values, median 45
 -- guesses, one attempt every 0.75s at the remote's rate limit -- about 34
 -- seconds of holding Enter to clear a line without anybody speaking, which is
--- the entire game. A wrong answer now jams that line for the player who gave
--- it, and the jams escalate, so the cost of guessing grows quadratically while
+-- the entire game. So a wrong answer jams that line for the player who gave
+-- it, and the jams escalate: the cost of guessing grows quadratically while
 -- the cost of a typo does not.
 function Objectives.submit(self: Board, id: string, actorUserId: number, value: string, now: number): SubmitResult
 	local objective = self:get(id)
@@ -312,9 +311,9 @@ function Objectives.submit(self: Board, id: string, actorUserId: number, value: 
 	end
 
 	-- The invariant, stated as what it actually is: you may not enter an answer
-	-- you have SEEN. Checking only the current holder let a mid-round re-deal
-	-- move the line off the person who had just read the number, after which
-	-- the keypad accepted it from them.
+	-- you have SEEN. Checking only the current holder would let a mid-round
+	-- re-deal move the line off the person who had just read the number, and
+	-- the keypad would then accept it from them.
 	if objective.seenBy[actorUserId] then
 		return {
 			ok = false,
@@ -342,8 +341,8 @@ function Objectives.submit(self: Board, id: string, actorUserId: number, value: 
 
 	local cleaned = string.gsub(value, "%D", "")
 	-- A code the Operator heard this round is not a guess: it was said aloud and
-	-- its holder already has a new one. A blind group read "that line is dead"
-	-- for it and for a typo alike and could not tell which had happened, so it
+	-- its holder already has a new one. The same "that line is dead" for it and
+	-- for a typo would leave a group unable to tell which had happened, so it
 	-- says so and charges nothing: no miss, no wrong dial, no voice.
 	if cleaned ~= objective.answer and self.spent[cleaned] then
 		return { ok = false, reason = Objectives.OVERHEARD, solved = false, fault = false }
@@ -382,14 +381,15 @@ function Objectives.submit(self: Board, id: string, actorUserId: number, value: 
 	return { ok = true, solved = true, fault = false }
 end
 
--- NOT CLEANED ON PlayerRemoving, ON PURPOSE. R10 filed `misses`/`jammedUntil`
--- as a leak against CLAUDE.md's per-player cleanup rule, and R12 started to fix
--- it before noticing that the "fix" hands a guesser a way out: UserId is stable
--- across a rejoin and this board lives for the life of the SERVER, so clearing
--- these on departure means anyone jammed can reconnect and come back clean,
--- which is R9's entire round undone by a tidiness change. The leak is two
--- integers per departed player per line. `tests/objectives.luau` asserts the
--- survival, so this is a guarded decision rather than an oversight.
+-- `misses` and `jammedUntil` are NOT CLEANED ON PlayerRemoving, ON PURPOSE,
+-- despite CLAUDE.md's per-player cleanup rule. UserId is stable across a
+-- rejoin and this board lives for the life of the SERVER, so clearing these on
+-- departure would let anyone jammed reconnect and come back clean, which
+-- undoes the jam entirely. The leak is two integers per departed player per
+-- line, and `reset` below clears them every round. `tests/objectives.luau`
+-- asserts the survival, so this is a guarded decision rather than an
+-- oversight.
+--
 -- Start the board over for a new round: nothing solved, fresh answers, no
 -- holders. New answers matter — reusing them would let a group that finished a
 -- round simply retype last round's numbers.
@@ -400,10 +400,10 @@ function Objectives.reset(self: Board)
 		objective.solved = false
 		objective.holder = nil
 		objective.answer = freshAnswer(self, objective.answer)
-		-- The jam ledger is per-ROUND. Leaving it meant a player who jammed a
-		-- line in one round was refused the CORRECT answer in the next -- and
-		-- since the answers are re-rolled here, the jam punished them for
-		-- guesses at a number that no longer exists.
+		-- The jam ledger is per-ROUND. Kept, a player who jammed a line in one
+		-- round would be refused the CORRECT answer in the next -- and since the
+		-- answers are re-rolled here, the jam would punish them for guesses at a
+		-- number that no longer exists.
 		objective.seenBy = {}
 		objective.misses = {}
 		objective.jammedUntil = {}
@@ -414,24 +414,20 @@ end
 -- not on the line. Returns an unsolved line none of them may enter (each of them
 -- has read it), or nil.
 --
--- The round's loss condition used to ask whether everyone had been TAKEN, and
--- that is not the same question. R23 made the Operator take everyone in a room
--- at once; three of four players caught in one arrival leaves a survivor who is
--- always the reader of one of the two lines, so that line can be patched by
--- nobody -- `allSolved` unreachable -- while `allTaken` needs the survivor
--- caught too, which they can simply avoid. The round then ended neither way and
--- ran forever, with no timer to rescue it.
+-- "Has everyone been TAKEN?" is not the same question. The Operator takes
+-- everyone in a room at once, so one arrival can leave a single survivor who
+-- has read a line: nobody can enter that line -- `allSolved` is unreachable --
+-- while `allTaken` needs the survivor caught too, which they can simply avoid.
+-- The round would end neither way and run forever, with no timer to rescue it.
 --
 -- Re-dealing the stranded line does not help: handing it to the survivor marks
--- them as having seen it, so they can patch neither. With one player able to
+-- them as having seen it, so they can enter neither. With one player able to
 -- act the round is unwinnable however the cards fall, which is the owner's solo
 -- question. What is fixable here is that it should END.
 --
--- R149: EVERY line, not any. The way out opens only when every line is restored
--- (R138), so one line nobody able may enter decides the round however many
--- others are still open. Asking whether ANY line could be finished left PT4's
--- critic with one free player, holding the only line nobody else could enter,
--- restoring the others for 178 s until the Supervisor took him.
+-- EVERY line, not any. The way out opens only when every line is restored, so
+-- one line nobody able may enter decides the round however many others are
+-- still open.
 function Objectives.stranded(self: Board, able: { number }): Objective?
 	for _, objective in self.list do
 		if objective.solved then
