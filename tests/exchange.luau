@@ -380,11 +380,15 @@ do
 	local creditCode = spy(w.flow.operator, "creditCode")
 	local line = w.flow.board:get("board")
 	local answer, holder = line.answer, line.holder
-	w.restore("board")
+	local entrant = w.restore("board")
 	check("(guard) the line is restored", line.solved)
 	check(
 		"a restore credits the Operator once, with the line's concept and the time",
 		#credit.calls == 1 and credit.calls[1][1] == line.concept and credit.calls[1][2] == w.now
+	)
+	check(
+		"...naming who held the line and who entered it, whose words are the line's (DECISIONS D14)",
+		credit.calls[1][3] == holder and credit.calls[1][4] == entrant.UserId
 	)
 	check(
 		"...and teaches the counting learner what the code was said as, from its holder",

@@ -356,8 +356,8 @@ do
 	seen2[1] = {}
 	op2:creditCode("47", 6, 1)
 	check(
-		`...and one digit a message, both passed first: both restores teach it ({heatOf(op2, "one digit a message")})`,
-		heatOf(op2, "one digit a message") == 2 * Config.HeatPerCredit
+		`...and one digit a message, both passed first: both restores teach it ({heatOf(op2, "one digit at a time")})`,
+		heatOf(op2, "one digit at a time") == 2 * Config.HeatPerCredit
 	)
 end
 do

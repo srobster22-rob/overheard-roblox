@@ -241,7 +241,7 @@ function Sim.submit(self: any, id: number, stationId: string, value: string): an
 		)
 	end
 	if result.ok then
-		self.operator:credit(objective.concept, self.now)
+		self.operator:credit(objective.concept, self.now, objective.holder, id)
 		self.operator:creditCode(objective.answer, self.now, objective.holder)
 		self:trace(`   {Sim.NAMES[id]} restores the {stationId} line.`)
 		if self.board:allSolved() and self.escape:open(self.now) then

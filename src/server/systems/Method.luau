@@ -132,7 +132,7 @@ Method.WAYS = {
 	},
 	{
 		id = "apart",
-		label = "one digit a message",
+		label = "one digit at a time",
 		kind = "digit",
 		line = "apart",
 		read = function(pair: Pair): string?

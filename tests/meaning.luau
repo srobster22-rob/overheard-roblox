@@ -182,6 +182,101 @@ do
 end
 
 print("")
+print("a restore learns from the players who passed it (DECISIONS D14)")
+-- PT5's repro (playtests/PT5/phone/repro_lexicon_misfile.txt): Ana (1) holds
+-- the Cutoff, Bo (2) the Exchange Desk; Dee (4) and Ana enter them a second
+-- apart. `seen` is what each player still holds.
+local ANA, BO, DEE = 1, 2, 4
+local function repro(boardFirst: boolean): any
+	local seen: { [number]: { [string]: string } } = { [ANA] = { breaker = "85" }, [BO] = { jack_number = "86" } }
+	local op = Operator.new({ JACK, BREAKER })
+	op.seenCodes = function(userId: number)
+		return seen[userId] or {}
+	end
+	op.names = function()
+		return { ana = true, bo = true, cy = true, dee = true }
+	end
+	local function say(who: number, text: string, at: number)
+		op:hear({ speaker = { UserId = who } :: any, text = text, at = at })
+	end
+	say(ANA, "dee flippy", 3)
+	say(BO, "ana big desk", 5)
+	local function breaker(at: number)
+		seen[ANA] = {}
+		op:credit(BREAKER.concept, at, ANA, DEE)
+	end
+	local function board(at: number)
+		seen[BO] = {}
+		op:credit(JACK.concept, at, BO, ANA)
+	end
+	if boardFirst then
+		board(14)
+		breaker(15)
+	else
+		breaker(14)
+		board(15)
+	end
+	return op
+end
+for _, boardFirst in { false, true } do
+	local op = repro(boardFirst)
+	local order = if boardFirst then "the board first" else "the Cutoff first"
+	check(
+		`{order}: the board's word is the board's ("big" {heatOf(op, "big", JACK.concept)}, under the Cutoff {heatOf(
+			op,
+			"big",
+			BREAKER.concept
+		)})`,
+		heatOf(op, "big", JACK.concept) > 0 and heatOf(op, "big", BREAKER.concept) == 0
+	)
+	check(
+		`{order}: ...and the Cutoff's is the Cutoff's ("flippy" {heatOf(op, "flippy", BREAKER.concept)}, under the board {heatOf(
+			op,
+			"flippy",
+			JACK.concept
+		)})`,
+		heatOf(op, "flippy", BREAKER.concept) > 0 and heatOf(op, "flippy", JACK.concept) == 0
+	)
+	check(
+		`{order}: nobody's name is a word for either`,
+		heatOf(op, "ana", BREAKER.concept) + heatOf(op, "ana", JACK.concept) + heatOf(op, "dee", BREAKER.concept) == 0
+	)
+end
+do
+	-- Without a holder or an entrant (a caller that cannot say), every line in
+	-- the window is credited, as it always was.
+	local op = Operator.new({ JACK, BREAKER })
+	op:hear({ speaker = { UserId = 2 } :: any, text = "the piano", at = 1 })
+	op:credit(JACK.concept, 2)
+	check("(control) a restore with no holder named credits every line", heatOf(op, "piano", JACK.concept) > 0)
+	local named = Operator.new({ JACK, BREAKER })
+	named:hear({ speaker = { UserId = 1 } :: any, text = "ana, the piano", at = 1 })
+	named:credit(JACK.concept, 2)
+	check("(control) with no names to hand, a name can be learned", heatOf(named, "ana", JACK.concept) > 0)
+	-- Words are kept as stems, and "chris" is kept as "chri": still a name.
+	local stemmed = Operator.new({ JACK, BREAKER })
+	stemmed.names = function()
+		return { chris = true }
+	end
+	stemmed:hear({ speaker = { UserId = 1 } :: any, text = "chris, the piano", at = 1 })
+	stemmed:credit(JACK.concept, 2)
+	local chrisRows = 0
+	for _, c in stemmed:snapshot() do
+		if string.find(c.phrase, "chri", 1, true) then
+			chrisRows += 1
+		end
+	end
+	check(
+		`a name whose stem differs ("chris") is still no word ({chrisRows} rows, "piano" {heatOf(
+			stemmed,
+			"piano",
+			JACK.concept
+		)})`,
+		chrisRows == 0 and heatOf(stemmed, "piano", JACK.concept) > 0
+	)
+end
+
+print("")
 print("where each word leads")
 check("a station's concept is named by its label", Round.leadsTo("jack_number") == "Exchange Desk")
 check("...each station its own", Round.leadsTo("breaker") == "Cutoff" and Round.leadsTo("exit") == "Night Latch")

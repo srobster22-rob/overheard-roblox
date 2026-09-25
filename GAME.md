@@ -54,6 +54,10 @@ That is the whole feel of the game: your language decaying under you.
 > it is said (R134); a word the group leaves unused for a round is safe again. It depends on how the group talks: said
 > once per solve it is never learned, said a third time as the button is pressed
 > it burns in its first round. Headless measurement only; how it feels is unplayed.
+>
+> **As built (R159).** A restore teaches only what its holder and its entrant said,
+> so two lines restored a second apart each keep their own words, and a player's
+> name ("ana you still ok?") is never learned as a word for a station.
 
 ## Why the objectives force you to speak
 

@@ -9492,3 +9492,36 @@ Market: unchanged, 18.7. Core loop stays 1: the evidence is headless, and the on
 Content: Operator lines 14 → 17 (target 16 met); CONTENT.md history row R158.
 Coach: none new. Decisions: D13.
 Next: R159 (k=4) is FIX: PT5 broken (1) and (2), which is also the swing's slice 2. The holder's lines belong to the holder's line, and a player's name is never a station word. Riddles and trivia are now the one channel it cannot read (the blind group, PT5's critic). A slice-3 candidate is the hand-off itself: a holder addressing the entrant just before a walk.
+
+
+## R159 · FIX · a restore learns from the players who passed it, and a name is never a station word
+Pick: FIX in the k=4 slot (PT5 found player-facing bugs): PT5 broken (1) and (2), backlog #2 and #3 — gap value 12 (differentiator) · impact planned 2/2/0. The R158 panel named this the swing's slice 2.
+- (1) At a restore every line of the last 20 s is credited to that line, so when two lines are restored about a second apart the first takes both stations' words and the second learns nothing (phone/repro_lexicon_misfile.txt: Bo's "big desk", said about the board, is filed under Cutoff). The fix: a restore credits only what its holder and its entrant said. Everyone else's lines stay for the restore they belong to.
+- (2) Player names are learned as station words ("ana" 74% for the breaker; "ana you still ok?" sent it to the archive). The fix: a word or pair that holds a present player's name is never offered as a new word. The server already knows every name (R158's `names`).
+Sync: AGENT_LOOP v3.4 unchanged; OWNER.md `## Next` empty, no VETO; COACH.md has no new notes. Studio MCP: no tools. HEAD 11454e0 green (`.\test.cmd`).
+
+Player notices: the wall files a group's words under the station they were said about, even when two lines are restored a second apart, and nobody's name ("ana you still ok?") becomes a station word or brings the Operator.
+Impact: planned 2/2/0 → shipped 2/2/0 (biggest file tests/wiring.luau 1,556, untouched; Operator.luau 816→864; biggest function touched `Operator.credit` 53→67).
+Built:
+- `Operator.credit(concept, now, holder, entrant)` credits only what the line's holder and entrant said, and keeps everyone else's lines for the restore they belong to. An entrant who still holds a line of their own is talking about that one (checked through `seenCodes`).
+- `withoutNames` drops any new word or pair that holds a present player's name, matched as said and stemmed.
+- Exchange's `onSolved` and the sim's `submit` pass the holder and the entrant.
+- Tests: tests/meaning.luau gains the PT5 repro in both orders, two controls and a stemmed name; tests/exchange.luau gains the credit's arguments.
+- Docs: D14, GAME.md, MARKET.md.
+Quality: the swapped repro showed my first cut filing "flippy" under the board, because Ana entered the board while holding the Cutoff. Hence the entrant rule. Self-review fixed Exchange's comment on what a solve credits. No independent reviewer: §4 names EXPAND, BIG SWING and POLISH.
+Verified:
+- `.\test.cmd`: 36 gates, 2,226 checks, 17.2 s. 6 plants each fail by name, restored by sha256 (r159/plants_out.txt).
+- PT5's repro and its swap file "big desk" under the Exchange Desk and "flippy" under the Cutoff in either order. At HEAD all five words went under the first line restored, names included.
+- Across the PT4/PT5 replays, 48 of 325 station words ever on the wall held a player's name; now 0 of 303 (r159/walls_head.txt, walls_after2.txt).
+- Seeded runs: the smoke session and PT5 veteran s42 are byte-identical. The bots' summaries are identical, and their traces differ only in the wall ("ana 35%" is gone). In PT5 critic s1 "toast" burns later, because only its holder and entrant now teach it.
+- Blind tools/play session (seed 59, a group that calls each other by name and passes two codes at once; never saw the change): 8 rounds, 7 won (the loss on purpose), 6 players taken, 14 codes heard. It saw the new rule unprompted: with Dee speaking, "tho", "idiot" and "lol" were learned for the Exchange Desk (Dee held its code); with Cy speaking, nothing ("who says a word seems to decide what it learns"). 17 confusing items. One was caused by R158 and is fixed here: "3 twice" was credited to a way the wall called "one digit a message", so that way's label is now "one digit at a time". The rest predate it: stations with several names, capture costs nothing, the Supervisor names nobody.
+Headline:
+- Bots: 5/6/5 → 5/6/5 won. 2.5 taken → 2.5 and 1.7 Supervisor calls → 1.7 per round. 7 → 7 codewords replaced. 21/21 → 21/21 rounds end. Identical summaries.
+- Natural chat naming a secret: 30/160 → 30/160.
+- Scheme corpus: 9 → 9 of 10.
+- Station words holding a player's name: 48 of 325 → 0 of 303 (PT4/PT5 replays).
+- Blind session: 7/8 won, 6 taken.
+Market: unchanged, 18.7; differentiator stays 2 (the learning is honest now, but no new evidence that it bites); MARKET.md history row R159.
+Content: unchanged (FIX).
+Coach: none new. Decisions: D14.
+Next: R160 is the k=0 RETRO slot, and it swaps to EXPAND: only 2 building rounds (R158, R159) since the last RETRO (R151), and no playtest newer than it. The postponed PT6 runs in R161, the first slot with 3 building rounds since PT5. The R160 pick, by gap value, is between the Translator (GAME.md roster #7, a listener for figurative speech: the riddle and trivia channel that beat both blind groups and PT5's critic) and stations 4-5, with a round dealing 3 of 5 (PT5 "felt samey").

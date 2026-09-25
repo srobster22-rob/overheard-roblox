@@ -24,7 +24,7 @@ harness can load; the entry scripts only run inside Roblox.
 | Module | Owns | Size |
 |---|---|---|
 | Exchange | the server's game flow: chat, restores, capture, the Supervisor, the way out, a round's start and end; built from a host so tests can run it | 718 |
-| Operator | the listener: hears chat, learns coinages, number words and a group's alphabet, credits restores | 816 |
+| Operator | the listener: hears chat, learns coinages, number words and a group's alphabet, credits restores | 864 |
 | Method | how a group passes its codes (digits turned round, one a message, letters), learned from each restore | 523 |
 | Heuristic | what one line conveys: plain words, learned coinages, live codes | 344 |
 | Objectives | the board: lines, holders, who has seen a code, submissions, the stranded-line rule | 471 |

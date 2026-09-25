@@ -130,6 +130,31 @@ local function payloadOf(self: Operator, concept: string): string
 	return ""
 end
 
+-- A present player's name is who is spoken to, never a word for a station
+-- (DECISIONS D14): "ana you still ok?" must not teach it that "ana" means the
+-- breaker. Terms are stems, so each name is matched both as said and stemmed.
+local function withoutNames(terms: { string }, names: { [string]: boolean }?): { string }
+	if names == nil or next(names) == nil then
+		return terms
+	end
+	local named: { [string]: boolean } = {}
+	for name in names do
+		named[name] = true
+		named[Lexicon.stem(name)] = true
+	end
+	local out: { string } = {}
+	for _, term in terms do
+		local holdsName = false
+		for word in string.gmatch(term, "%S+") do
+			holdsName = holdsName or named[word] == true
+		end
+		if not holdsName then
+			table.insert(out, term)
+		end
+	end
+	return out
+end
+
 -- A code passed a way the group has taught it (DECISIONS D13), read only against
 -- the codes this speaker has seen, and heard like a code said aloud: read back,
 -- spent and walked to. `understood` holds the concepts this line already moved
@@ -139,10 +164,10 @@ end
 local function hearWays(
 	self: Operator,
 	utterance: Utterance,
-	understood: { [string]: boolean }
+	understood: { [string]: boolean },
+	names: { [string]: boolean }?
 ): ({ Method.Hit }, Method.Line, boolean)
 	local own = if self.seenCodes then self.seenCodes(utterance.speaker.UserId) else nil
-	local names = if self.names then self.names() else nil
 	local hits, line =
 		Method.read(self.method, utterance.speaker.UserId, utterance.text, utterance.at, own or {}, names)
 	local spent = false
@@ -201,7 +226,8 @@ function Operator.hear(self: Operator, utterance: Utterance)
 	end
 
 	-- And a code passed a way the group has taught it.
-	local hits, line, spentByAWay = hearWays(self, utterance, understood)
+	local names = if self.names then self.names() else nil
+	local hits, line, spentByAWay = hearWays(self, utterance, understood, names)
 	spentACode = spentACode or spentByAWay
 
 	-- Remember the unfamiliar words for a little while. If the players turn out
@@ -210,7 +236,7 @@ function Operator.hear(self: Operator, utterance: Utterance)
 	-- Recorded ONCE per utterance, outside the loop above: a sentence conveying
 	-- two concepts still offers its novel terms once, and crediting them twice
 	-- would inflate every coinage minted from it.
-	local novel = (self.backend :: any).novelTerms(utterance, self.secrets)
+	local novel = withoutNames((self.backend :: any).novelTerms(utterance, self.secrets), names)
 	if #novel > 0 then
 		table.insert(self.observations, {
 			terms = novel,
@@ -624,13 +650,34 @@ end
 -- Observations are therefore CONSUMED here: otherwise solving two stations
 -- inside the credit window would burn every word said beforehand twice, into
 -- two different concepts, at double speed.
-function Operator.credit(self: Operator, concept: string, now: number)
+--
+-- Given the line's `holder` and the `entrant` who restored it, only what those
+-- two said is this line's (DECISIONS D14): the holder told the entrant, and the
+-- entrant asked. What anyone else said in the window is about another line, or
+-- nothing, and is kept for the restore it belongs to: two lines restored a
+-- second apart would otherwise file both stations' words under the first. An
+-- entrant who still holds a line of their own is talking about that one, so
+-- then only the holder's words count.
+function Operator.credit(self: Operator, concept: string, now: number, holder: number?, entrant: number?)
+	local onlyTheirs = holder ~= nil or entrant ~= nil
+	if entrant ~= nil and entrant ~= holder and self.seenCodes then
+		local own = self.seenCodes(entrant)
+		if own ~= nil and next(own) ~= nil then
+			entrant = nil
+		end
+	end
 	local gained: { [Coinage]: number } = {}
 	local credited: { Coinage } = {}
+	local kept: { Observation } = {}
 	for _, obs in self.observations do
 		local age = now - obs.at
 		if age > Config.CreditWindow then
 			continue -- too old to be related; drop it
+		end
+		local who = obs.speaker.UserId
+		if onlyTheirs and who ~= holder and who ~= entrant then
+			table.insert(kept, obs)
+			continue
 		end
 
 		-- Recency weighting: something said one second before the action is far
@@ -673,9 +720,10 @@ function Operator.credit(self: Operator, concept: string, now: number)
 		contrast(self, c, gained[c])
 	end
 
-	-- Everything in the window was just spent on `concept`; everything outside
-	-- it was too old to matter. Either way nothing survives this call.
-	self.observations = {}
+	-- What this line's players said was just spent on `concept`, and what was
+	-- older than the window was too old to matter. Only the others' recent
+	-- lines survive, for their own restore.
+	self.observations = kept
 end
 
 -- Drop novel terms that are still waiting to be credited. Called when a round

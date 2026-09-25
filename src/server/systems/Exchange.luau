@@ -401,11 +401,11 @@ function Exchange.build(host: Host): Flow
 		broadcastLexicon()
 	end)
 
-	-- Success is what teaches the Operator. Solving an objective credits whatever
-	-- unfamiliar phrases were said just beforehand.
-	board.onSolved = Guard.wrap("server.onSolved", function(objective, _actor: number)
+	-- Success is what teaches the Operator. Solving an objective credits the
+	-- unfamiliar phrases its holder and its entrant said just beforehand.
+	board.onSolved = Guard.wrap("server.onSolved", function(objective, actor: number)
 		print(`[objective] {objective.id} restored`)
-		operator:credit(objective.concept, clock())
+		operator:credit(objective.concept, clock(), objective.holder, actor)
 		-- And whatever was said that works out as the code just entered.
 		operator:creditCode(objective.answer, clock(), objective.holder)
 		pushObjectives(nil)
