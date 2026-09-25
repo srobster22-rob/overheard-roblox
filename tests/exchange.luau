@@ -706,9 +706,29 @@ do
 	check("...and the Operator reads it back to everyone, in digits", w.said(Round.readBack(code), "all") == 1)
 end
 
+do
+	-- A code passed as a fact everyone knows (DECISIONS D15).
+	local w = world()
+	fourPlayers(w)
+	local line = w.flow.board:get("board")
+	local code = line.answer
+	local change = tostring(100 - (tonumber(code) :: number))
+	local collides = false
+	for _, live in w.flow.board:liveCodes() do
+		collides = collides or live == change
+	end
+	check("(guard) the change in the riddle is no live code", not collides)
+	w.flow.hearChat(w.player(line.holder), `a dollar minus {change} cents`)
+	check("a code passed as a fact everyone knows is spent", line.answer ~= code)
+	check("...read back to everyone, in digits", w.said(Round.readBack(code), "all") == 1)
+	check("...and the Operator says it is known, to everyone", w.said(Round.LINES.known, "all") == 1)
+end
+
 --------------------------------------------------------------------------------
 print("")
 print("a way the group passes its codes (DECISIONS D13)")
+-- Its own seed: a section added above must not reshuffle this deal.
+math.randomseed(1581)
 do
 	local w = world()
 	local players = fourPlayers(w)

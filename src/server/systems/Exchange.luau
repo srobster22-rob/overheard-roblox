@@ -388,6 +388,11 @@ function Exchange.build(host: Host): Flow
 		broadcastLexicon()
 	end)
 
+	-- A code passed as a fact everyone knows was heard (DECISIONS D15).
+	operator.onKnown = Guard.wrap("server.onKnown", function(_concept: string)
+		heardRemote:FireAllClients(Round.LINES.known, "", 1)
+	end)
+
 	-- A code said aloud is spent: its holder gets a new one on their panel.
 	operator.onCodeHeard = Guard.wrap("server.onCodeHeard", function(concept: string)
 		if board:reroll(concept) then

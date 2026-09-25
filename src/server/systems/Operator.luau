@@ -13,6 +13,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Lexicon = require(ReplicatedStorage.Shared.Lexicon)
 local Numerals = require(ReplicatedStorage.Shared.Numerals)
+local Facts = require(ReplicatedStorage.Shared.Facts)
 local Heuristic = require(script.Parent.Heuristic)
 local Method = require(script.Parent.Method)
 
@@ -90,6 +91,8 @@ export type Operator = typeof(setmetatable(
 		-- A way of passing codes is one restore short of understood ("noting"),
 		-- or understood; `says` is what it says, a key in Round.LINES.
 		onMethod: ((kind: string, way: string, says: string) -> ())?,
+		-- A code passed as a fact everyone knows was just heard.
+		onKnown: ((concept: string) -> ())?,
 	},
 	Operator
 ))
@@ -117,6 +120,7 @@ function Operator.new(secrets: { Secret }): Operator
 		onCounted = nil,
 		onLettered = nil,
 		onMethod = nil,
+		onKnown = nil,
 	}, Operator)
 end
 
@@ -155,36 +159,62 @@ local function withoutNames(terms: { string }, names: { [string]: boolean }?): {
 	return out
 end
 
--- A code passed a way the group has taught it (DECISIONS D13), read only against
--- the codes this speaker has seen, and heard like a code said aloud: read back,
--- spent and walked to. `understood` holds the concepts this line already moved
--- it for (by code, true; by a word, false): a code is spent once, and the
--- Operator is not sent twice by one line. Returns every hit (for
--- `Method.spend`), the line, and whether it spent a code.
+-- A code heard in a line, by one of the readers that take only the codes the
+-- speaker has seen: read back, spent and walked to, like a code said aloud.
+-- `understood` holds the concepts this line already moved it for (by code,
+-- true; by a word, false): a code is spent once, and the Operator is not sent
+-- twice by one line. Returns whether it spent the code.
+local function spendHeard(self: Operator, concept: string, code: string, understood: { [string]: boolean }): boolean
+	if understood[concept] == true then
+		return false
+	end
+	if understood[concept] == nil and self.onUnderstood then
+		(self.onUnderstood :: any)(concept, payloadOf(self, concept), 1, code)
+	end
+	understood[concept] = true
+	if self.onCodeHeard then
+		(self.onCodeHeard :: any)(concept)
+	end
+	return true
+end
+
+-- A code passed a way the group has taught it (DECISIONS D13). Returns every
+-- hit (for `Method.spend`), the line, and whether it spent a code.
 local function hearWays(
 	self: Operator,
 	utterance: Utterance,
 	understood: { [string]: boolean },
-	names: { [string]: boolean }?
+	names: { [string]: boolean }?,
+	own: { [string]: string }
 ): ({ Method.Hit }, Method.Line, boolean)
-	local own = if self.seenCodes then self.seenCodes(utterance.speaker.UserId) else nil
-	local hits, line =
-		Method.read(self.method, utterance.speaker.UserId, utterance.text, utterance.at, own or {}, names)
+	local hits, line = Method.read(self.method, utterance.speaker.UserId, utterance.text, utterance.at, own, names)
 	local spent = false
 	for _, hit in hits do
-		if understood[hit.concept] == true then
-			continue
-		end
-		if understood[hit.concept] == nil and self.onUnderstood then
-			(self.onUnderstood :: any)(hit.concept, payloadOf(self, hit.concept), 1, hit.code)
-		end
-		understood[hit.concept] = true
-		spent = true
-		if self.onCodeHeard then
-			(self.onCodeHeard :: any)(hit.concept)
-		end
+		spent = spendHeard(self, hit.concept, hit.code, understood) or spent
 	end
 	return hits, line, spent
+end
+
+-- A code passed as a fact everyone knows (DECISIONS D15): "heinz ketchup" for
+-- 57, "a deck of cards minus one" for 51. Nothing to learn: heard at once, and
+-- the Operator says so. Returns whether it spent a code.
+local function hearFacts(
+	self: Operator,
+	utterance: Utterance,
+	understood: { [string]: boolean },
+	own: { [string]: string }
+): boolean
+	local known = Facts.read(utterance.text)
+	local spent = false
+	for concept, code in own do
+		if known[code] and spendHeard(self, concept, code, understood) then
+			spent = true
+			if self.onKnown then
+				(self.onKnown :: any)(concept)
+			end
+		end
+	end
+	return spent
 end
 
 -- Feed it something a player said. Safe to call on every chat message.
@@ -225,10 +255,13 @@ function Operator.hear(self: Operator, utterance: Utterance)
 		end
 	end
 
-	-- And a code passed a way the group has taught it.
+	-- Then what only the speaker could be passing: a way the group taught it,
+	-- and a fact everyone knows, read against the codes the speaker has seen.
 	local names = if self.names then self.names() else nil
-	local hits, line, spentByAWay = hearWays(self, utterance, understood, names)
-	spentACode = spentACode or spentByAWay
+	local own = (if self.seenCodes then self.seenCodes(utterance.speaker.UserId) else nil) or {}
+	local hits, line, spentByAWay = hearWays(self, utterance, understood, names, own)
+	local spentByAFact = hearFacts(self, utterance, understood, own)
+	spentACode = spentACode or spentByAWay or spentByAFact
 
 	-- Remember the unfamiliar words for a little while. If the players turn out
 	-- to have been coordinating about a concept, we credit these retroactively.

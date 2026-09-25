@@ -258,6 +258,9 @@ Round.LINES = {
 	-- message. Each says which way, so a group knows what stopped working.
 	turned = "Thank you, caller. I will take it the other way round.",
 	apart = "Take your time, caller. I will wait for the other half.",
+	-- A code passed as a fact everyone knows was heard (DECISIONS D15): after
+	-- the read-back, so a group learns famous numbers are no secret.
+	known = "Everyone knows that one, caller.",
 }
 
 -- Where a concept brings the Operator, as the wall names it: the station's own

@@ -9525,3 +9525,42 @@ Market: unchanged, 18.7; differentiator stays 2 (the learning is honest now, but
 Content: unchanged (FIX).
 Coach: none new. Decisions: D14.
 Next: R160 is the k=0 RETRO slot, and it swaps to EXPAND: only 2 building rounds (R158, R159) since the last RETRO (R151), and no playtest newer than it. The postponed PT6 runs in R161, the first slot with 3 building rounds since PT5. The R160 pick, by gap value, is between the Translator (GAME.md roster #7, a listener for figurative speech: the riddle and trivia channel that beat both blind groups and PT5's critic) and stations 4-5, with a round dealing 3 of 5 (PT5 "felt samey").
+
+
+## R160 · EXPAND · it knows what everyone knows: famous numbers are no secret
+Pick: EXPAND in the k=0 slot. The RETRO swaps: only 2 building rounds (R158, R159) since the last RETRO (R151), and no playtest newer than it; PT6 is postponed to R161, the first slot with 3 building rounds since PT5. The pick answers the one channel the swing left unread: riddles built from public trivia — gap value 12 (core loop depth) · impact planned 3/3/0.
+- Of the 187 codes passed unheard in PT4/PT5 (r158/handoffs_head.txt), the 77 no structural way reads are almost all public facts and sums of them: "a deck of cards minus one", "days in february", "heinz ketchup", "the age you can vote", "fingers on one hand, then days in a week". Both blind groups (R158, R159) won that way. GAME.md's thesis is that what beats the Operator is "shared context it was never present for"; a fact everyone knows is not that.
+- The build: a registry of widely known numbers (content as data), rewritten to digits and read by the existing arithmetic reader ("a deck of cards minus one" → "52 minus one" → 51), only against the codes the speaker has seen (R158's rule). A catch is heard like a code said aloud, and the first time a fact is read the Operator says a new line.
+- Private facts ("how old my cousin jess is", "Bo's jersey") stay safe by design.
+- Measured before building: the unread hand-offs, the blind chat's false trips, and the scheme corpus.
+Sync: AGENT_LOOP v3.4 unchanged; OWNER.md `## Next` empty, no VETO; COACH.md has no new notes. Studio MCP: no tools. HEAD 440eae0 green.
+
+Player notices: a code passed as a fact everyone knows ("a deck of cards minus one", "days in february", "heinz ketchup", "two dozen", "double seven") is read back and spent the first time it is said, and the Operator adds "Everyone knows that one, caller." What still works is what only your group knows.
+Impact: planned 3/3/0 → shipped 3/3/0 (biggest file tests/wiring.luau 1,556, untouched; Operator.luau 864→897; Facts.luau new, 299; biggest function touched `Operator.hear` 72→75, `Facts.rewrite` new at 71).
+Built:
+- `shared/Facts.luau`: the `Facts.KNOWN` registry of public facts, holding only phrases nobody says in passing. A unit ("dozen", "weeks", "quarters") counts only after a number. `Facts.rewrite` handles "seven sevens", "squared", "double" / "twice" / "half" (a digit doubled is said twice), two-word and hyphenated numbers, and `*`, `+`, `-`, with products bounded. `Facts.read` goes one sentence at a time and returns only what needs a fact.
+- Operator: `hearFacts` (only the codes the speaker has seen), `spendHeard` (shared with R158's ways), `onKnown`. Exchange and the sim say `LINES.known`.
+- Tests: tests/facts.luau (new, 31 checks: 31 real riddles, 9 combined forms, 21 everyday lines that must read nothing, private facts, the registry, a blind-chat ceiling of 0, the Operator end-to-end). The scheme corpus gains "public facts" (10 of 11). Exchange gains one section, and its R158 section is reseeded.
+- Docs: D15, GAME.md, ARCHITECTURE.md (200 lines), CONTENT.md, MARKET.md.
+- A correction to this entry's pick line: 36 of the 77 hand-offs no structural way reads are read now, not "almost all". The rest are private facts, niche references and chains of three terms.
+Quality:
+- My review found a sum after a fact read a two-word number as its first word ("minus sixty three" as 60). The rewrite now reads it whole.
+- A code heard through a learned word must not also be "known": it had no test until a surviving plant showed that.
+- Independent review, cycle 1: the first reviewer stalled for an hour without a verdict and was stopped. Its partial probes found hyphens, "half a …", "double seven" and two surviving plants, all fixed and tested.
+- Cycle 2: REJECT. Everyday chat read as codes: "whats the score" as 20, "that was a lucky one" as 71, "i need a hand with this one" as 51. The list is now cut to specific phrases, with units only after a number, sentences read apart and products bounded. It also found a stale 35 and overclaims in D15 and GAME.md; all fixed.
+- Final cycle: APPROVE. A smaller everyday surface still reads ("you're the lucky one, two left" as 72), about as often as the plain reader already misreads chat, and time riddles ("half an hour") are no longer read. Both are in D15's known cost.
+Verified:
+- `.\test.cmd`: 37 gates, 2,267 checks. 13 plants each fail by name, restored by sha256 (r160/plants_out.txt).
+- Of the 187 codes PT4/PT5 passed unheard, 36 read through a fact (r160/probe/handoffs_probe.luau). 0 of 160 blind lines read a code through a fact.
+- The bots and the smoke session are byte-identical to R159. In PT5 critic s1, 4 riddle codes are caught, each followed by "Everyone knows that one, caller."
+- Blind tools/play session (seed 61, a pub-quiz group that never saw the change): 9 rounds, 8 won, 5 codes burned, all said plainly or as famous trivia ("keys on a piano, minus two", the answer to life = 42). Its best moment: "Everyone knows that one, caller." After round 1 it passed 27 codes as private memories ("Bo's age the night he joined"), and all went through. That is GAME.md's intended defence. None of its 12 confusing items were caused here: "directory" as a hidden fourth trigger, "say" learned for the board, the way out's instruction.
+Headline:
+- Bots: 5/6/5 → 5/6/5 won. 2.5 → 2.5 taken and 1.7 → 1.7 Supervisor calls per round. 7 → 7 codewords replaced. 21/21 → 21/21 rounds end. Byte-identical.
+- Natural chat naming a secret: 30/160 → 30/160.
+- Scheme corpus: 9 of 10 → 10 of 11 (public facts added, read from its first use).
+- Real unheard hand-offs read: +36 of 187.
+- Blind session: 8/9 won.
+Market: unchanged, 18.7. Core loop stays 1 until PT6: the evidence is headless and one blind session. MARKET.md history row R160.
+Content: Operator lines 17 → 18 (`known`); CONTENT.md history row R160.
+Coach: none new. Decisions: D15.
+Next: R161 is PT6, the postponed PLAYTEST, now that 3 building rounds (R158-R160) have run since PT5. It takes the k=1 slot, and this cycle's BIG SWING takes k=2 (R162). Three personas in parallel: a genre veteran, a rotated persona and a critic. It judges the PLAYBOOK TRY (no unscripted group wins more than half its rounds with the Operator never moving) against R158-R160's listeners.

@@ -112,6 +112,13 @@ silent and win.
 > pass codes". Still safe: a way before its third restore, a riddle, a private
 > fact, and a way it does not know (it knows four). A retired way cools a step
 > each round it goes unused; the wall shows when it is still understood.
+>
+> **As built (R160): it knows what everyone knows.** A code passed as a public
+> fact ("a deck of cards minus one", "days in february", "heinz ketchup",
+> "two dozen") is heard the first time it is said, when it reads the fact and
+> the speaker has seen that code, and the Operator adds "Everyone knows that
+> one, caller." What still works is what only your group knows: whose jersey,
+> whose age, what happened last round.
 
 ## Round shape
 

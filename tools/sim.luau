@@ -115,6 +115,9 @@ function Sim.new(seed: number): any
 			self:trace(`   >> it reads codes passed this way now: {way}. "{said}"`)
 		end
 	end)
+	self.operator.onKnown = Guard.wrap("sim.onKnown", function(_concept: string)
+		self:trace(`   >> it knows that number. "{Round.LINES.known}"`)
+	end)
 	self.operator.onLettered = Guard.wrap("sim.onLettered", function()
 		self:trace(`   >> it reads the group's letters now. "{Round.LINES.lettered}"`)
 	end)

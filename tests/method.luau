@@ -15,7 +15,7 @@
 --     never credited in the next.
 --   - The wall shows each way under "how you pass codes".
 --   - The scheme corpus (PLAYBOOK TRY): every scheme a group has won with,
---     replayed; 9 of the 10 are read.
+--     replayed; 10 of the 11 are read (not private facts).
 --   - Null gates: the blind chat corpus teaches no way, and with every way
 --     understood it spends almost no code.
 -- Through the public surface: Method.marks/WAYS, Operator.hear/creditCode/
@@ -661,6 +661,17 @@ local SCHEMES: { { name: string, read: boolean, say: (code: number, i: number, s
 			return { `yours is {NAME[a0(code // 10)]} {NAME[a0(code % 10)]}` }
 		end,
 	},
+	{
+		-- R158 and R159's blind groups and PT5's critic (DECISIONS D15).
+		name = "public facts",
+		read = true,
+		say = function(code, i)
+			if code < 52 and i % 2 == 0 then
+				return { `a deck of cards minus {words(52 - code)}` }
+			end
+			return { `a dollar minus {words(100 - code)} cents` }
+		end,
+	},
 }
 local DEALS = {
 	{ 21, 37, 58 },
@@ -709,7 +720,7 @@ for _, scheme in SCHEMES do
 		isRead == scheme.read
 	)
 end
-check(`9 of the 10 schemes are read ({read})`, read == 9)
+check(`10 of the 11 schemes are read ({read})`, read == 10)
 
 -- NULL GATES. The blind corpus: 160 lines by someone who never saw the word
 -- lists, told only what a player can see (tests/heuristic.luau).

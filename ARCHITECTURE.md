@@ -1,10 +1,9 @@
 # ARCHITECTURE — OVERHEARD
 
-The map of the code. Use it to find the module that owns a concern before you
-open anything. Any commit that adds, moves or splits a module updates this
-file in the same commit (`tests/wiring.luau` fails if a module in `src/` is
-missing from the map). Sizes are lines, updated with each module that changes
-(all of them as of R152).
+The map of the code: find the module that owns a concern before you open
+anything. A commit that adds, moves or splits a module updates this file
+(`tests/wiring.luau` fails if a module in `src/` is missing). Sizes are
+lines, updated with each module that changes (all of them as of R152).
 
 Luau on Roblox, synced with Rojo (`default.project.json`):
 `src/server` → ServerScriptService.Server, `src/client` →
@@ -23,12 +22,12 @@ harness can load; the entry scripts only run inside Roblox.
 ### Server systems (`src/server/systems`)
 | Module | Owns | Size |
 |---|---|---|
-| Exchange | the server's game flow: chat, restores, capture, the Supervisor, the way out, a round's start and end; built from a host so tests can run it | 718 |
-| Operator | the listener: hears chat, learns coinages, number words and a group's alphabet, credits restores | 864 |
+| Exchange | the server's game flow: chat, restores, capture, the Supervisor, the way out, a round's start and end; built from a host so tests can run it | 723 |
+| Operator | the listener: hears chat, learns coinages, number words and a group's alphabet, credits restores | 897 |
 | Method | how a group passes its codes (digits turned round, one a message, letters), learned from each restore | 523 |
 | Heuristic | what one line conveys: plain words, learned coinages, live codes | 344 |
 | Objectives | the board: lines, holders, who has seen a code, submissions, the stranded-line rule | 471 |
-| Round | stations, secret concepts and their plain words, the Operator's lines, dealing, the wall | 362 |
+| Round | stations, secret concepts and their plain words, the Operator's lines, dealing, the wall | 365 |
 | Pursuit | where the Operator walks, queues and waits; when it is audible | 346 |
 | Connected | being caught: who is on the line, taking everyone in a room | 162 |
 | Lifecycle | whether a round is playing, its outcome, the loss rule, the intermission | 118 |
@@ -48,6 +47,7 @@ harness can load; the entry scripts only run inside Roblox.
 | Remotes | the RemoteEvent names and the folder that holds them | 77 |
 | Lexicon | tokenising, stemming and word tests for the listener | 652 |
 | Numerals | number words, sums and letters a group uses for digits | 490 |
+| Facts | the numbers everyone knows (a deck of cards, days in June), and a line rewritten with them | 299 |
 | Layout | the exchange's dimensions, rooms and routes | 463 |
 | Readout | what the Your Line and Lexicon panels say | 232 |
 | Hud | where the HUD panels go at every screen size | 190 |
@@ -69,8 +69,7 @@ harness can load; the entry scripts only run inside Roblox.
   module in src/shared and src/server/systems from the folders, and the
   Studio test under `rt.dev`), `kit.luau` (the shared `check` and `finish`),
   `luaucode.luau` (strips comments and strings from source), `sources.luau`
-  (the server's code as the source-reading checks see it: the entry script
-  and Exchange).
+  (the entry script and Exchange, as the source-reading checks see them).
 - `tests/studio/TestOperator.luau`: an end-to-end acquisition test that needs
   a Roblox runtime. It is not in the shipped place: `dev.project.json` adds it
   under ServerScriptService.Dev for Studio; `tests/operator` runs it headlessly.
@@ -89,8 +88,9 @@ harness can load; the entry scripts only run inside Roblox.
    code (`viewFor`, sent on the `Objectives` remote).
 2. **Talk.** `ChatFeed` hears a line → `hearChat` → `Operator:hear` →
    `Heuristic.conveyed` (plain words, the group's learned words, a live code
-   said aloud, a learned number word or alphabet), then `Method.read` (a code
-   passed a way the group taught it, among the codes the speaker has seen).
+   said aloud, a learned number word or alphabet), then `Method.read` and
+   `Facts.read` (a code passed a way the group taught it, or as a fact everyone
+   knows, among the codes the speaker has seen).
    An understanding fires `operator.onUnderstood` → `Pursuit` walks to that
    room, or queues it. A code heard fires `onCodeHeard` → `Objectives.reroll`.
 3. **The beat** (`beat`, run by init.server's loop every
@@ -126,6 +126,7 @@ headless trace follows the live game.
 | panel strings and styles | `Readout`, `Heat`, `Silence` |
 | number words and letter names | `Numerals` |
 | the ways a group passes a code | `Method.WAYS` |
+| the numbers everyone knows | `Facts.KNOWN` |
 | remote names | `Remotes` (`REMOTE_NAMES`) |
 | side-restricted engine APIs | `PLATFORM.md` (read by `tests/wiring.luau`) |
 
