@@ -258,6 +258,18 @@ function Objectives.liveCodes(self: Board): { [ConceptId]: string }
 	return codes
 end
 
+-- The live codes one player has seen, by concept: the only codes that player
+-- can be passing on (Operator.seenCodes).
+function Objectives.codesSeenBy(self: Board, userId: number): { [ConceptId]: string }
+	local codes: { [ConceptId]: string } = {}
+	for _, o in self.list do
+		if not o.solved and o.seenBy[userId] then
+			codes[o.concept] = o.answer
+		end
+	end
+	return codes
+end
+
 -- What a given player is allowed to know. The answer is included ONLY for the
 -- holder; everyone else gets the same shape with the answer withheld.
 function Objectives.viewFor(self: Board, userId: number): { any }

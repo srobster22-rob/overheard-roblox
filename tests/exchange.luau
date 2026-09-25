@@ -96,12 +96,14 @@ local function world(textService: any?): any
 		end,
 	})
 
-	-- A player joins, standing at `point`.
-	function w.join(id: number, name: string, point: any): any
+	-- A player joins, standing at `point`, shown in chat as `display` (their
+	-- Roblox display name; their name if not given).
+	function w.join(id: number, name: string, point: any, display: string?): any
 		local root = { Position = { X = point.x, Z = point.z } }
 		local p = {
 			UserId = id,
 			Name = name,
+			DisplayName = display or name,
 			Character = {
 				FindFirstChild = function(_self: any, child: string): any
 					return if child == "HumanoidRootPart" then root else nil
@@ -698,6 +700,70 @@ do
 	check("a code said aloud is spent: the line gets a new code", line.answer ~= code)
 	check("...the holder's panel is pushed with it", #w.sent("Objectives", line.holder) > panels)
 	check("...and the Operator reads it back to everyone, in digits", w.said(Round.readBack(code), "all") == 1)
+end
+
+--------------------------------------------------------------------------------
+print("")
+print("a way the group passes its codes (DECISIONS D13)")
+do
+	local w = world()
+	local players = fourPlayers(w)
+	-- Whether `code` turned round is a code of its own: no live code (it would
+	-- be heard as said) and not the same both ways.
+	local function turnsSafely(code: string): boolean
+		local turned = string.reverse(code)
+		for _, live in w.flow.board:liveCodes() do
+			if live == turned then
+				return false
+			end
+		end
+		return true
+	end
+	-- A line's holder tells the player who will enter it its code, turned round.
+	local function passTurned(stationId: string)
+		local line = w.flow.board:get(stationId)
+		check(`(guard) the {stationId} code turned round is no live code`, turnsSafely(line.answer))
+		w.now += 1
+		w.flow.hearChat(w.player(line.holder), `{w.enterer(stationId).Name}, {string.reverse(line.answer)}`)
+	end
+	passTurned("board")
+	w.restore("board")
+	check("(guard) one restore passed that way: nothing said yet", w.said(Round.LINES.noting, "all") == 0)
+	passTurned("breaker")
+	w.restore("breaker")
+	check("the second restore passed that way: the warning, said to everyone", w.said(Round.LINES.noting, "all") == 1)
+	passTurned("latch")
+	w.restore("latch")
+	check("the third: it says which way it has, to everyone", w.said(Round.LINES.turned, "all") == 1)
+	local sent = w.last("LexiconUpdated", "all")
+	local onWall = false
+	for _, row in if sent then sent.args[1] else {} do
+		onWall = onWall or (row.leadsTo == Round.METHOD_LEADS and row.phrase == "digits turned round")
+	end
+	check(`...and the wall shows it under "{Round.METHOD_LEADS}"`, onWall)
+
+	for _, p in players do
+		w.flow.line:connect(p.UserId, w.now)
+	end
+	w.run(TICK + Config.IntermissionSeconds + TICK * 2)
+	check("(guard) a new round began", w.flow.round.number == 2)
+	local line = w.flow.board:get("board")
+	local code = line.answer
+	check("(guard) the board code turned round is no live code", turnsSafely(code))
+	w.flow.hearChat(w.enterer("board"), `ok, {string.reverse(code)}`)
+	check("a player who has not seen the code says it turned round: nothing is spent", line.answer == code)
+	w.flow.hearChat(w.player(line.holder), `ok, {string.reverse(code)}`)
+	check("its holder says it turned round: the code is spent", line.answer ~= code)
+	check("...and read back to everyone, in digits", w.said(Round.readBack(code), "all") == 1)
+end
+do
+	local w = world()
+	w.join(1, "user4417", ROOMS.board, "Dee")
+	local names = w.flow.operator.names()
+	check(
+		"a player is spoken to by their name and by the name chat shows them as",
+		names.user4417 == true and names.dee == true
+	)
 end
 
 --------------------------------------------------------------------------------

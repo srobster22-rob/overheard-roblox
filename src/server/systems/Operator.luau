@@ -14,6 +14,7 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Lexicon = require(ReplicatedStorage.Shared.Lexicon)
 local Numerals = require(ReplicatedStorage.Shared.Numerals)
 local Heuristic = require(script.Parent.Heuristic)
+local Method = require(script.Parent.Method)
 
 type Secret = Types.Secret
 type Coinage = Types.Coinage
@@ -65,10 +66,18 @@ export type Operator = typeof(setmetatable(
 		-- The letters the group spells codes with; see `creditCode`.
 		dial: Dial,
 		dialUsed: boolean,
+		-- How the group passes its codes (DECISIONS D13).
+		method: Method.Method,
 		backend: Types.ComprehensionBackend,
 		-- Each concept's live code right now, asked for at the moment something
 		-- is said, so a code re-dealt or re-rolled is never heard stale.
 		liveCodes: (() -> { [string]: string })?,
+		-- The live codes one player has seen, by concept: the only codes a way
+		-- the group taught it reads in that player's lines (Method).
+		seenCodes: ((userId: number) -> { [string]: string })?,
+		-- The present players' names, lower case: one that opens a sentence is
+		-- who is spoken to, not a letter (Method).
+		names: (() -> { [string]: boolean })?,
 		-- `heard` is what moved it, when that is the server's own text (Types).
 		onUnderstood: (concept: string, payload: string, confidence: number, heard: string?) -> ()?,
 		onBurned: (coinage: Coinage) -> ()?,
@@ -78,6 +87,9 @@ export type Operator = typeof(setmetatable(
 		onCounted: (key: string, value: number) -> ()?,
 		-- The group's letters have just been understood.
 		onLettered: (() -> ())?,
+		-- A way of passing codes is one restore short of understood ("noting"),
+		-- or understood; `says` is what it says, a key in Round.LINES.
+		onMethod: ((kind: string, way: string, says: string) -> ())?,
 	},
 	Operator
 ))
@@ -94,14 +106,60 @@ function Operator.new(secrets: { Secret }): Operator
 		countedSinceBoundary = {},
 		dial = { evidence = {}, heat = 0, coinedBy = nil },
 		dialUsed = false,
+		method = Method.new(),
 		backend = Heuristic :: any,
 		liveCodes = nil,
+		seenCodes = nil,
+		names = nil,
 		onUnderstood = nil,
 		onBurned = nil,
 		onCodeHeard = nil,
 		onCounted = nil,
 		onLettered = nil,
+		onMethod = nil,
 	}, Operator)
+end
+
+-- What the Operator walks to for a concept: its payload in the secret pool.
+local function payloadOf(self: Operator, concept: string): string
+	for _, secret in self.secrets do
+		if secret.concept == concept then
+			return secret.payload
+		end
+	end
+	return ""
+end
+
+-- A code passed a way the group has taught it (DECISIONS D13), read only against
+-- the codes this speaker has seen, and heard like a code said aloud: read back,
+-- spent and walked to. `understood` holds the concepts this line already moved
+-- it for (by code, true; by a word, false): a code is spent once, and the
+-- Operator is not sent twice by one line. Returns every hit (for
+-- `Method.spend`), the line, and whether it spent a code.
+local function hearWays(
+	self: Operator,
+	utterance: Utterance,
+	understood: { [string]: boolean }
+): ({ Method.Hit }, Method.Line, boolean)
+	local own = if self.seenCodes then self.seenCodes(utterance.speaker.UserId) else nil
+	local names = if self.names then self.names() else nil
+	local hits, line =
+		Method.read(self.method, utterance.speaker.UserId, utterance.text, utterance.at, own or {}, names)
+	local spent = false
+	for _, hit in hits do
+		if understood[hit.concept] == true then
+			continue
+		end
+		if understood[hit.concept] == nil and self.onUnderstood then
+			(self.onUnderstood :: any)(hit.concept, payloadOf(self, hit.concept), 1, hit.code)
+		end
+		understood[hit.concept] = true
+		spent = true
+		if self.onCodeHeard then
+			(self.onCodeHeard :: any)(hit.concept)
+		end
+	end
+	return hits, line, spent
 end
 
 -- Feed it something a player said. Safe to call on every chat message.
@@ -121,25 +179,30 @@ function Operator.hear(self: Operator, utterance: Utterance)
 	)
 
 	local spentACode = false
+	-- What this line moved it for: by its code (true) or by a word (false).
+	local understood: { [string]: boolean } = {}
 	for _, understanding in conveyed do
 		if understanding.concept == nil or understanding.confidence < Config.ActThreshold then
 			continue
 		end
 		spentACode = spentACode or understanding.byCode == true
-		local payload = ""
-		for _, secret in self.secrets do
-			if secret.concept == understanding.concept then
-				payload = secret.payload
-				break
-			end
-		end
+		understood[understanding.concept] = understanding.byCode == true
 		if self.onUnderstood then
-			(self.onUnderstood :: any)(understanding.concept, payload, understanding.confidence, understanding.heard)
+			(self.onUnderstood :: any)(
+				understanding.concept,
+				payloadOf(self, understanding.concept),
+				understanding.confidence,
+				understanding.heard
+			)
 		end
 		if understanding.byCode and self.onCodeHeard then
 			(self.onCodeHeard :: any)(understanding.concept)
 		end
 	end
+
+	-- And a code passed a way the group has taught it.
+	local hits, line, spentByAWay = hearWays(self, utterance, understood)
+	spentACode = spentACode or spentByAWay
 
 	-- Remember the unfamiliar words for a little while. If the players turn out
 	-- to have been coordinating about a concept, we credit these retroactively.
@@ -162,8 +225,10 @@ function Operator.hear(self: Operator, utterance: Utterance)
 	-- to the holder's NEXT code ("yours: f g" read out, then 38 entered, would
 	-- unsettle f and g).
 	if spentACode then
+		Method.spend(self.method, hits)
 		return
 	end
+	Method.keep(self.method, line)
 	table.insert(self.said, { text = utterance.text, at = utterance.at, speaker = utterance.speaker.UserId })
 	if #self.said > Operator.SAID_KEPT then
 		table.remove(self.said, 1)
@@ -172,8 +237,9 @@ end
 
 Operator.SAID_KEPT = 200
 
--- Defined below `creditCode`, which calls it.
+-- Defined below `creditCode`, which calls them.
 local creditLetters: (self: Operator, code: string, now: number, holder: number?) -> ()
+local creditMethod: (self: Operator, code: string, now: number, holder: number?) -> ()
 
 -- The value a counting word stands for and its heat: the strongest.
 local function strongestValue(c: Counting): (number?, number)
@@ -242,6 +308,7 @@ function Operator.creditCode(self: Operator, code: string, now: number, holder: 
 		end
 	end
 	creditLetters(self, code, now, holder)
+	creditMethod(self, code, now, holder)
 end
 
 Operator.DIAL_SEEN = 2
@@ -286,7 +353,8 @@ function creditLetters(self: Operator, code: string, now: number, holder: number
 		return
 	end
 	local map = dialMap(self)
-	local wasKnown = self.dial.heat >= Config.ActThreshold
+	-- Letters are said to be understood once, whichever learner gets there first.
+	local wasKnown = self.dial.heat >= Config.ActThreshold or Method.lettersUnderstood(self.method)
 	local function note(letter: string, digit: number)
 		local digits = self.dial.evidence[letter] or {}
 		digits[digit] = (digits[digit] or 0) + 1
@@ -326,6 +394,40 @@ function creditLetters(self: Operator, code: string, now: number, holder: number
 	end
 end
 
+-- IT LEARNS HOW YOU PASS IT (DECISIONS D13): the holder's newest line against
+-- the code entered (Method). A line that already said the code in words it
+-- reads used no way. A letters way understood is said with the dial's
+-- `onLettered`: letters have one line, and the dial stays quiet when it crosses
+-- after a letters way already reads them (`creditLetters`).
+function creditMethod(self: Operator, code: string, now: number, holder: number?)
+	if holder == nil then
+		return
+	end
+	local known, letters = self:knownValues(), self:knownLetters()
+	local function plainly(text: string): boolean
+		return Lexicon.numbersIn(text)[code] == true
+			or Numerals.read(text, known)[code] == true
+			or Numerals.readLetters(text, letters)[code] == true
+	end
+	-- The holder's other live codes: a line that carried one of those is theirs.
+	local others: { [string]: boolean } = {}
+	for _, other in (if self.seenCodes then self.seenCodes(holder) else nil) or {} do
+		others[other] = true
+	end
+	others[code] = nil
+	for _, event in Method.credit(self.method, code, holder, now, plainly, others) do
+		if event.way.kind == "letter" and event.kind == "understood" then
+			if self.onLettered then
+				(self.onLettered :: any)()
+			end
+		elseif self.onMethod then
+			local says = if event.kind == "understood" then event.way.line else Method.NOTING_LINE
+			local onMethod = self.onMethod :: any
+			onMethod(event.kind, event.way.id, says)
+		end
+	end
+end
+
 -- The letters the dial has settled, understood or not (the wall and the tests).
 function Operator.settledLetters(self: Operator): { [string]: number }
 	return dialMap(self)
@@ -351,6 +453,11 @@ function Operator.knownValues(self: Operator): { [string]: number }
 		end
 	end
 	return out
+end
+
+-- The wall's rows for the ways it is learning a group passes codes (Method).
+function Operator.methodRows(self: Operator): { Coinage }
+	return Method.rows(self.method)
 end
 
 -- The wall's rows for the words it is learning as numbers (Readout).
@@ -583,6 +690,7 @@ end
 function Operator.forgetObservations(self: Operator)
 	self.observations = {}
 	self.said = {}
+	Method.forget(self.method)
 end
 
 -- Terms cool off. It forgets, a little, which is what keeps a long-running
@@ -638,6 +746,7 @@ function Operator.cool(self: Operator, amount: number): boolean
 	end
 	forgetLostWords(self)
 	changed = coolCounting(self, amount, false) or changed
+	changed = Method.cool(self.method, amount) or changed
 	return changed
 end
 
@@ -657,6 +766,7 @@ function Operator.coolRound(self: Operator, amount: number): boolean
 		self.creditedSinceBoundary = {}
 		self.countedSinceBoundary = {}
 		self.dialUsed = false
+		Method.coolRound(self.method, 0)
 		return false
 	end
 	local changed = false
@@ -678,6 +788,7 @@ function Operator.coolRound(self: Operator, amount: number): boolean
 	self.creditedSinceBoundary = {}
 	forgetLostWords(self)
 	changed = coolCounting(self, amount, true) or changed
+	changed = Method.coolRound(self.method, amount) or changed
 	self.countedSinceBoundary = {}
 	self.dialUsed = false
 	return changed

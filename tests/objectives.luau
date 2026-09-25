@@ -44,6 +44,10 @@ check("everyone else sees no answer", otherView.answer == nil)
 check("everyone else sees no prompt", otherView.prompt == nil)
 check("everyone else still sees the objective exists", otherView.id == "board")
 
+print("the codes a player has seen (what the Operator reads their lines against)")
+check("the holder has seen the live code", board:codesSeenBy(HOLDER).jack_number == jack.answer)
+check("nobody else has", next(board:codesSeenBy(ACTOR)) == nil)
+
 print("the invariant")
 local selfSolve = board:submit("board", HOLDER, jack.answer, T0)
 check("the holder cannot solve their own objective", selfSolve.ok == false)
@@ -61,6 +65,7 @@ local good = board:submit("board", ACTOR, jack.answer, T0)
 check("a different player with the right value solves it", good.ok == true)
 check("onSolved reports the actor", solvedBy == ACTOR)
 check("board reports all solved", board:allSolved() == true)
+check("a restored line's code is no code the holder is passing", next(board:codesSeenBy(HOLDER)) == nil)
 
 print("idempotence")
 check("re-submitting a solved objective is refused", board:submit("board", THIRD, jack.answer, T0).ok == false)

@@ -9430,3 +9430,65 @@ Headline: unchanged; the seeded runs are byte-identical.
 Market: unchanged. Content: unchanged. Coach: none new. Decisions: none.
 ORGANIZE phase complete (R152-R157, the cap of 6). The checklist now holds for: ARCHITECTURE.md (194 lines), one check command with a failure summary, Guard on every handler, loop and callback with the smoke run failing on any recorded error, test code out of the shipped place (a build gate), no hand-kept module lists, src comments free of history, and the server's rules checked by behaviour. Left as organization debt (ARCHITECTURE.md): the client's 37 source checks, module-order source checks, `Exchange.build` at 630 lines, tests not all mirroring modules, and history in test comments.
 Next: resume the cycle. R158 is a k=3 PLAYTEST slot, but no building round has run since PT5 (R151 was the RETRO; ORGANIZE rounds do not count), so it swaps to EXPAND. Its pick, by gap value: core loop depth (12), PT5 #1: the listener reads what the entrant is told across the holder's messages, not one more encoding, measured first against the scheme corpus (the PLAYBOOK TRY; HEAD reads 5 of 10). The swing panel's three drafts, cut off at R152, can be resumed as input.
+
+
+## R158 · BIG SWING · the listener reads what the entrant is told, not one more encoding
+Pick: this cycle's BIG SWING slice 1, displaced from R152 by the ORGANIZE phase. It takes the k=3 slot: the PLAYTEST swaps to EXPAND, since 0 building rounds have run since PT5 (R151 was the RETRO; ORGANIZE rounds do not count). It answers PT5 #1: the listener reads the channel, what the entrant is told across the holder's messages, not one more encoding — gap value 12 (core loop depth; also the differentiator) · impact planned 3/3/0.
+- Design by a panel of three drafts (market-gap-first, differentiator-first, player-delight-first). Each is measured against the scheme corpus probe (the PLAYBOOK TRY: HEAD reads 5 of 10 winning schemes) and the 160-line blind chat (30 trips today). The verdict is recorded here before building.
+Sync: AGENT_LOOP v3.4 unchanged; OWNER.md `## Next` empty, no VETO; COACH.md has no new notes (last changed R142). Studio MCP: the roblox-studio proxy is connected, but tool search for "roblox" finds no tools (OWNER.md question 1). HEAD d8214da green.
+
+Panel verdict (before building). The three drafts converged on one mechanism: the Operator learns the group's WAY of passing a code by comparing the holder's lines before a restore with the code entered. It learns at the owner's rates: a whole HeatPerCredit per restore, understood at the third, cooled by CoolPerRound unless a way was understood and used that round. It hears the fourth use. I re-ran each draft's corpus probe:
+- market-gap-first ("it learns your method"): two digit ways (one digit a message, turned round) in a pure module, plus evidence against a way whose shape carried another number. Reads 7 of 10 schemes.
+- differentiator-first ("the tickets"): 28 ways, including 13 alphabets. Its caller-only rule decodes a player's lines only against codes that player has seen, which cuts false reads from 1.37 to 0.34 per pass of the 160 blind lines. Reads 9 of 10.
+- player-delight-first ("the call"): five readings grounded in the corpus, and a warning at the second use ("One moment, caller. Let me write that down."). Reads 9 of 10.
+Built: the shared mechanism, taking:
+- the delight draft's reading set: turned round, one digit a message (with "again"), and letters as A=1 or A=0, with glued capitals and one word between letters included;
+- the differentiator's caller-only rule, its wall rows, and a name that opens a sentence read as an address, not a letter;
+- the market draft's pure `systems/Method.luau` behind thin Operator glue, and its evidence against.
+Left out: the keypad, keyboard-row and Z=1 alphabets and the eight other shifts. None has appeared in a playtest, and each widens what normal chat is read as. Slice 2 is PT5 broken (1) and (2): the holder's lines belong to the holder's line, and names are never learned as words.
+Yardsticks, measured before building:
+- scheme corpus: 5 of 10 read;
+- real hand-offs replayed from PT4/PT5 (r158/extract.luau): of 187 codes passed unheard, 110 use one of these ways;
+- the same 71 replayed rounds: 55 won, 27 of them with the Operator understanding nothing;
+- blind chat: 30 of 160.
+
+Player notices: pass three codes the same way and the Operator says "One moment, caller. Let me write that down.", then which way it has. The ways are turned round, one digit a message, and letters as A=1 or A=0 however written. Its lines are "I will take it the other way round.", "I will wait for the other half." and "I have your letters.". The wall lists the way under "how you pass codes". The next code passed that way, by a player who has seen it, is read back and spent.
+Impact: planned 3/3/0 → shipped 3/2/0 (biggest file tests/wiring.luau 1,549→1,556; Operator.luau 705→816; Method.luau new, 523). Reach is 2: 6 of PT4/PT5's 11 unscripted sessions passed codes a structural way, and the riddle and trivia groups never meet it.
+Built:
+- `systems/Method.luau`: the `Method.WAYS` registry of four ways; marks and pairs (glued, side by side, one joining word, "again", one mark of a kind across two lines); credit, read, cooling and wall rows.
+- Operator: `hearWays`, `creditMethod`, `seenCodes`/`names`/`onMethod`. Exchange and tools/sim are wired alike.
+- `Objectives.codesSeenBy`; `Round.LINES` noting/turned/apart; `Round.wallRows` gains a methods group.
+- Tests: tests/method.luau (new, 93 checks); exchange +2 sections; objectives +3.
+- Docs: D13, GAME.md, ARCHITECTURE.md, CONTENT.md, MARKET.md.
+Quality:
+- My review: bulk moved out of growing functions: `hearWays` beside `Operator.hear` (64→71), `namesOf` beside `Exchange.build` (630→646). The largest new function is `Method.credit`, 68 lines.
+- selene flagged a `local x = ...` followed by a line opening with `(`, which Luau parses as a call.
+- I repaired the mojibake my R155-R157 PowerShell edits left in ARCHITECTURE.md and in two comments in tests/wiring.luau.
+- Independent review, cycle 1: REJECT, all fixed:
+  - the replay claim was overstated;
+  - 12 of its 22 mutants survived;
+  - a holder of two lines taught nothing;
+  - one line could send the Operator twice;
+  - its tests found the joiner "n" read as a letter.
+- Cycle 2: APPROVE, with four 1×2-and-under findings. Each was fixed after the approval, with its own test and plant:
+  - a catch through a way is spent;
+  - a two-code holder passing one digit a message now teaches;
+  - the replay count is 6, not 7;
+  - GAME.md's wording.
+- Backlog: `codesSeenBy` still counts a former holder (1×0). A word and a way on one line spend the code with no digit read-back (nit).
+Verified:
+- `.\test.cmd`: 36 gates, 2,216 checks, 23.9 s. 21 plants each fail by name, restored by sha256 (r158/plants_out.txt). The reviewer's mutants: 21 caught, 2 equivalent (r158/review_mutants_out.txt).
+- The bots, smoke and PT5 critic s1 are byte-identical to HEAD.
+- Phone replay: round 3 at 162.0 s, "One moment, caller. Let me write that down."; round 4, "Cy: 4" / "Cy: again" → "Four four.". Veteran s42: round 3, "Bo DB" → "Four two.".
+- The blind session (seed 58) is below.
+Platform truth: `Player.Name` and `Player.DisplayName` are properties any script reads on either side (memory, ≤ Jun 2026), so they get no PLATFORM.md row.
+Headline:
+- Bots: 5/6/5 → 5/6/5 won. Taken 2.5 → 2.5 and Supervisor calls 1.7 → 1.7 per round. Codewords replaced 7 → 7. Rounds that end 21/21 → 21/21. Unchanged, since the bots never pass a code a way it learns.
+- Natural chat naming a secret: 30/160 → 30/160.
+- The scheme corpus (the TRY): 5 → 9 of 10.
+- PT4/PT5 replayed unchanged, the 27 rounds won with the Operator understanding nothing: 6 caught through a way, 8 still won, 1 caught by plain digits after divergence, 12 not judgeable.
+- Blind session (seed 58, never saw the change): 9/9 won, 5 taken, 6 codes heard, 1 round with the Operator never moving. It passed every code as trivia ("the answer to life...", "heinz ketchup"), so it never met the change. Of its 14 confusing items none were caused here: the hum's silence reads as safe, words are filed under the wrong station, and it learned "baby" = 17.
+Market: unchanged, 18.7. Core loop stays 1: the evidence is headless, and the one unscripted group played trivia, so PT6 judges. Differentiator stays 2. MARKET.md history row R158.
+Content: Operator lines 14 → 17 (target 16 met); CONTENT.md history row R158.
+Coach: none new. Decisions: D13.
+Next: R159 (k=4) is FIX: PT5 broken (1) and (2), which is also the swing's slice 2. The holder's lines belong to the holder's line, and a player's name is never a station word. Riddles and trivia are now the one channel it cannot read (the blind group, PT5's critic). A slice-3 candidate is the hand-off itself: a holder addressing the entrant just before a walk.

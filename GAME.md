@@ -94,6 +94,20 @@ silent and win.
 > "Thank you, caller. I have your letters." and hears a code spelled that way.
 > The wall lists the letters it has settled. Still safe: an alphabet changed
 > before it settles, and anything said once.
+>
+> **As built (R158): it learns how you pass a code.** At every restore it weighs
+> the holder's newest line against the code that was entered, under the ways
+> groups have used: the digits turned round ("banana 39" for 93), one digit a
+> message ("3", then "8"), and letters with A as 1 or as 0, however they are
+> written ("bee ay", "GF", "C then E"). A way that fits gains; a way that reads
+> the line as another number loses. One restore short it says "One moment,
+> caller. Let me write that down."; at the third it says which way it has ("I
+> will take it the other way round.", "I will wait for the other half.", or "I
+> have your letters.") and from then on hears a code passed that way, but only
+> from a player who has seen that code. The wall lists each way under "how you
+> pass codes". Still safe: a way before its third restore, a riddle, a private
+> fact, and a way it does not know (it knows four). A retired way cools a step
+> each round it goes unused; the wall shows when it is still understood.
 
 ## Round shape
 

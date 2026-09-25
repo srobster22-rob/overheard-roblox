@@ -1,13 +1,14 @@
-# ARCHITECTURE ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â OVERHEARD
+# ARCHITECTURE — OVERHEARD
 
 The map of the code. Use it to find the module that owns a concern before you
 open anything. Any commit that adds, moves or splits a module updates this
 file in the same commit (`tests/wiring.luau` fails if a module in `src/` is
-missing from the map). Sizes are lines, as of R152.
+missing from the map). Sizes are lines, updated with each module that changes
+(all of them as of R152).
 
 Luau on Roblox, synced with Rojo (`default.project.json`):
-`src/server` ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ ServerScriptService.Server, `src/client` ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢
-StarterPlayerScripts.Client, `src/shared` ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ ReplicatedStorage.Shared.
+`src/server` → ServerScriptService.Server, `src/client` →
+StarterPlayerScripts.Client, `src/shared` → ReplicatedStorage.Shared.
 Everything except the two entry scripts is a pure module that the headless
 harness can load; the entry scripts only run inside Roblox.
 
@@ -22,11 +23,12 @@ harness can load; the entry scripts only run inside Roblox.
 ### Server systems (`src/server/systems`)
 | Module | Owns | Size |
 |---|---|---|
-| Exchange | the server's game flow: chat, restores, capture, the Supervisor, the way out, a round's start and end; built from a host so tests can run it | 696 |
-| Operator | the listener: hears chat, learns coinages, number words and a group's alphabet, credits restores | 708 |
+| Exchange | the server's game flow: chat, restores, capture, the Supervisor, the way out, a round's start and end; built from a host so tests can run it | 718 |
+| Operator | the listener: hears chat, learns coinages, number words and a group's alphabet, credits restores | 816 |
+| Method | how a group passes its codes (digits turned round, one a message, letters), learned from each restore | 523 |
 | Heuristic | what one line conveys: plain words, learned coinages, live codes | 344 |
-| Objectives | the board: lines, holders, who has seen a code, submissions, the stranded-line rule | 463 |
-| Round | stations, secret concepts and their plain words, the Operator's lines, dealing, the wall | 361 |
+| Objectives | the board: lines, holders, who has seen a code, submissions, the stranded-line rule | 471 |
+| Round | stations, secret concepts and their plain words, the Operator's lines, dealing, the wall | 362 |
 | Pursuit | where the Operator walks, queues and waits; when it is audible | 346 |
 | Connected | being caught: who is on the line, taking everyone in a room | 162 |
 | Lifecycle | whether a round is playing, its outcome, the loss rule, the intermission | 118 |
@@ -60,7 +62,7 @@ harness can load; the entry scripts only run inside Roblox.
 - Each suite is `tests/<name>.luau`, run by `lune run tests/<name>`. Most are
   named for the module they cover (`objectives`, `pursuit`, `counting` for
   Numerals and the Operator's counting, `exchange` for the server's flow on a
-  fake host). `wiring` (1,549) checks the client, the entry script's glue and
+  fake host). `wiring` (1,556) checks the client, the entry script's glue and
   cross-module rules; `soak` runs long seeded sessions.
 - Helpers: `harness.luau` (a fake Roblox runtime: `Harness.build()`, then
   `rt.require(rt.shared.X)` / `rt.require(rt.systems.X)`; it adopts every
@@ -85,20 +87,22 @@ harness can load; the entry scripts only run inside Roblox.
 1. **Deal.** `Round.dealSecrets` picks the secret concepts; `Objectives.deal`
    hands each station's line to a holder, who is the only one who sees its
    code (`viewFor`, sent on the `Objectives` remote).
-2. **Talk.** `ChatFeed` hears a line ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ `hearChat` ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ `Operator:hear` ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢
+2. **Talk.** `ChatFeed` hears a line → `hearChat` → `Operator:hear` →
    `Heuristic.conveyed` (plain words, the group's learned words, a live code
-   said aloud, a learned number word or alphabet). An understanding fires
-   `operator.onUnderstood` ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ `Pursuit` walks to that room, or queues it. A
-   code heard fires `onCodeHeard` ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ `Objectives.reroll` (spent, new code).
+   said aloud, a learned number word or alphabet), then `Method.read` (a code
+   passed a way the group taught it, among the codes the speaker has seen).
+   An understanding fires `operator.onUnderstood` → `Pursuit` walks to that
+   room, or queues it. A code heard fires `onCodeHeard` → `Objectives.reroll`.
 3. **The beat** (`beat`, run by init.server's loop every
    `Config.TickSeconds`, while Presence steps `Pursuit` each frame);
    on arrival `Connected.takeInRoom` puts everyone in the room on the line;
    `Supervisor` puts a silent line through; `Lifecycle.nobodyCanWin` ends a
    round nobody can win; `Escape` steps the way out; panels are pushed.
-4. **Restore.** The `Submit` remote ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ `Station` (is the player at that
-   station) ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ `Keypad.validSubmission` ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ `Objectives.submit` ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ `onSolved` ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢
+4. **Restore.** The `Submit` remote → `Station` (is the player at that
+   station) → `Keypad.validSubmission` → `Objectives.submit` → `onSolved` →
    `Operator:credit` and `creditCode` (what was said before the restore is
-   learned) ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ the last line opens the way out (`Escape`).
+   learned, and `Method.credit`: how the holder passed it) → the last line
+   opens the way out (`Escape`).
 5. **End and restart.** `Lifecycle` records "won" or "lost"; after the
    intermission `beginRound` resets the board, clears the line and the
    stations, cools the Operator (`coolRound`), resets the Escape and the
@@ -121,6 +125,7 @@ headless trace follows the live game.
 | tuning values | `Config` |
 | panel strings and styles | `Readout`, `Heat`, `Silence` |
 | number words and letter names | `Numerals` |
+| the ways a group passes a code | `Method.WAYS` |
 | remote names | `Remotes` (`REMOTE_NAMES`) |
 | side-restricted engine APIs | `PLATFORM.md` (read by `tests/wiring.luau`) |
 

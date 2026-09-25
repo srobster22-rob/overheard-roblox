@@ -251,6 +251,13 @@ Round.LINES = {
 	counted = "Thank you, caller. I will count it that way.",
 	-- The group's letters are understood (DECISIONS D12); the wall shows which.
 	lettered = "Thank you, caller. I have your letters.",
+	-- A way of passing codes is one restore short of understood (DECISIONS
+	-- D13): the warning, said to everyone, before it can read that way.
+	noting = "One moment, caller. Let me write that down.",
+	-- Understood: codes said with the digits turned round, and one digit a
+	-- message. Each says which way, so a group knows what stopped working.
+	turned = "Thank you, caller. I will take it the other way round.",
+	apart = "Take your time, caller. I will wait for the other half.",
 }
 
 -- Where a concept brings the Operator, as the wall names it: the station's own
@@ -295,17 +302,28 @@ end
 -- The wall's header for the words the group uses as numbers. Such a word
 -- brings the Operator to whichever station's code it is used to say.
 Round.COUNTING_LEADS = "counts as a number"
+-- And for the ways the group passes its codes (Operator.methodRows).
+Round.METHOD_LEADS = "how you pass codes"
 
--- Everything the wall shows: the station words, each told where it leads, and
--- the words the group uses as numbers (Operator.countingRows), under their own
--- header. The server and tools/sim both send this.
-function Round.wallRows(stationWords: { Types.Coinage }, counting: { Types.Coinage }): { Types.Coinage }
+-- Everything the wall shows: the station words, each told where it leads; the
+-- words the group uses as numbers (Operator.countingRows); and the ways it
+-- passes codes (Operator.methodRows), each under its own header. The server
+-- and tools/sim both send this.
+function Round.wallRows(
+	stationWords: { Types.Coinage },
+	counting: { Types.Coinage },
+	methods: { Types.Coinage }?
+): { Types.Coinage }
 	local rows = Round.withLeads(stationWords)
-	for _, row in counting do
-		local labelled = table.clone(row)
-		labelled.leadsTo = Round.COUNTING_LEADS
-		table.insert(rows, labelled)
+	local function under(header: string, group: { Types.Coinage })
+		for _, row in group do
+			local labelled = table.clone(row)
+			labelled.leadsTo = header
+			table.insert(rows, labelled)
+		end
 	end
+	under(Round.COUNTING_LEADS, counting)
+	under(Round.METHOD_LEADS, methods or {})
 	return rows
 end
 

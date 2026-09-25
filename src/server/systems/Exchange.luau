@@ -57,6 +57,17 @@ export type Flow = {
 	desk: any,
 }
 
+-- Every present player's name as a player types it, Name and DisplayName in
+-- lower case: "dee, ay aitch" speaks to Dee, and is not "d a" (Method).
+local function namesOf(Players: any): { [string]: boolean }
+	local names: { [string]: boolean } = {}
+	for _, p in Players:GetPlayers() do
+		names[string.lower(p.Name)] = true
+		names[string.lower(p.DisplayName)] = true
+	end
+	return names
+end
+
 function Exchange.build(host: Host): Flow
 	local Players = host.Players
 	local TextService = host.TextService
@@ -105,6 +116,14 @@ function Exchange.build(host: Host): Flow
 	operator.liveCodes = Guard.wrap("server.liveCodes", function()
 		return board:liveCodes()
 	end)
+	-- A way the group taught it reads a player's lines only against the codes
+	-- that player has seen (DECISIONS D13).
+	operator.seenCodes = Guard.wrap("server.seenCodes", function(userId: number)
+		return board:codesSeenBy(userId)
+	end)
+	operator.names = Guard.wrap("server.names", function()
+		return namesOf(Players)
+	end)
 
 	-- With a room off the corridor, the Operator turns at the junction (DECISIONS D5).
 	local pursuit = Pursuit.new(built.rooms, built.operatorStart, Layout.route)
@@ -148,7 +167,7 @@ function Exchange.build(host: Host): Flow
 		return result
 	end
 	local broadcastLexicon = Censor.new(filterForEveryone):sender(function()
-		return Round.wallRows(operator:snapshot(), operator:countingRows())
+		return Round.wallRows(operator:snapshot(), operator:countingRows(), operator:methodRows())
 	end, function(visible)
 		lexiconRemote:FireAllClients(visible)
 	end, function(work)
@@ -358,6 +377,14 @@ function Exchange.build(host: Host): Flow
 	operator.onLettered = Guard.wrap("server.onLettered", function()
 		print("[operator] reads the group's letters")
 		heardRemote:FireAllClients(Round.LINES.lettered, "", 1)
+		broadcastLexicon()
+	end)
+
+	-- A way of passing codes is one restore short, or understood (DECISIONS
+	-- D13). Said to everyone; the wall shows which way under "how you pass codes".
+	operator.onMethod = Guard.wrap("server.onMethod", function(kind: string, way: string, says: string)
+		print(`[operator] {kind} the way '{way}'`)
+		heardRemote:FireAllClients((Round.LINES :: { [string]: string })[says], "", 1)
 		broadcastLexicon()
 	end)
 

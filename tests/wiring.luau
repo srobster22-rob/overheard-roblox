@@ -3,7 +3,7 @@
 -- being rendered as if it were addressed to you.
 --
 -- The keypad has one red line under its input. Until R10 the only writer of it
--- was the `Heard` remote's detail field â€” and `Heard` is the Operator's voice,
+-- was the `Heard` remote's detail field — and `Heard` is the Operator's voice,
 -- broadcast to the whole server with the concept id or room name in `detail`.
 -- So a player standing at a keypad saw a red `jack_number` in the slot that
 -- says "that line is jammed - wait 20s", because somebody ELSE had spoken.
@@ -562,6 +562,13 @@ local named, unsaid = 0, {}
 local readBackBody = string.match(LuauCode.stripNonCode(roundSource), "function Round%.readBack%(.-\nend") or ""
 check("(guard) Round.readBack was found", #readBackBody > 0)
 local everything = serverCode .. LuauCode.stripNonCode(fs.readFile("src/client/init.client.luau")) .. readBackBody
+-- And the lines Method names for the server to say (its ways' and its warning),
+-- read from what it exports; tests/exchange.luau hears the server say them.
+local Method = rt.require(rt.systems.Method)
+local methodSays: { [string]: boolean } = { [Method.NOTING_LINE] = true }
+for _, way in Method.WAYS do
+	methodSays[way.line] = true
+end
 for line in string.gmatch(roundSource, "[^" .. NL .. "]+") do
 	if string.find(line, "Round.LINES = {", 1, true) then
 		inLines = true
@@ -574,7 +581,7 @@ for line in string.gmatch(roundSource, "[^" .. NL .. "]+") do
 			-- Whether it is SAID is asked of the stripped code, where a comment
 			-- naming a line cannot answer for it. R4, R6 and R8 each shipped a
 			-- guard a mention could satisfy.
-			if not string.find(everything, "LINES." .. key, 1, true) then
+			if not string.find(everything, "LINES." .. key, 1, true) and not methodSays[key] then
 				table.insert(unsaid, key)
 			end
 		end
@@ -1178,7 +1185,7 @@ print("nothing the client DISPLAYS is a giveaway")
 
 -- R43, finishing what R41 and R42 started. Those checked the station prompts and
 -- the panel's exported constants. The client's own inline literals were judged
--- "coherent" BY EYE â€” and one was not: the keypad hint read "enter the NUMBER
+-- "coherent" BY EYE — and one was not: the keypad hint read "enter the NUMBER
 -- you were told for the {stationId}", which conveyed `jack_number` at every
 -- station including the breaker, in front of the player working it. It also
 -- showed the raw station id, and `board` and `breaker` ARE the plain terms.
@@ -1512,7 +1519,12 @@ print("")
 print("the sim's wall says where each word leads")
 check(
 	"the sim's wall is labelled with where each word leads",
-	string.find(botCode, "Round.wallRows(self.operator:snapshot(), self.operator:countingRows())", 1, true) ~= nil
+	string.find(
+		botCode,
+		"Round.wallRows(self.operator:snapshot(), self.operator:countingRows(), self.operator:methodRows())",
+		1,
+		true
+	) ~= nil
 )
 
 print("")

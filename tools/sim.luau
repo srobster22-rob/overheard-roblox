@@ -68,6 +68,16 @@ function Sim.new(seed: number): any
 	self.operator.liveCodes = Guard.wrap("sim.liveCodes", function()
 		return self.board:liveCodes()
 	end)
+	self.operator.seenCodes = Guard.wrap("sim.seenCodes", function(userId: number)
+		return self.board:codesSeenBy(userId)
+	end)
+	self.operator.names = Guard.wrap("sim.names", function()
+		local names: { [string]: boolean } = {}
+		for _, id in self.present do
+			names[string.lower(Sim.NAMES[id])] = true
+		end
+		return names
+	end)
 	self.operator.onUnderstood = Guard.wrap(
 		"sim.onUnderstood",
 		function(concept: string, payload: string, confidence: number, heard: string?)
@@ -96,6 +106,14 @@ function Sim.new(seed: number): any
 	-- R147: the server's `onCounted`, as the trace reads it.
 	self.operator.onCounted = Guard.wrap("sim.onCounted", function(key: string, value: number)
 		self:trace(`   >> it counts "{key}" as {value} now. "{Round.LINES.counted}"`)
+	end)
+	self.operator.onMethod = Guard.wrap("sim.onMethod", function(kind: string, way: string, says: string)
+		local said = (Round.LINES :: { [string]: string })[says]
+		if kind == "noting" then
+			self:trace(`   >> it is writing down how you pass codes ({way}). "{said}"`)
+		else
+			self:trace(`   >> it reads codes passed this way now: {way}. "{said}"`)
+		end
 	end)
 	self.operator.onLettered = Guard.wrap("sim.onLettered", function()
 		self:trace(`   >> it reads the group's letters now. "{Round.LINES.lettered}"`)
@@ -374,7 +392,8 @@ end
 -- The Lexicon panel, which everyone sees.
 function Sim.lexicon(self: any): { string }
 	local out: { string } = {}
-	for _, row in Readout.lexiconRows(Round.wallRows(self.operator:snapshot(), self.operator:countingRows())) do
+	local rows = Round.wallRows(self.operator:snapshot(), self.operator:countingRows(), self.operator:methodRows())
+	for _, row in Readout.lexiconRows(rows) do
 		table.insert(out, row.text)
 	end
 	return out
