@@ -1,0 +1,103 @@
+seed 29
+# Session 2 - same group, next week. They come in with the protocol from session 1:
+#  - never type a code; Spanish number words only (letters got learned in 2 uses, English words count as saying it)
+#  - no place words, and the blacklist: number, name(s), roll call, out, door, front
+#  - name the teammate already standing in the right room; the third job walks over with its holder
+#  - everybody talks at least every 25s (warning at 30s, traced at 45s)
+#  - one wrong code is free, the second rings it to that room and jams the station 20s
+#  - if it parks on a station you need, a taken or idle player baits it with 'names' (archive) or 'number' (board)
+look
+# ROUND 1. Same start rooms as last week. Run the protocol.
+Dee: Ana sesenta y cinco
+Ana enters board 65
+Cy: Dee diecinueve
+Dee enters breaker 19
+Bo: Ana setenta y ocho. walk with me. everybody converge
+Ana, Bo, Cy and Dee go to lobby
+Ana enters latch 78
+look
+Cy: clean. chatting so nobody goes silent
+next round
+look
+# ROUND 2. The pitch says it learns the words a group invents. The group wants to know how fast,
+# so they deliberately teach it one: 'pickle' = the station in Ana and Bo's start room.
+Ana: experiment. from now on the thing in our start room is pickle. spam it
+Bo: Ana pickle treinta y siete
+Cy: pickle
+Dee: pickle pickle
+Ana: pickle copy
+Ana enters board 37
+look
+# 25% after five mentions: spamming does not count, only the line that carried the code does.
+# Does a deliberate miss count as a lesson? One free miss at pickle.
+Bo: Ana pickle once, try it
+Ana enters board 11
+look
+# A restored station refuses everything, and teaches nothing. Finish the round on protocol.
+Ana: Cy treinta y seis
+Cy enters breaker 36
+Dee: Cy setenta. walk with me. everybody converge
+Ana, Bo, Cy and Dee go to lobby
+Cy enters latch 70
+Bo: we keep saying pickle for my start room every round and watch the panel
+next round
+look
+# ROUND 3. It learned 'pickle' - but for the archive's Cutoff, not the station we meant. And it went there when Bo said it.
+# New rule: pickle is retired as a name, kept as bait for the archive.
+Ana: it filed pickle under the wrong room lol. pickle is bait now, not a name. protocol
+Bo: Ana diecinueve
+Ana enters board 19
+Ana: Cy ochenta y uno
+Cy enters breaker 81
+Dee: Cy cincuenta y siete. walk with me. everybody converge
+Ana, Bo, Cy and Dee go to lobby
+Cy enters latch 57
+look
+# 'pickle' BURNED to breaker. Look at what it credited: Ana's own chatter ('filed', 'lol', 'protocol', 'wrong').
+# Ana held the Cutoff code both rounds. It learns from what the HOLDER says, so the holder should say nothing but the handoff.
+Cy: theory. it learns from whoever holds the code. Ana had that one both rounds and she said pickle
+Dee: so holders only say the handoff. free person does all the talking
+Ana: agreed. i shut up when im holding
+next round
+look
+# ROUND 4. Holders say only 'name + spanish'. Bo has no code, so Bo does all the talking.
+# Convention: named where you stand = enter it there; named a second time = it goes in the room nobody started in.
+Cy: Bo cuarenta y nueve
+Bo enters board 49
+Ana: Cy veinticuatro
+Cy enters breaker 24
+Dee: Cy quince
+Bo: everybody converge on the empty one
+Ana, Bo, Cy and Dee go to lobby
+Cy enters latch 15
+look
+Bo: it only wrote down the spanish. theory holds, Bo talk is free
+next round
+look
+# ROUND 5. Order convention: start-room-1 job first, start-room-2 job second, the empty room's job last, then the free player calls converge.
+Dee: Ana cincuenta y seis
+Ana enters board 56
+Bo: Cy cuarenta y seis
+Cy enters breaker 46
+Ana: Dee noventa y nueve
+Cy: converge on the empty one
+Ana, Bo, Cy and Dee go to lobby
+Dee enters latch 99
+look
+Cy: six seconds again
+next round
+look
+# ROUND 6. Test E: does everybody need to be at the latch when it rings? Bo (free) stays behind on purpose.
+Cy: Bo noventa y dos
+Bo enters board 92
+Ana: Cy veintinueve
+Cy enters breaker 29
+Dee: Cy ochenta y cinco
+Bo: converge on the empty one. test E, i stay here, see if you three get out without me
+Ana, Cy and Dee go to lobby
+Cy enters latch 85
+Bo: still here, talking so i dont get traced
+wait 5
+Bo: still here
+wait 6
+look

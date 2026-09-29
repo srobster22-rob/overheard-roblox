@@ -1,0 +1,228 @@
+seed 11
+# Session 1 - the Thursday group (Ana calls, Bo, Cy, Dee). First look before anyone moves.
+look
+# Round 1. Group rule going in: no station names in chat, it listens. Roll call first.
+Ana: roll call. who has a number on their screen? no place names, it listens
+Bo: me. two digits
+Cy: me too, two digits
+Dee: nothing on mine. im free
+Ana: same, i have one too. so three jobs and Dee is our runner
+look
+# It heard 'number' and something in "roll call / names". It is walking to Cy and Dee's room, then ours.
+# Ana+Bo act fast while it is busy; Cy+Dee get out of the way.
+Bo: Ana 86. the thing right in front of us
+Ana enters board 86
+Ana: Bo 85. try it here
+Bo enters breaker 85
+Cy: Dee its coming to us. walk with me to the front. mine is 78
+Cy and Dee go to lobby
+Dee enters latch 78
+look
+# Lesson 1: saying a code out loud spends it. Lesson 2: the breaker is not in our start room -
+# it walked to Cy/Dee's start room when it heard the breaker code, and the front room is 'exit'.
+# New system: digits as letters (a=1 ... i=9, o=0).
+Ana: new rule. never type digits. letters instead. a is one b is two and so on, o is zero
+Bo: Ana AE. yours is right here in front of us
+Ana enters board 15
+Ana: Bo CA. mine is back where Cy and Dee started, go
+Bo goes to archive
+Bo enters breaker 31
+Cy: Dee BA. the one where we are standing now
+Dee enters latch 21
+look
+# All three through. It learned the letters trick already (2 uses). Bo is standing next to it. Everyone out.
+Bo: omw
+Ana and Bo go to lobby
+look
+Bo: it got me on the way out. says im on the line, i can talk but cant do anything
+Ana: copy. three of us at the front. anyone see a way to pull Bo back?
+Cy: nothing on mine
+wait 5
+look
+# ROUND 1 WON, Bo taken. Between rounds the group reads the Lexicon panel.
+next round
+look
+# ROUND 2. Letters are burnt. Test: numbers in Spanish, and a naming rule instead of place words.
+Ana: plan. whoever you name punches it in where they stand. no place words. numbers in spanish
+Bo: got it. im free this time
+Dee: Bo dieciocho
+Bo enters board 18
+look
+# 'name' and 'numbers' set it off again - it is walking to Cy and Dee. Spanish went through clean.
+Ana: Cy noventa y dos. quick, its coming your way
+Cy enters breaker 92
+Cy: Dee sesenta y cuatro. follow me to the one nobody is in
+Cy and Dee go to lobby
+Dee enters latch 64
+look
+# 3/3 in six seconds. Ana and Bo walk out quietly.
+Ana: nice. Bo with me
+Ana and Bo go to lobby
+look
+Cy: all four here. keep it zipped till it rings
+next round
+look
+# ROUND 3. Same deal as last round. Same people, same jobs. Run it back, no plan talk this time.
+Dee: Bo sesenta y cinco
+Bo enters board 65
+Ana: Cy quince
+Cy enters breaker 15
+Cy: Dee veintisiete. follow me
+Cy and Dee go to lobby
+Dee enters latch 27
+look
+Ana and Bo go to lobby
+Bo: in
+next round
+look
+# ROUND 4. Jobs shuffled. Cy's goes to someone in the start room of Ana/Bo, Bo's to Dee, Ana's needs a walker.
+Cy: Ana treinta y nueve
+Ana enters board 39
+Bo: Dee veintiocho
+Dee enters breaker 28
+Ana: Bo ochenta y uno. go to the one nobody is in
+Bo goes to lobby
+Bo enters latch 81
+look
+# It is trying to learn a word as a number now ('nobody' = 81). Everyone out, then sit silent and watch the silence clock.
+Ana, Cy and Dee go to lobby
+wait 3
+look
+next round
+look
+# ROUND 5. The group is bored of winning and starts poking it on purpose.
+# Test A: can a holder punch their own code? Ana's is at the station she is standing at.
+Ana: test. im trying mine myself
+Ana enters board 44
+look
+# Refused, as the pitch said. Test B: what does the silence line do if nobody types?
+Ana: nope, refused. test two. everyone go quiet and watch the silence line on your screen
+wait 10
+look
+wait 10
+look
+wait 15
+look
+wait 5
+look
+wait 10
+look
+wait 4
+look
+# The Supervisor traced the quiet line: it walked to Ana and Bo and took both. A second call just went out.
+Ana: ok test over, it came for us. we are both on the line. talk you two and move
+Dee: Cy ochenta y tres
+Cy enters breaker 83
+Cy: Dee catorce. follow me
+Cy and Dee go to lobby
+Dee enters latch 14
+look
+# Last line is Ana's, at the station where she and Bo got caught. Bo (on the line, can still talk) plays lure:
+# he says the word that sent it to the archive in round 1, so it stays away from the board room.
+Bo: roll call. names please
+Ana: Dee cuarenta y cuatro. mine is right where Bo and i got caught. go now
+Dee goes to board
+Dee enters board 44
+Dee goes to lobby
+look
+Cy: nice lure Bo. lesson learned, nobody goes quiet. say something every few seconds
+Dee: back
+next round
+look
+# ROUND 6. Won round 5 with two on the line. Test C: are English number words heard like digits?
+Bo: test C. Ana thirty four
+Ana enters board 34
+look
+# English number words count as saying it. Code rerolled, and it is walking to Ana and Bo. Spanish, fast.
+Bo: ok english is out. Ana sesenta y seis
+Ana enters board 66
+Dee: Cy ochenta
+Cy enters breaker 80
+Cy: Dee sesenta y nueve. everybody follow me out
+Ana, Bo, Cy and Dee go to lobby
+Dee enters latch 69
+look
+# 'out' is one of its door words - it queued the lobby twice and we are all standing in it. Watch the hum.
+Ana: we said out twice. it has the front queued. eyes on the hum, if it starts up we scatter
+wait 2
+look
+Cy: Ana you just said it again lol. no more door talk
+Ana: my bad
+wait 3
+look
+# 'door' was the word. It is walking to us now. Scatter into the corridor toward Cy and Dee's start room.
+Bo: its coming. scatter, all of us to where Cy and Dee started
+Ana, Bo, Cy and Dee go to archive
+look
+# The door opened with nobody at it. It is sitting on the way out. Lure it to the empty start room with the word it knows.
+Dee: bait it. somebody say the n word for digits
+Bo: what number
+look
+Cy: queued. hold here till the panel changes
+wait 3
+look
+Ana: hum went quiet. still says wait for it to walk off
+wait 5
+look
+# It is parked on the latch in the front room. Bait it again now that it has stopped.
+Bo: number number number
+look
+Dee: it walked off. go go
+Ana, Bo, Cy and Dee go to lobby
+look
+Cy: all in. why are we not out
+wait 2
+look
+# ROUND 6 WON 4/4, but only after the door words ('out', 'door') nearly parked it on us.
+next round
+look
+# ROUND 7. Test D: is a wrong code free? If it is, a runner could just guess.
+Bo: test D. im punching a random one here, see if it costs anything
+Bo enters board 11
+look
+Bo: says that line is dead. nothing else happened. trying a few more
+Bo enters board 12
+Bo enters board 13
+Bo enters board 14
+Bo enters board 15
+look
+# One free miss, the second rings through and sends it to that room, then the station jams for 20s.
+# Guessing is out. It is walking to Ana and Bo. Everyone to the front room, board line waits for the jam.
+Dee: Cy veintiuno
+Cy enters breaker 21
+Ana: Bo ochenta y uno. with me, to the room nobody started in
+Cy: Dee sesenta y cuatro, its where Ana and Bo started. that one is jammed and it is headed there. come with me for now
+Ana, Bo, Cy and Dee go to lobby
+Bo enters latch 81
+look
+Ana: two down. we sit tight till the jam clears, keep chatting so nobody goes silent
+Dee: ok. im the runner for the last one
+wait 6
+Bo: still here
+wait 6
+look
+# It is parked on the board. Jam ends about now. Bo baits it to the archive, Dee runs.
+Bo: roll call. names
+Dee goes to board
+look
+Dee enters board 64
+Dee goes to lobby
+Dee: back with you
+look
+Cy: my silence line says say something. so. something. gg
+next round
+look
+# ROUND 8. The clean protocol: Spanish digits, name the teammate standing in the right room, walk the third job over together, all converge.
+Cy: Bo treinta y seis
+Bo enters board 36
+Ana: Dee ochenta y dos
+Dee enters breaker 82
+Dee: Cy cincuenta y dos. walk with me. everybody converge
+Ana, Bo, Cy and Dee go to lobby
+Cy enters latch 52
+look
+Bo: six seconds. that is the run
+Ana: hush now, let it ring
+wait 11
+look
+# End of session 1.

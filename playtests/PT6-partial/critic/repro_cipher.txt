@@ -1,0 +1,14 @@
+seed 31
+# repro: a one-line "type it ten lower" rule beats the Operator from round 1, no riddles, no learning
+# deal (seed 31 round 1): Ana board 18, Bo breaker 40, Dee latch 92, Cy nothing
+Ana: rule: add ten to anything anyone types
+Ana: bo 8
+Bo enters board 18
+Bo: cy 30
+Cy enters breaker 40
+Ana goes to lobby
+Dee: ana 82
+Ana enters latch 92
+Bo, Cy and Dee go to lobby
+wait 5
+look

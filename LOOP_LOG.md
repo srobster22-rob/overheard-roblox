@@ -9564,3 +9564,20 @@ Market: unchanged, 18.7. Core loop stays 1 until PT6: the evidence is headless a
 Content: Operator lines 17 → 18 (`known`); CONTENT.md history row R160.
 Coach: none new. Decisions: D15.
 Next: R161 is PT6, the postponed PLAYTEST, now that 3 building rounds (R158-R160) have run since PT5. It takes the k=1 slot, and this cycle's BIG SWING takes k=2 (R162). Three personas in parallel: a genre veteran, a rotated persona and a critic. It judges the PLAYBOOK TRY (no unscripted group wins more than half its rounds with the Operator never moving) against R158-R160's listeners.
+
+
+## R161 · PLAYTEST · PT6: a genre veteran, a practised co-op group and a critic play build c3d8d2f
+Pick: PT6, the PLAYTEST postponed from R158. It runs in the first slot with 3 building rounds (R158-R160) since PT5, which is this k=1 slot; the cycle's BIG SWING takes its k=2 slot (R162). No score (PLAYTEST).
+- Personas, in parallel, each blind (no source, no word lists) and unscripted through `tools/play` on a stepped clock:
+  - the genre veteran (DOORS / 99 Nights / Phasmophobia);
+  - the rotated persona, a practised co-op group (after PT1 first-timers, PT2 returning, PT3 min-maxer, PT4 struggling, PT5 phone);
+  - the critic, with a store review.
+- The veteran's and the critic's briefs are PT5's word for word, so the scores compare.
+- It judges the PLAYBOOK TRY: no unscripted group wins more than half its rounds with the Operator never moving (PT5: 12 of 30, one group 3 of 5). The build under test holds R158's ways, R159's crediting and R160's facts.
+Sync: AGENT_LOOP v3.4 unchanged; OWNER.md `## Next` empty, no VETO; COACH.md has no new notes. Studio MCP: no tools, so no screenshots and no sound. HEAD c3d8d2f green (`.\test.cmd`: 37 gates, 2,267 checks).
+
+Stopped, not synthesized. On 2026-09-24 the session ended mid-PT6. On 2026-09-29 the owner ordered the FINALIZE phase (AGENT_LOOP v3.5 §3b), which replaces the cycle: no PT6 entry, no re-score, no R162 BIG SWING.
+- The partial sessions are parked unsynthesized in playtests/PT6-partial/ (veteran 2 sessions plus a probe, co-op group 2, critic 2 plus 2 probes).
+- Early counts from the finished first sessions (PT5's counter): veteran seed 11 won 6 of 6, 4 with the Operator never moving; critic won 6 of 6, 1 never moving, 6 taken; co-op group won 8 of 8, 3 never moving.
+- What beat it: arithmetic ciphers ("every digit one lower", "add ten to anything anyone types") and Spanish numbers. R158's letters way caught glued letters on their second use. The TRY would fail on the veteran's seed-11 group (4 of 6). The unbuilt next swing is a learner that fits the group's cipher from the codes that worked.
+Market: unchanged, 18.7. Next: FINALIZE, step 1 (this commit), then a green `.\test.cmd`.

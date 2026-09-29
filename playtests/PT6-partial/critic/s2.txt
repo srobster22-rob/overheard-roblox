@@ -1,0 +1,109 @@
+seed 88
+# session 2: play it the way the store page sells it - riddles and our own words, no digit cipher
+look
+# our words: kitchen = where ana and bo start, garden = where cy and dee start, garage = the third
+Ana: ok words. kitchen is where bo and i are. garden is where cy and dee are. garage is the third one
+Dee: kitchen garden garage, got it
+Bo: ana, kitchen: eight nines, less one
+Ana enters board 71
+Dee: cy, garden: seven twelves, less one
+Cy enters breaker 83
+look
+Bo goes to lobby
+Ana: bo, garage: six sevens, less one
+Bo enters latch 41
+Ana, Cy and Dee go to lobby
+wait 5
+look
+# round 2
+next round
+look
+# round 2: ana goes quiet (afk-ish), the other three keep chatting
+Dee: cy, garden: two eights, less one
+Cy enters breaker 15
+wait 10
+Bo: anyone else get something this time
+wait 10
+Cy: yeah i have one for the garage. waiting to see who goes
+wait 10
+Dee: ana you there?
+wait 10
+Bo: ana??
+wait 10
+look
+wait 7
+look
+# ana and bo are gone. cy and dee finish it
+Bo: it got both of us. ana was afk. it's sitting in the kitchen now
+Cy: dee go to the garage, i'll give you mine there
+Dee goes to lobby
+Cy: dee, garage: eleven eights, plus two
+Dee enters latch 90
+look
+# it heard the latch one and is coming for dee. she runs to the kitchen it just left
+Dee goes to board
+Bo: dee, kitchen: six sixes, plus two
+Dee enters board 38
+look
+# plus riddles are getting heard. back to less
+Bo: dee, kitchen: five dozen, less one
+Dee enters board 59
+look
+# the panel says it understands kitchen now. cy slips anyway
+Dee: done. where do i go
+Cy: dee get out of the kitchen, it's coming there next. come to the garden
+Dee goes to archive
+look
+# wait for it to leave the garage
+Dee: in the garden with you. waiting for it to leave the garage
+wait 15
+look
+wait 7
+look
+# it left the garage. go
+Dee goes to lobby
+Cy: dee, garage: eleven threes, less one
+Dee enters latch 32
+Cy goes to lobby
+wait 5
+look
+# round 3
+next round
+look
+# round 3: kitchen is burned, the panel says so. new word for it: attic
+Ana: the panel says it knows kitchen now. new word for where bo and i are: attic
+Cy: ana, attic: two sixes, less one
+Ana enters board 11
+Bo: dee, garden: thirteen threes, less one
+Dee enters breaker 38
+look
+# saying the burned word to retire it summoned it. ana and bo run to the garage
+Bo: you just said it lol. run
+Ana and Bo go to lobby
+Dee: ana, garage: seventeen threes, less one
+Ana enters latch 50
+Cy and Dee go to lobby
+wait 5
+look
+# round 4: the group gets cocky and regroups first
+next round
+look
+Bo: everyone meet at the front door first, we plan together
+Ana, Bo, Cy and Dee go to lobby
+look
+Ana: ok so who has what
+wait 1
+look
+# round 5: after the wipe. play it clean
+next round
+look
+Bo: ana, loft: four twelves, less one
+Ana enters board 47
+Cy: dee, garden: seventeen fives, less one
+Dee enters breaker 84
+Ana goes to lobby
+Dee: ana, garage: nineteen threes, less one
+Ana enters latch 56
+Bo, Cy and Dee go to lobby
+wait 5
+look

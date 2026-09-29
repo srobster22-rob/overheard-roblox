@@ -1,0 +1,208 @@
+seed 11
+# Session 1 - genre veteran group, first time in OVERHEARD. Seed 11.
+# Round 1. Nobody knows where anything is. Rule from the pitch: don't name stations.
+Bo: ana. the big thing in our room. 86
+Ana: copy
+Ana enters board 86
+look
+# It heard the bare number. It is coming to our room. Get out.
+Bo: RUN. it heard me. out of here
+Ana and Bo go to lobby
+look
+# "out of here" was heard as the exit - it queued the lobby, and we just walked INTO the lobby.
+wait 1
+look
+# The Operator is parked by the Exchange Desk (board room) with the lobby queued next.
+# House rule, invented on the spot: no digits in the clear, say every digit ONE LOWER.
+Cy: ana bo. mine is the one that rhymes with match. prob near you. every digit one lower: 6 7
+Bo: got it
+Bo enters latch 78
+look
+# Latch was in the lobby: 1/3. The Lexicon already has 'lower' = a number at 25%. Don't say lower again.
+Ana: cy dee. mine rhymes with baker. prob your side. same trick as cy: 7 4
+Dee: on it
+Dee enters breaker 85
+look
+# 2/3. Breaker was in the archive. Last one is Bo's, at the desk the Operator is parked on.
+# It queued the lobby earlier, and Ana and Bo are standing in the lobby. Move first, talk later.
+# (From here on I add a few seconds per chat line - typing is not free in a real game.)
+wait 3
+Bo: ana we move. it said it was coming here next
+Ana and Bo go to archive
+wait 2
+look
+# Everyone in the archive. It is still parked on the desk. Watch it before walking in on it.
+wait 10
+look
+# 26.2s: it gave the desk up after 20 s. The hum is back - it is moving, probably to the lobby it queued.
+# The desk room is empty now. Cy runs it. New trick for the number: backwards.
+wait 2
+Bo: cy. mine is where it was parked. backwards: 5 1
+Cy: going
+Cy goes to board
+Cy enters board 15
+look
+# It DECODED "backwards". Code burned, it walked back to the desk and Cy walked in right after it.
+# Cy is now alone in the desk room with it parked there. Bo has a new code, 31.
+# Group call: Cy stays silent. Bo uses the trick it has NOT cracked yet (one lower), without saying the word.
+wait 3
+Bo: cy dont answer. same trick as anas: 2 0
+wait 2
+Cy enters board 31
+look
+# Cy walked into its room and got put ON THE LINE 0.2 s after arriving. Ana and Dee show "say something".
+Ana: cy you ok??
+Dee: i take it when it leaves. counting
+wait 2
+Cy: cant move cant press anything. its right next to me
+wait 10
+look
+# "when it leaves" = it heard 'exit' and walked off to the lobby. Accidental decoy - the desk room is clear.
+Dee goes to board
+Dee enters board 31
+look
+# 3/3. Now it is parked on the way home. Do NOT say anything that sounds like leaving.
+Dee: done. 3 of 3
+wait 2
+Bo: nobody say the L word or the O word. we wait for it to wander
+wait 2
+Cy: what about me. am i stuck on here
+wait 11
+look
+# It rang, it walked off the lobby at 73.8, panel says everyone to the lobby. The hum is up - it is moving.
+Ana: moving. go go
+Ana, Bo and Dee go to lobby
+look
+# Three of us in the lobby. Cy is still stuck on the line in the desk room. Nothing ends yet.
+Bo: were here. now what
+wait 5
+look
+# ROUND 1 WON at 80.2 s, 3 of 3 free got out. Cy (on the line) did not count.
+next round
+look
+# ===== Round 2 (starts 93.0 s). The Lexicon panel came back EMPTY.
+# What we know: desk = board room, baker thing = archive, match thing = lobby.
+# House rule from round 1: say every digit ONE LOWER, listener adds one (9 wraps to 0). Never say the rule word again.
+wait 3
+Dee: cy. mine is right here with us, the baker one. same trick as last round: 0 6
+Cy enters breaker 17
+wait 3
+Ana: bo. mine is the one in the room we are standing in. same trick: 1 9. nine wraps round
+Bo enters board 20
+look
+# 2/3 in six seconds. Lexicon now has 'same', 'mine', 'room', 'round' on the desk. Avoid them.
+wait 3
+Bo: ana. rhymes with match. the drill again: 8 1
+Ana goes to lobby
+Ana enters latch 92
+look
+# 3/3 at 108 s - fifteen seconds into the round. It has not moved once. Everyone to the lobby before the ring.
+Bo: nice. everyone meet ana
+Bo, Cy and Dee go to lobby
+look
+# All four in the lobby at 114 s. Waiting on the ring.
+Cy: here
+wait 5
+look
+# ROUND 2 WON at 118.0 s: 4 of 4 out, 25 s long. The Operator never left the switchboard.
+next round
+look
+# ===== Round 3 (127 s). Same start rooms as rounds 1 and 2. Lexicon empty again.
+# Each room has exactly one station, so "the one in your room" is enough. Keep the one-lower trick.
+wait 3
+Bo: dee. the one in your room. same trick: 5 4
+Dee enters breaker 65
+wait 3
+Cy: ana. the one in your room. same trick: 0 8
+Ana enters board 19
+wait 3
+Dee: bo. the one in the room with the way home. same trick: 0 4
+Bo goes to lobby
+Bo enters latch 15
+look
+# 3/3 at 142 s, fifteen seconds again. Walk home.
+Ana: ez. meet bo
+Ana, Cy and Dee go to lobby
+wait 5
+look
+# ROUND 3 WON at 152 s, 4 of 4, 25 s. Identical to round 2. The Operator never moved.
+next round
+look
+# ===== Round 4 (161 s). Same rooms, same three stations. We reuse round 3's exact phrasing on purpose:
+# if the Operator remembers across rounds, 'room' / 'same' / 'trick' should come back above 25%.
+wait 3
+Ana: dee. the one in your room. same trick: 2 8
+Dee enters breaker 39
+wait 3
+Bo: ana. the one in your room. same trick: 1 3
+Ana enters board 24
+look
+# Ana's shifted "2 8" WAS Cy's real latch code. It burned the latch and it is walking to the lobby -
+# where the last station is. Cy got 66. Nobody could have known. Now we wait it out.
+wait 3
+Cy: welp. that was my number lol. dee: new one, where its headed. usual: 5 5
+wait 3
+Dee: got it. going when the hum comes back
+wait 3
+Ana: gg ana. my bad
+wait 3
+look
+# "my number" alone got heard as the desk ('jack_number') - it queued the board room, where Ana and Bo are.
+# Plan: when it gives up the lobby (~190 s) it heads for the desk. Everyone walks to the lobby past it.
+wait 3
+Bo: ok nobody say that word either. when the hum starts everyone goes to where it is now
+wait 9
+look
+# 190.2 s: it gave the lobby up, hum is back. Everyone walks to the lobby, Dee turns the latch.
+Ana, Bo, Cy and Dee go to lobby
+Dee enters latch 66
+look
+# 3/3 at 197 s, all four in the lobby. Hum still going - it is walking the other way.
+Cy: all here
+wait 10
+look
+# ROUND 4 WON at 207 s, 4 of 4. 46 s long; the cipher collision cost us 30 s.
+next round
+look
+# ===== Round 5 (215 s). After the round-4 collision the group switches to LETTERS (A=1 ... I=9, J=0):
+# a letter pair can never be somebody else's real code.
+wait 3
+Dee: cy. the one in your room. letters now: H C
+Cy enters breaker 83
+wait 3
+Ana: bo. the one in your room. letters: D D
+Bo enters board 44
+wait 3
+Cy: dee. rhymes with match. letters: A D
+Dee goes to lobby
+Dee enters latch 14
+look
+# 3/3 at 230 s. But: "it is writing down how you pass codes" -> "I have your letters." Letters are burned (75%, understood).
+Bo: it just said it has our letters. ok. home
+Ana, Bo and Cy go to lobby
+wait 5
+look
+# ROUND 5 WON at 240 s, 4 of 4, 25 s.
+next round
+look
+# ===== Round 6 (249 s). The Lexicon kept ONE thing across the round break: "letters, a is 1 - understood".
+# Words reset each round, schemes do not. Back to the digit trick - 4 rounds and it never wrote that one down.
+wait 3
+Dee: cy. yours is right here. same trick: 7 9
+Cy enters breaker 80
+wait 3
+Bo: ana. yours is right here. same trick: 2 3
+Ana enters board 34
+wait 3
+Cy: dee. rhymes with match. same trick: 5 8
+Dee goes to lobby
+Dee enters latch 69
+look
+# 3/3 at 264 s. The digit trick still is not written down after five rounds of use.
+Ana: home time
+Ana, Bo and Cy go to lobby
+wait 5
+look
+# ROUND 6 WON at 274 s, 4 of 4, 25 s. Peek at round 7 to see if anything escalates.
+next round
+look

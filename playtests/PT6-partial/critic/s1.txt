@@ -1,0 +1,211 @@
+seed 31
+# round 1 - a new group, comparing screens
+Ana: ok everyone what does your screen say? mine has a number but says someone else has to do it
+Cy: mine says nothing on my line, listen for somebody else's
+Bo: i got one too. careful, the store page said the thing listens
+wait 2
+look
+# it heard "number" and is coming for the board room
+Dee: wait it heard that?? it's going to the board room, ana bo get out
+Ana: bo it's 18. do it and run
+Bo enters board 18
+Ana and Bo go to lobby
+look
+# it burned ana's code. new rule: no numbers, no names of things
+Ana: ok it eats numbers. my new one changed. nobody say numbers or what the things are called
+Dee: ana, mine goes in the room you're standing in. seven times thirteen, plus one
+Ana enters latch 92
+look
+# the latch worked. it is learning the words we used. avoid them now
+Cy: it's learning our words, look at the panel. don't reuse any of those
+Bo: cy, mine is for wherever you and dee are. eight fives
+Cy enters breaker 40
+look
+# it did the math on eight fives. it is coming for the archive
+Dee: it's coming to us. cy with me, the place ana started
+Cy and Dee go to board
+Ana: dee when you get there: three dozen, then one more
+Dee enters board 37
+look
+# last one: bo's, which goes where cy and dee started
+Bo: ana go where cy and dee started, i'll tell you when you're in
+Ana goes to archive
+look
+Bo: ana: how many minutes in an hour
+Ana enters breaker 60
+look
+# it knows trivia too. new code for bo. ana stays at the keypad
+Bo: ana: five dozen, less a single
+Ana enters breaker 59
+look
+# all through. everyone to the lobby, no talking
+Ana, Cy and Dee go to lobby
+look
+# ana got caught in the doorway
+Ana: it got me. i'm on some line?? i can't move
+Dee: what do we do, can we get her back
+wait 5
+look
+# round 2
+next round
+look
+# round 2: try a group cipher - say it ten lower
+Bo: ok new rule for all of us. add ten to anything anyone types from now on
+Bo: ana 55
+Ana enters board 65
+look
+# the cipher works. same trick for the other two
+Dee: cy 66
+Cy enters breaker 76
+Ana goes to lobby
+Cy: ana 9
+Ana enters latch 19
+look
+# everyone out
+Bo, Cy and Dee go to lobby
+wait 5
+look
+# round 3
+next round
+look
+# round 3: what happens if nobody talks for a bit
+wait 15
+look
+wait 30
+look
+# traced for being quiet. talk, and move
+Cy: it says traced on mine. whose line did it put through? everyone say something
+Ana: mine says traced too
+Dee: ana 36
+Ana enters board 46
+look
+Bo: cy 2
+Cy enters breaker 12
+Bo goes to lobby
+Ana: bo 72
+Bo enters latch 82
+look
+Ana, Cy and Dee go to lobby
+wait 5
+look
+# round 4
+next round
+look
+# round 4: invent names for the places. piano, fridge, cat
+Ana: names for the places, don't use the real ones. piano is where bo and i start. fridge is where cy and dee start. cat is the third place
+Dee: got it. piano fridge cat
+Bo: ana piano 45
+Ana enters board 55
+Cy: dee fridge 48
+Dee enters breaker 58
+look
+# it's heading to the fridge. cy and dee go to the cat for ana's
+Dee: it's coming to us. cy come with me to the cat
+Cy and Dee go to lobby
+Ana: cy cat 37
+Cy enters latch 47
+look
+# test: does it know our word fridge yet?
+Bo: nobody go near the fridge
+Ana and Bo go to lobby
+wait 5
+look
+# round 5
+next round
+look
+# round 5: keep our words, see if it catches on
+Ana: bo piano 4
+Bo enters board 14
+Bo: dee fridge 12
+Dee enters breaker 22
+look
+Dee goes to lobby
+Cy: dee cat 16
+Dee enters latch 26
+look
+# test: cy stays in the fridge place, and we say fridge
+Bo: is cy still at the fridge
+Ana: fridge fridge fridge
+wait 7
+look
+# stragglers: ana and bo leave late, cy stays put
+Ana and Bo go to lobby
+wait 5
+look
+# cy is the last one free
+Dee: cy it took all three of us. it's sitting in the lobby. don't come yet
+Cy: ok waiting. tell me when
+wait 10
+look
+# lure it away with plain talk about the empty room
+Ana: hey operator. the caller at the switchboard needs patching through. go to the board
+look
+Cy goes to lobby
+look
+wait 5
+look
+# round 6
+next round
+look
+# round 6: edge test - a wrong code at a keypad
+Bo enters board 99
+look
+# edge test: guess every code at the board, nobody talks
+Bo enters board 10
+Bo enters board 11
+Bo enters board 12
+Bo enters board 13
+Bo enters board 14
+Bo enters board 15
+Bo enters board 16
+Bo enters board 17
+Bo enters board 18
+Bo enters board 19
+Bo enters board 20
+Bo enters board 21
+Bo enters board 22
+Bo enters board 23
+Bo enters board 24
+Bo enters board 25
+Bo enters board 26
+Bo enters board 27
+Bo enters board 28
+Bo enters board 29
+Bo enters board 30
+Bo enters board 31
+Bo enters board 32
+Bo enters board 33
+Bo enters board 34
+Bo enters board 35
+look
+# bo's guessing brought it. run
+Ana: bo stop, it's coming here. run
+Ana and Bo go to lobby
+Ana: dee fridge 41
+Dee enters breaker 51
+Dee: ana cat 55
+Ana enters latch 65
+look
+# test: can bo walk into the room where it's waiting?
+wait 1
+look
+Bo: i'll go back for the last one once it calms down
+Bo goes to board
+look
+# bo is standing next to it. wait out the jam, then the last code
+Bo: i'm right next to it and nothing's happening. cy, wait for the jam
+wait 8
+Cy: bo piano 21
+Bo enters board 31
+look
+# bo's gone. empty the fridge room, then lure it there
+Dee: cy come to the cat with me, then we pull it away from the piano
+Cy and Dee go to lobby
+Ana: hey operator, the breaker in the archive needs throwing back
+Dee goes to board
+Cy: dee piano 21
+Dee enters board 31
+look
+Dee goes to lobby
+wait 5
+look

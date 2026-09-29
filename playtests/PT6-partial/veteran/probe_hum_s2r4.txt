@@ -1,0 +1,139 @@
+seed 42
+# Session 2 - same group, next evening, new seed. What we carry in: desk = board room,
+# baker thing = archive, match thing = lobby (also the way home). Numbers in the clear are
+# heard at once; 'backwards' and letters get cracked; the one-lower digit trick never has been.
+# Words like out / leave / number summon it. Walking into its room puts you on the line.
+# Goals tonight: play faster, and find out what the silence clock and the Supervisor do.
+look
+# ===== Round 1. Before launching we agreed station nicknames in Discord, never said in game:
+# PIANO = the desk (board room), TOASTER = the cutoff (archive), CAT = the latch (lobby).
+# Cy has nothing and volunteers to go silent to see what the silence clock does.
+Cy: im going quiet to test the silence thing. dont wait for me
+wait 3
+Ana: bo. piano. same trick: 1 8
+Bo enters board 29
+wait 3
+Bo: dee. toaster is yours. same trick: 0 2
+Dee enters breaker 13
+look
+# 2/3 at 6 s. Hold the last one a while so we can watch Cy's silence clock, and talk like people do.
+wait 4
+Ana: piano done btw
+wait 4
+Dee: toaster done too. piano and toaster both green
+wait 8
+Bo: cy you alive
+wait 8
+look
+# 30 s: Cy's clock reads "say something". Chatter with 'piano' did NOT raise it in the Lexicon (still 25%).
+# Cy keeps quiet.
+wait 5
+Dee: still quiet cy? lol
+wait 5
+look
+Ana: talking so i dont go quiet
+wait 10
+look
+# 45 s: THE SUPERVISOR traced Cy's silent line. Nobody knows what that does yet. Watch.
+wait 3
+look
+# 51.2 s: it walked to the archive with NO hum and put Cy AND Dee on the line. Dee was talking; she was just in the room.
+# Dee still holds the last code and can still talk. Ana and Bo are the only free ones.
+Cy: ok so going quiet sends it to you. and it takes everyone in the room. sorry dee
+wait 3
+Dee: ana. the cat. same trick: 8 1
+Bo: im here. talking
+Ana goes to lobby
+Ana enters latch 92
+look
+# 3/3 at 62 s. Bo walks home. Cy and Dee: is there any way to get them off the line? Nothing on screen says so.
+Bo: coming. can we get them back somehow?
+Bo goes to lobby
+Dee: nothing on my screen says how
+wait 6
+look
+# ROUND 1 WON at 72 s - "2 of 2 still free got out". Half the team on the line and it still counts as a win.
+next round
+look
+# ===== Round 2 (82 s). Clean and fast this time. Everyone talks at least every 30 s.
+# Test: Cy stays in the archive until the door opens, to see how long the run home is.
+wait 3
+Ana: bo. piano. same trick: 4 6
+Bo enters board 57
+wait 3
+Dee: cy. toaster. same trick: 6 4
+Cy enters breaker 75
+wait 3
+Bo: ana. cat. same trick: 7 9
+Ana goes to lobby
+Ana enters latch 80
+Bo and Dee go to lobby
+Cy: im staying back to see how long we get once it rings
+look
+wait 5
+look
+# 107 s: the door opened with Cy missing - so no win, and "it is coming for the lobby" with three of us IN it.
+# Too late for Cy to beat it there. Scatter to the desk room (the corridor is safe), come back when it walks off.
+Bo: its coming here. scatter to piano room. cy stay put
+Ana, Bo and Dee go to board
+wait 3
+look
+# 113.2 s: it is parked on the latch in an empty lobby. 20 s until it gives up. Keep everyone talking.
+Ana: ok. waiting it out
+wait 8
+Dee: so the lesson is everyone home BEFORE it rings
+wait 8
+Cy: yep. my bad again
+wait 4
+look
+# "waiting it out" -> 'exit' again, harmless this time since it was already there. 133.2 s it walked off.
+Bo: go now. all of us
+Ana, Bo, Cy and Dee go to lobby
+look
+Cy: here
+wait 2
+look
+# ROUND 2 WON at 143.2 s, 4 of 4. 61 s long - leaving Cy behind at the ring cost us 36 s.
+next round
+look
+# ===== Round 3 (153 s). Argument in voice: can it learn our digit trick? It learned letters in two uses.
+# Test: say the rule out loud every time ("every digit one lower") and watch the Lexicon.
+wait 3
+Ana: bo. piano. every digit one lower: 8 1
+Bo enters board 92
+wait 3
+Bo: dee. toaster. every digit one lower: 3 1
+Dee enters breaker 42
+look
+# Two uses said out loud: Lexicon has "lower" = 42 as "a number" at 25%, no scheme written down. Third use:
+wait 3
+Cy: dee. cat. every digit one lower: 8 8
+Dee goes to lobby
+Dee enters latch 99
+Ana, Bo and Cy go to lobby
+look
+# Three spoken uses: still no scheme, "lower" just re-points at the latest number (99, 18%). The trick is safe.
+Bo: it never learns that one. ok
+wait 5
+look
+# ROUND 3 WON at 178 s, 4 of 4, 25 s.
+next round
+look
+# ===== Round 4 (187 s). We have it solved, so Cy gets cocky: he will RACE it home from the archive
+# the moment it rings. It took 6.2 s to reach the lobby last time; our walk is 6.0 s.
+wait 3
+Bo: ana. piano. same trick: 6 6
+Ana enters board 77
+wait 3
+Dee: cy. toaster. same trick: 4 6
+Cy enters breaker 57
+wait 3
+Ana: bo. cat. same trick: 0 8
+Bo goes to lobby
+Bo enters latch 19
+Ana and Dee go to lobby
+Cy: racing it when it rings. 6 seconds vs 6.2. watch this
+look
+wait 4
+Cy goes to lobby
+# PROBE (not play): sample the hum once a second while it walks to the lobby after the ring.

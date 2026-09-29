@@ -1,0 +1,40 @@
+seed 88
+# session 2: play it the way the store page sells it - riddles and our own words, no digit cipher
+look
+# our words: kitchen = where ana and bo start, garden = where cy and dee start, garage = the third
+Ana: ok words. kitchen is where bo and i are. garden is where cy and dee are. garage is the third one
+Dee: kitchen garden garage, got it
+Bo: ana, kitchen: eight nines, less one
+Ana enters board 71
+Dee: cy, garden: seven twelves, less one
+Cy enters breaker 83
+look
+Bo goes to lobby
+Ana: bo, garage: six sevens, less one
+Bo enters latch 41
+Ana, Cy and Dee go to lobby
+wait 5
+look
+# round 2
+next round
+look
+# round 2: ana goes quiet (afk-ish), the other three keep chatting
+Dee: cy, garden: two eights, less one
+Cy enters breaker 15
+wait 10
+Bo: anyone else get something this time
+wait 10
+Cy: yeah i have one for the garage. waiting to see who goes
+wait 10
+Dee: ana you there?
+wait 10
+Bo: ana??
+wait 10
+look
+# probe: is there any warning while it walks to the quiet player's room?
+wait 1
+look
+wait 2
+look
+wait 2
+look
